@@ -5,6 +5,7 @@ Juego web arcade de pelea estilo stickman/xkcd, implementado con HTML, CSS y Jav
 ## Tabla De Contenido
 
 - [Estado Del Proyecto](#estado-del-proyecto)
+- [Mejoras Recientes Implementadas](#mejoras-recientes-implementadas)
 - [Comandos Rapidos](#comandos-rapidos)
 - [Prerrequisitos](#prerrequisitos)
 - [Como Ejecutar](#como-ejecutar)
@@ -53,6 +54,32 @@ Estado actual:
 - IA y render de luchadores separados en archivos dedicados.
 - Temporizador de round basado en delta time real de `requestAnimationFrame`.
 - Pruebas unitarias basicas con `node:test`.
+
+## Mejoras Recientes Implementadas
+
+Las ultimas iteraciones cerraron deuda tecnica y mejoraron la experiencia sin agregar dependencias ni cambiar el flujo base del juego.
+
+Impacto tecnico:
+
+- `src/ai.js` separa la decision de la CPU en `chooseAIAction(...)`, lo que permite probar decisiones clave sin depender de todo el loop del juego.
+- `src/fighter_render.js` separa el dibujo del luchador; `Fighter.draw()` queda como fachada y `src/fighter.js` conserva la logica de combate.
+- El timer de round ahora usa `deltaMs` derivado de `requestAnimationFrame(timestamp)`, por lo que la duracion del round depende menos del frame rate real.
+- `tests/game.test.js` usa helpers locales para iniciar partidas, ubicar luchadores, cargar energia, avanzar frames y simular controles tactiles.
+- La validacion automatica cubre los nuevos archivos con `node --check` y mantiene pruebas sobre IA, render delegado, timer, combos, pausa y preferencias.
+
+Impacto en UX:
+
+- El menu principal distribuye mejor descripcion, selectores, resumen de controles, opcion `Reducir movimiento` y estadisticas.
+- La pausa muestra informacion util de round, marcador, tiempo, dificultad, arena y controles clave.
+- La navegacion por teclado tiene foco visible y los controles principales tienen etiquetas ARIA.
+- `Reducir movimiento` persiste en `localStorage` y limita shake, hit-stop y particulas.
+- Los controles tactiles usan medidas responsivas con `clamp()` y safe areas para reducir solapamientos en pantallas pequenas.
+
+Alcance que se mantuvo fuera para reducir riesgo:
+
+- Cooldowns, ventanas de combo, hit-stun, hit-stop y timers visuales siguen medidos en frames.
+- No se agregaron librerias, build step, modulos ES ni automatizacion externa de navegador.
+- No se cambiaron intencionalmente dano, rango, energia ni reglas de victoria.
 
 ## Comandos Rapidos
 
@@ -202,6 +229,20 @@ Validar en navegador antes de considerar listo un cambio visual o de jugabilidad
 - El boton `MENU` debe volver al menu principal.
 - En dispositivos tactiles o emulacion movil deben mostrarse los controles en pantalla durante la partida.
 
+### Smoke Test Tecnico Corto
+
+Para validar especificamente las mejoras tecnicas recientes:
+
+- Servir con `python -m http.server 8000` desde `C:\tmp\game`.
+- Abrir `http://localhost:8000/src/`.
+- Iniciar partida en dificultad `NORMAL` y arena `CUADERNO`.
+- Confirmar que el timer baja aproximadamente una unidad por segundo real.
+- Pausar con `P` y confirmar que timer, luchadores y CPU se congelan.
+- Reanudar con `P` o `RESUMIR` y confirmar que el timer continua.
+- Ejecutar `J,J`, `J,K` y `K,K` y confirmar que el feedback visual sigue apareciendo.
+- Cambiar el tamaño de la ventana y confirmar que el canvas mantiene proporcion.
+- Confirmar que no hay errores visibles en la consola del navegador.
+
 ## Controles
 
 ### Teclado
@@ -280,6 +321,22 @@ En dispositivos tactiles se muestran botones en pantalla durante la partida para
 - `src/game.js`: estado global, rondas, pausa, temporizador por delta time, render principal, eventos de UI y loop del juego.
 - `tests/game.test.js`: pruebas unitarias con mocks de DOM/canvas/audio.
 - `AGENTS.md`: instrucciones compactas para futuras sesiones de OpenCode.
+
+### Carga De Scripts
+
+`src/index.html` usa scripts clasicos en orden fijo. Si se agregan nuevos archivos globales, deben cargarse antes del archivo que los consume.
+
+Orden actual:
+
+```html
+<script src="config.js"></script>
+<script src="audio.js"></script>
+<script src="effects.js"></script>
+<script src="ai.js"></script>
+<script src="fighter_render.js"></script>
+<script src="fighter.js"></script>
+<script src="game.js"></script>
+```
 
 ### Flujo Del Juego
 
@@ -432,6 +489,7 @@ Limitaciones de las pruebas:
 - No existe modo de depuracion visual para hitboxes, energia, estado de IA o datos de round.
 - No hay modo entrenamiento para probar rangos, combos o balance sin presion de la CPU.
 - El audio sigue siendo basico y no diferencia claramente cada tipo de accion.
+- El timer de round usa delta time, pero cooldowns, ventana de combo, hit-stun, hit-stop y timers visuales siguen por frames.
 - Las pruebas unitarias no reemplazan validacion visual en navegador.
 
 ## Analisis Actual
@@ -444,7 +502,7 @@ Estado tecnico actual:
 - `src/fighter.js` contiene controles del jugador, combos, hitboxes, daño, energia y estado del personaje.
 - `src/ai.js` separa la decision de CPU y `src/fighter_render.js` separa el dibujo del luchador.
 - `src/game.js` concentra estado global, flujo de pantallas, rounds, temporizador por delta time, render del HUD, efectos y eventos de entrada.
-- `src/styles.css` ya resuelve menus, overlays y controles moviles, pero el diseño tactil todavia depende de posiciones absolutas.
+- `src/styles.css` resuelve menus, overlays y controles moviles; los controles tactiles siguen usando posiciones absolutas calibradas con `clamp()` y safe areas.
 - `tests/game.test.js` cubre reglas principales con mocks de DOM/canvas/audio, aunque no reemplaza pruebas reales en navegador.
 
 Fortalezas actuales:
@@ -453,6 +511,7 @@ Fortalezas actuales:
 - El combate ya usa hitboxes logicas, por lo que se puede balancear con mas precision.
 - La arquitectura esta separada en archivos por responsabilidad y sigue sin dependencias externas.
 - Las pruebas cubren reglas de combate, estados, temporizador, dificultad, arenas, estadisticas, combos y UI basica simulada.
+- Las pruebas ya cubren la decision de IA separada, la delegacion de render y el timer por delta time.
 - El README y `AGENTS.md` documentan comandos, filosofia y smoke test manual.
 
 Riesgos actuales:
@@ -472,7 +531,7 @@ Siguiente enfoque recomendado:
 - Priorizar herramientas de desarrollo visibles solo bajo toggle, como hitboxes y estado IA.
 - Mejorar feedback audiovisual antes de sumar mas mecanicas.
 - Agregar modo entrenamiento para validar balance y combos rapidamente.
-- Luego ampliar variedad: personalidades de IA, arenas con detalles propios y accesibilidad.
+- Luego ampliar variedad: personalidades de IA, arenas con detalles propios y mejores resultados post-partida.
 
 ## Sugerencias De Mejora
 
@@ -560,6 +619,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Mejor escalado del canvas | Implementado con resize responsive y backing store ajustado por `devicePixelRatio`. |
 | UX y accesibilidad | Implementado foco visible, ARIA, pausa informativa, controles tactiles ajustados y reduccion de movimiento. |
 | Mejoras tecnicas | Implementadas con IA/render separados, timer por delta time, fixtures de pruebas y smoke tecnico documentado. |
+| Layout del menu principal | Implementado con distribucion mas clara para selectores, ayuda, controles, reduccion de movimiento y estadisticas. |
 
 ### Prioridad Alta
 
