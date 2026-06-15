@@ -16,6 +16,7 @@ El juego incluye:
 - IA basada en distancia al jugador.
 - Barras de vida.
 - Textos flotantes de impacto.
+- Feedback visual de golpes con sacudida, hit-stop y particulas.
 - Sonidos generados con Web Audio API.
 - Controles de teclado y controles tactiles para dispositivos moviles.
 
@@ -95,7 +96,7 @@ Para validar el comportamiento en navegador:
 - El boton `INICIAR JUEGO` debe comenzar la partida.
 - El canvas debe cargar correctamente.
 - Deben aparecer dos personajes stickman.
-- Los controles de teclado deben responder: `A`, `D`, `W`, `S`, `F`, `G`.
+- Los controles de teclado deben responder: `A`, `D`, `W`, `S`, `J`, `K`.
 - Los golpes deben reducir la barra de vida del rival.
 - Al llegar una vida a cero debe aparecer la pantalla de fin de juego.
 - El boton `REINICIAR` debe iniciar una nueva partida.
@@ -106,14 +107,16 @@ Para validar el comportamiento en navegador:
 
 ### Teclado
 
+La distribucion usa la mano izquierda para movimiento y defensa, y la mano derecha para ataques.
+
 | Accion | Tecla |
 | --- | --- |
 | Mover izquierda | A |
 | Mover derecha | D |
 | Saltar | W |
 | Bloquear | S |
-| Punetazo | F |
-| Patada | G |
+| Punetazo | J |
+| Patada | K |
 
 ### Movil
 
@@ -176,6 +179,7 @@ El estado general del juego se controla con `gameState`:
 - Controles de teclado.
 - Controles tactiles durante la partida.
 - Renderizado Canvas.
+- Sacudida de pantalla, hit-stop y particulas al impactar o bloquear golpes.
 - Audio basico generado por Web Audio API.
 
 ## Tecnologias
@@ -203,6 +207,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | --- | --- |
 | Menu principal | Implementado con titulo, descripcion, controles y boton `INICIAR JUEGO`. |
 | Navegacion post-partida | Implementados botones `REINICIAR` y `MENU` en la pantalla de fin de juego. |
+| Feedback de golpes | Implementado con shake del canvas, hit-stop breve y particulas/lineas de impacto. |
 
 ### Prioridad Alta
 
@@ -210,7 +215,6 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | --- | --- | --- |
 | Pausa | Permitir pausar con `P`, `Esc` o un boton tactil. | Mejora la experiencia en sesiones largas y en movil. |
 | Seleccion de dificultad | Configurar niveles facil, normal y dificil para la CPU. | Permite adaptar el reto a distintos jugadores. |
-| Feedback de golpes | Agregar shake, hit-stop breve, particulas o lineas de impacto. | Hace que los ataques se sientan mas fuertes y claros. |
 | Mejor escalado del canvas | Adaptar el render a pantallas pequenas y `devicePixelRatio`. | Mejora nitidez y jugabilidad en desktop y movil. |
 
 ### Prioridad Media
@@ -227,7 +231,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 
 | Mejora | Objetivo | Beneficio |
 | --- | --- | --- |
-| Combos simples | Agregar secuencias como `F, F` o `F, G`. | Aumenta profundidad del combate. |
+| Combos simples | Agregar secuencias como `J, J` o `J, K`. | Aumenta profundidad del combate. |
 | Ataque especial | Agregar barra de energia y ataque con cooldown alto. | Da variedad y momentos decisivos. |
 | Arenas diferentes | Crear fondos alternativos como cuaderno, laboratorio o terminal. | Mejora identidad visual y rejugabilidad. |
 | Estadisticas locales | Guardar victorias, derrotas y mejor racha con `localStorage`. | Da progreso persistente sin backend. |
@@ -237,9 +241,8 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 
 1. Pausa.
 2. Seleccion de dificultad.
-3. Feedback de golpes.
-4. Escalado responsive del canvas.
-5. Hitboxes reales.
-6. Sistema de rondas.
+3. Escalado responsive del canvas.
+4. Hitboxes reales.
+5. Sistema de rondas.
 
 Este orden prioriza mejoras visibles para el jugador sin reescribir completamente la arquitectura actual.

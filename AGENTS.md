@@ -10,7 +10,7 @@
 - Preferred local run from `C:\tmp\game`: `python -m http.server 8000`, then browse to `http://localhost:8000/src/`.
 - Node alternative from `C:\tmp\game`: `npx http-server . -p 8000`, then browse to `http://localhost:8000/src/`.
 - JS syntax check: `node --check src\game.js`.
-- Manual smoke test: menu appears, `INICIAR JUEGO` starts, `A/D/W/S/F/G` work, game over appears at `0%`, `REINICIAR` restarts, `MENU` returns to menu.
+- Manual smoke test: menu appears, `INICIAR JUEGO` starts, `A/D/W/S/J/K` work, game over appears at `0%`, `REINICIAR` restarts, `MENU` returns to menu.
 
 ## Runtime Notes
 - `gameState` in `src/game.js` controls simulation: `menu` and `gameOver` stop updates; only `playing` advances physics, AI, and combat.

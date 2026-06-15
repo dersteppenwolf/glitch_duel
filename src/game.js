@@ -71,6 +71,52 @@ class FloatingText {
     }
 }
 
+class ImpactParticle {
+    constructor(x, y, vx, vy, color, type = 'dot') {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.color = color;
+        this.type = type;
+        this.life = 18;
+        this.maxLife = 18;
+        this.size = 4 + Math.random() * 5;
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= 0.9;
+        this.vy *= 0.9;
+        this.life--;
+    }
+
+    draw() {
+        const alpha = Math.max(0, this.life / this.maxLife);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = this.color;
+        ctx.fillStyle = this.color;
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+
+        if (this.type === 'line') {
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.x - this.vx * 3, this.y - this.vy * 3);
+            ctx.stroke();
+        } else {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * alpha, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.restore();
+    }
+}
+
 class Fighter {
     constructor(x, isPlayer1) {
         this.x = x;
@@ -140,8 +186,8 @@ class Fighter {
             this.velX = 0;
         }
 
-        if (keys.f || keys.punch) this.attack('punch', opponent);
-        if (keys.g || keys.kick) this.attack('kick', opponent);
+        if (keys.j || keys.punch) this.attack('punch', opponent);
+        if (keys.k || keys.kick) this.attack('kick', opponent);
     }
 
     updateAI(opponent) {
@@ -220,10 +266,13 @@ class Fighter {
     }
 
     takeHit(damage, attacker) {
+        const impactDirection = attacker.facingRight ? 1 : -1;
+
         if (this.state === 'block') {
             damage = Math.floor(damage * 0.15);
             const bTexts = ['¡BLOCK!', '*ping*', '0% Damage'];
             floatingTexts.push(new FloatingText(this.x, this.y - 80, bTexts[Math.floor(Math.random() * bTexts.length)], '#33f'));
+            triggerImpactFeedback(this.x, this.y - 50, impactDirection, true);
             playHitSound();
             return;
         }
@@ -234,6 +283,7 @@ class Fighter {
         this.velX = attacker.facingRight ? 7 : -7;
         this.velY = -5;
         this.onGround = false;
+        triggerImpactFeedback(this.x, this.y - 55, impactDirection);
         playHitSound();
 
         if (!this.isPlayer1) this.aiDecisionTimer = 0;
@@ -329,15 +379,21 @@ class Fighter {
 let player1;
 let player2;
 let floatingTexts = [];
+let impactParticles = [];
 let keys = {};
 let gameState = 'menu';
 let mobileControlsEnabled = false;
+let screenShake = 0;
+let hitStopFrames = 0;
 
 function initGame() {
     player1 = new Fighter(250, true);
     player2 = new Fighter(750, false);
     floatingTexts = [];
+    impactParticles = [];
     keys = {};
+    screenShake = 0;
+    hitStopFrames = 0;
     gameState = 'playing';
     document.getElementById('game-over').style.display = 'none';
     document.getElementById('main-menu').style.display = 'none';
@@ -348,7 +404,10 @@ function showMainMenu() {
     player1 = new Fighter(250, true);
     player2 = new Fighter(750, false);
     floatingTexts = [];
+    impactParticles = [];
     keys = {};
+    screenShake = 0;
+    hitStopFrames = 0;
     gameState = 'menu';
     document.getElementById('game-over').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
@@ -374,14 +433,16 @@ function checkCollision() {
 function update() {
     if (gameState !== 'playing') return;
 
-    player1.update(keys, player2);
-    player2.update(keys, player1);
-    checkCollision();
-
-    for (let i = floatingTexts.length - 1; i >= 0; i--) {
-        floatingTexts[i].update();
-        if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+    if (hitStopFrames > 0) {
+        hitStopFrames--;
+        updateEffects();
+        return;
     }
+
+    player1.update(keys, player2);
+    if (hitStopFrames === 0) player2.update(keys, player1);
+    if (hitStopFrames === 0) checkCollision();
+    updateEffects();
 
     if (player1.health <= 0 || player2.health <= 0) {
         gameState = 'gameOver';
@@ -389,6 +450,37 @@ function update() {
         winText.innerHTML = player1.health <= 0 ? '¡LA MÁQUINA GANA!<br>🤖' : '¡SISTEMA DOMINADO!<br>😎';
         document.getElementById('game-over').style.display = 'block';
         updateControlsVisibility();
+    }
+}
+
+function updateEffects() {
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        floatingTexts[i].update();
+        if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+    }
+
+    for (let i = impactParticles.length - 1; i >= 0; i--) {
+        impactParticles[i].update();
+        if (impactParticles[i].life <= 0) impactParticles.splice(i, 1);
+    }
+}
+
+function triggerImpactFeedback(x, y, direction, blocked = false) {
+    screenShake = Math.max(screenShake, blocked ? 4 : 10);
+    hitStopFrames = Math.max(hitStopFrames, blocked ? 2 : 5);
+
+    const count = blocked ? 7 : 14;
+    const colors = blocked ? ['#33f', '#8af', '#fff'] : ['#c00', '#f90', '#fff'];
+
+    for (let i = 0; i < count; i++) {
+        const spread = -1.2 + Math.random() * 2.4;
+        const speed = blocked ? 3 + Math.random() * 3 : 5 + Math.random() * 6;
+        const vx = direction * speed;
+        const vy = spread * speed;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const type = i % 3 === 0 ? 'dot' : 'line';
+
+        impactParticles.push(new ImpactParticle(x, y, vx, vy, color, type));
     }
 }
 
@@ -430,13 +522,27 @@ function drawHealthBars() {
 
 function draw() {
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+    ctx.save();
+
+    if (screenShake > 0) {
+        const shakeX = (Math.random() - 0.5) * screenShake;
+        const shakeY = (Math.random() - 0.5) * screenShake;
+        ctx.translate(shakeX, shakeY);
+        screenShake *= 0.78;
+        if (screenShake < 0.4) screenShake = 0;
+    }
+
     drawBackground();
     if (player1 && player2) {
         player1.draw();
         player2.draw();
     }
+    impactParticles.forEach((p) => p.draw());
     floatingTexts.forEach((t) => t.draw());
     drawHealthBars();
+
+    ctx.restore();
 }
 
 function updateControlsVisibility() {
