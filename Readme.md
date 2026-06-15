@@ -8,6 +8,8 @@ Source code: [https://github.com/dersteppenwolf/glitch_duel](https://github.com/
 
 Note: this application has been generated and evolved with assistance from OpenCode and GPT-5.5.
 
+![GLITCH DUEL gameplay trailer](docs/assets/glitch-duel-trailer.gif)
+
 ## Summary
 
 | Topic | Detail |
@@ -440,11 +442,10 @@ Test limitations:
 
 Prioritization aims to attract and retain users: first visible improvements in the opening seconds, then replay motivation, and finally depth or maintenance.
 
-Next recommended improvement: `Trailer GIF or animated screenshot in README`, because it communicates the game's appeal before opening it.
+Next recommended improvement: `Training mode`, because it makes it easier to practice ranges, combos, blocking, and special without timer pressure.
 
 | Priority | Improvement | Reason | Type |
 | --- | --- | --- | --- |
-| High | Trailer GIF or animated screenshot in README | Communicates the game's appeal before opening it and improves the repository page. | Documentation / marketing |
 | High | Training mode | Makes it easier to practice ranges, combos, blocking, and special without timer pressure. | Gameplay |
 | High | Optional visual debug | Speeds up tuning for hitboxes, states, cooldowns, and AI decisions. | Dev tool |
 | Medium | Daily/local quick missions | Offers challenges like winning without special, landing 3 combos, or blocking 5 hits. | Retention |
@@ -473,6 +474,7 @@ Next recommended improvement: `Trailer GIF or animated screenshot in README`, be
 | Special ready indicator | Text and aura above the character when energy is full. |
 | Enriched final screen | Score, difficulty, arena, streak, medal, and humorous phrase at match end. |
 | Initial accessibility | Visible focus, ARIA, and reduced motion. |
+| README gameplay trailer | Animated GIF near the top of the README showing menu, VS intro, combat, combos, and special feedback. |
 | Mobile | Touch controls, safe areas, optimized landscape, and degraded portrait with orientation warning. |
 | Arenas | Nine themed backgrounds with no gameplay effects. |
 | Arena preview | Initial menu with mini-preview, name, and description per arena. |
