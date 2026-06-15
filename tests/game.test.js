@@ -61,7 +61,7 @@ function createMockAudioContext() {
     };
 }
 
-function loadGame() {
+function loadGame(options = {}) {
     const ctx = createMockContext();
     const elements = new Map();
     const canvas = {
@@ -82,9 +82,19 @@ function loadGame() {
                 id,
                 style: {},
                 innerHTML: '',
+                textContent: '',
+                value: '',
+                checked: false,
                 listeners: {},
+                attributes: {},
                 addEventListener(type, handler) {
                     this.listeners[type] = handler;
+                },
+                setAttribute(name, value) {
+                    this.attributes[name] = value;
+                },
+                getAttribute(name) {
+                    return this.attributes[name];
                 }
             });
         }
@@ -94,7 +104,13 @@ function loadGame() {
 
     const windowListeners = {};
     const storage = new Map();
+    Object.entries(options.storage || {}).forEach(([key, value]) => storage.set(key, value));
     const MockAudioContext = createMockAudioContext();
+    const navigatorMock = {
+        maxTouchPoints: 0,
+        language: options.language,
+        languages: options.languages
+    };
     const context = {
         console,
         Math,
@@ -103,8 +119,8 @@ function loadGame() {
             return 0;
         },
         requestAnimationFrame() {},
-        navigator: { maxTouchPoints: 0 },
-        document: { getElementById: getElement },
+        navigator: navigatorMock,
+        document: { documentElement: {}, getElementById: getElement },
         window: {
             innerWidth: 800,
             innerHeight: 600,
@@ -116,6 +132,7 @@ function loadGame() {
                 setItem(key, value) { storage.set(key, value); },
                 clear() { storage.clear(); }
             },
+            navigator: navigatorMock,
             addEventListener(type, handler) {
                 windowListeners[type] = handler;
             }
@@ -124,7 +141,7 @@ function loadGame() {
 
     context.globalThis = context;
 
-    const sourceFiles = ['config.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'game.js'];
+    const sourceFiles = ['i18n.js', 'config.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'game.js'];
     const source = sourceFiles
         .map((file) => fs.readFileSync(path.join(__dirname, '..', 'src', file), 'utf8'))
         .join('\n');
@@ -133,6 +150,9 @@ function loadGame() {
             Fighter,
             FloatingText,
             ImpactParticle,
+            t,
+            setLanguage,
+            getLanguage,
             chooseAIAction,
             drawFighter,
             resizeCanvas,
@@ -149,8 +169,10 @@ function loadGame() {
             setRoundTimeMs,
             setArena,
             getArenaConfig,
+            getArenaLabel,
             drawBackground,
             setReducedMotion,
+            renderLanguage,
             recordMatchResult,
             update,
             triggerImpactFeedback,
@@ -169,6 +191,7 @@ function loadGame() {
                 roundTimerFrames,
                 roundTimeMs,
                 selectedArena,
+                selectedLanguage,
                 reducedMotionEnabled,
                 stats,
                 screenShake,
@@ -180,6 +203,10 @@ function loadGame() {
                 helpScreenDisplay: document.getElementById('help-screen').style.display,
                 pauseScreenDisplay: document.getElementById('pause-screen').style.display,
                 pauseSummaryText: document.getElementById('pause-summary').textContent,
+                startButtonText: document.getElementById('start-button').textContent,
+                helpButtonText: document.getElementById('help-button').textContent,
+                statsSummaryText: document.getElementById('stats-summary').textContent,
+                languageSelectValue: document.getElementById('language-select').value,
                 pauseButtonDisplay: document.getElementById('pause-button').style.display,
                 reducedMotionToggleChecked: document.getElementById('reduce-motion-toggle').checked,
                 orientationWarningDisplay: document.getElementById('orientation-warning').style.display,
@@ -534,6 +561,28 @@ test('help screen opens from menu state and returns to main menu', () => {
     assert.equal(menuState.helpScreenDisplay, 'none');
 });
 
+test('language preference detects browser language and persists manual changes', () => {
+    const { api, context } = loadGame({ languages: ['en-US'] });
+
+    api.renderLanguage();
+    assert.equal(api.getLanguage(), 'en');
+    assert.equal(api.getState().startButtonText, 'START GAME');
+
+    api.setLanguage('es');
+    assert.equal(api.getLanguage(), 'es');
+    assert.equal(api.getState().startButtonText, 'INICIAR JUEGO');
+    assert.equal(context.window.localStorage.getItem('xkcdKombatLanguage'), 'es');
+});
+
+test('saved language preference wins over browser detection', () => {
+    const { api } = loadGame({ languages: ['en-US'], storage: { xkcdKombatLanguage: 'es' } });
+
+    api.renderLanguage();
+
+    assert.equal(api.getLanguage(), 'es');
+    assert.equal(api.getState().languageSelectValue, 'es');
+});
+
 test('pause stops simulation and resume returns to playing', () => {
     const { api } = loadGame();
 
@@ -604,19 +653,19 @@ test('arena selection supports themed arenas and falls back to notebook', () => 
 
     api.setArena('cafeteria');
     assert.equal(api.getState().selectedArena, 'cafeteria');
-    assert.equal(api.getArenaConfig().label, 'CAFETERIA');
+    assert.equal(api.getArenaLabel(), 'CAFETERIA');
 
     api.setArena('meeting');
     assert.equal(api.getState().selectedArena, 'meeting');
-    assert.equal(api.getArenaConfig().label, 'REUNION PRESENCIAL');
+    assert.equal(api.getArenaLabel(), 'REUNION PRESENCIAL');
 
     api.setArena('remoteMeeting');
     assert.equal(api.getState().selectedArena, 'remoteMeeting');
-    assert.equal(api.getArenaConfig().label, 'REUNION REMOTA');
+    assert.equal(api.getArenaLabel(), 'REUNION REMOTA');
 
     api.setArena('missing');
     assert.equal(api.getState().selectedArena, 'notebook');
-    assert.equal(api.getArenaConfig().label, 'CUADERNO');
+    assert.equal(api.getArenaLabel(), 'CUADERNO');
 });
 
 test('new arena backgrounds render themed canvas primitives', () => {

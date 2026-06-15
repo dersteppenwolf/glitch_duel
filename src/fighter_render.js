@@ -3,7 +3,7 @@ function drawFighter(fighter) {
     const baseX = fighter.x;
     const baseY = fighter.y;
     const accentColor = fighter.accentColor || (fighter.isPlayer1 ? '#1f6feb' : '#d22');
-    const label = fighter.label || (fighter.isPlayer1 ? 'HUMANO' : 'CPU');
+    const label = fighter.labelKey ? t(fighter.labelKey) : (fighter.label || (fighter.isPlayer1 ? t('human') : t('cpu')));
 
     drawFighterIdentityMarker(baseX, baseY, label, accentColor);
 

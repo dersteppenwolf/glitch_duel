@@ -64,30 +64,35 @@ const DIFFICULTIES = {
 const ARENAS = {
     notebook: {
         label: 'CUADERNO',
+        labelKey: 'arenaNotebook',
         background: '#f8f6f0',
         ground: '#222',
         accent: 'rgba(0, 0, 0, 0.08)'
     },
     cafeteria: {
         label: 'CAFETERIA',
+        labelKey: 'arenaCafeteria',
         background: '#f2dfc2',
         ground: '#7c4f2c',
         accent: 'rgba(124, 79, 44, 0.24)'
     },
     lab: {
         label: 'LABORATORIO',
+        labelKey: 'arenaLab',
         background: '#e8f4ff',
         ground: '#24537a',
         accent: 'rgba(36, 83, 122, 0.12)'
     },
     meeting: {
         label: 'REUNION PRESENCIAL',
+        labelKey: 'arenaMeeting',
         background: '#f4efe6',
         ground: '#5b4636',
         accent: 'rgba(91, 70, 54, 0.22)'
     },
     remoteMeeting: {
         label: 'REUNION REMOTA',
+        labelKey: 'arenaRemoteMeeting',
         background: '#dbeafe',
         ground: '#1d4ed8',
         accent: 'rgba(29, 78, 216, 0.18)'

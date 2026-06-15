@@ -47,6 +47,15 @@ function setArena(value) {
     selectedArena = ARENAS[value] ? value : 'notebook';
 }
 
+function getArenaLabel() {
+    const arena = getArenaConfig();
+    return t(arena.labelKey || arena.label);
+}
+
+function getDifficultyLabel() {
+    return t(`difficulty${selectedDifficulty.charAt(0).toUpperCase()}${selectedDifficulty.slice(1)}`);
+}
+
 function loadReducedMotionPreference() {
     try {
         return window.localStorage && window.localStorage.getItem('xkcdKombatReducedMotion') === 'true';
@@ -115,18 +124,91 @@ function renderStats() {
     const statsSummary = document.getElementById('stats-summary');
     if (!statsSummary) return;
 
-    statsSummary.textContent = `Victorias: ${stats.wins} | Derrotas: ${stats.losses} | Racha: ${stats.currentStreak} | Mejor: ${stats.bestStreak}`;
+    statsSummary.textContent = t('stats', stats);
+}
+
+function renderLanguagePreference() {
+    const select = document.getElementById('language-select');
+    if (select) select.value = getLanguage();
+}
+
+function applyI18nAttributes() {
+    if (!document.querySelectorAll) return;
+
+    document.querySelectorAll('[data-i18n]').forEach((element) => {
+        element.textContent = t(element.getAttribute('data-i18n'));
+    });
+
+    document.querySelectorAll('[data-i18n-aria]').forEach((element) => {
+        element.setAttribute('aria-label', t(element.getAttribute('data-i18n-aria')));
+    });
+}
+
+function setElementText(id, key) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = t(key);
+}
+
+function setElementAria(id, key) {
+    const element = document.getElementById(id);
+    if (element && element.setAttribute) element.setAttribute('aria-label', t(key));
+}
+
+function renderLanguage() {
+    if (document.documentElement) document.documentElement.lang = t('htmlLang');
+
+    applyI18nAttributes();
+    setElementText('instructions', 'instructions');
+    setElementText('orientation-warning', 'orientationWarning');
+    setElementText('pause-button', 'pauseButton');
+    setElementText('start-button', 'start');
+    setElementText('help-button', 'help');
+    setElementText('help-title', 'help');
+    setElementText('back-button', 'back');
+    setElementText('pause-title', 'pauseTitle');
+    setElementText('resume-button', 'resume');
+    setElementText('pause-menu-button', 'menu');
+    setElementText('restart-button', 'restart');
+    setElementText('menu-button', 'menu');
+    setElementAria('game', 'canvasLabel');
+    setElementAria('pause-button', 'pauseButtonLabel');
+    setElementAria('btn-left', 'leftLabel');
+    setElementAria('btn-right', 'rightLabel');
+    setElementAria('btn-jump', 'jump');
+    setElementAria('btn-crouch', 'crouch');
+    setElementAria('btn-block', 'block');
+    setElementAria('btn-punch', 'punch');
+    setElementAria('btn-kick', 'kick');
+    setElementAria('btn-special', 'specialButtonLabel');
+    renderLanguagePreference();
+    renderStats();
+    renderPauseSummary();
+
+    if (gameState === 'gameOver') renderGameOverText();
+}
+
+function renderGameOverText() {
+    const winText = document.getElementById('winner-text');
+    if (!winText) return;
+
+    winText.innerHTML = playerRounds >= ROUNDS_TO_WIN ? t('playerWins') : t('cpuWins');
 }
 
 function renderPauseSummary() {
     const summary = document.getElementById('pause-summary');
     if (!summary || !player1 || !player2) return;
 
-    const difficulty = DIFFICULTIES[selectedDifficulty] ? selectedDifficulty.toUpperCase() : 'NORMAL';
-    const arena = getArenaConfig().label;
+    const difficulty = getDifficultyLabel();
+    const arena = getArenaLabel();
     const seconds = Math.ceil(roundTimeMs / 1000);
 
-    summary.textContent = `Round ${currentRound} | Marcador ${playerRounds}-${cpuRounds} | Tiempo ${seconds}s | Dificultad ${difficulty} | Arena ${arena} | Controles: A/D/W/C, S/I bloqueo, J/K, L especial con energia llena, P o Esc para reanudar`;
+    summary.textContent = t('pauseSummary', {
+        round: currentRound,
+        score: `${playerRounds}-${cpuRounds}`,
+        seconds,
+        difficulty,
+        arena
+    });
 }
 
 function resizeCanvas() {
@@ -170,7 +252,7 @@ function startRound() {
     roundTimerFrames = ROUND_TIMER_FRAMES;
     roundTimeMs = ROUND_TIME_MS;
     gameState = 'playing';
-    showStatusMessage(`ROUND ${currentRound}`, 75);
+    showStatusMessage(`${t('round')} ${currentRound}`, 75);
     document.getElementById('game-over').style.display = 'none';
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('help-screen').style.display = 'none';
@@ -298,17 +380,16 @@ function finishRound(playerWon) {
 
     if (playerRounds >= ROUNDS_TO_WIN || cpuRounds >= ROUNDS_TO_WIN) {
         gameState = 'gameOver';
-        showStatusMessage('K.O.', 180);
+        showStatusMessage(t('ko'), 180);
         recordMatchResult(playerRounds >= ROUNDS_TO_WIN);
-        const winText = document.getElementById('winner-text');
-        winText.innerHTML = playerRounds >= ROUNDS_TO_WIN ? '¡SISTEMA DOMINADO!<br>😎' : '¡LA MÁQUINA GANA!<br>🤖';
+        renderGameOverText();
         document.getElementById('game-over').style.display = 'block';
         updateControlsVisibility();
         return;
     }
 
     gameState = 'roundOver';
-    const roundMessage = playerWon === null ? 'EMPATE' : (playerWon ? 'ROUND HUMANO' : 'ROUND CPU');
+    const roundMessage = playerWon === null ? t('tie') : (playerWon ? t('roundHuman') : t('roundCpu'));
     showStatusMessage(roundMessage, 90);
     updateControlsVisibility();
     setTimeout(() => {
@@ -325,7 +406,7 @@ function updateRoundTimer(deltaMs = 1000 / 60) {
 
     if (roundTimeMs > 0) return;
 
-    showStatusMessage('TIME!', 90);
+    showStatusMessage(t('time'), 90);
 
     if (player1.health === player2.health) {
         finishRound(null);
@@ -591,14 +672,14 @@ function drawHealthBars() {
     ctx.font = 'bold 20px "Comic Sans MS"';
     ctx.fillStyle = '#000';
     ctx.textAlign = 'left';
-    ctx.fillText(`HUMANO: ${player1.health}%`, 50, 23);
+    ctx.fillText(`${t('human')}: ${player1.health}%`, 50, 23);
     ctx.fillStyle = '#06f';
     ctx.fillRect(52, 62, player1.energy * 2, 8);
     ctx.strokeStyle = '#000';
     ctx.strokeRect(52, 62, 200, 8);
     ctx.fillStyle = '#000';
     ctx.textAlign = 'right';
-    ctx.fillText(`CPU (IA): ${player2.health}%`, WIDTH - 50, 23);
+    ctx.fillText(`${t('cpuAI')}: ${player2.health}%`, WIDTH - 50, 23);
     ctx.fillStyle = '#06f';
     ctx.fillRect(WIDTH - 252, 62, player2.energy * 2, 8);
     ctx.strokeStyle = '#000';
@@ -606,7 +687,7 @@ function drawHealthBars() {
     ctx.fillStyle = '#000';
 
     ctx.textAlign = 'center';
-    ctx.fillText(`ROUND ${currentRound}  ${playerRounds}-${cpuRounds}  ${Math.ceil(roundTimeMs / 1000)}`, WIDTH / 2, 23);
+    ctx.fillText(`${t('round')} ${currentRound}  ${playerRounds}-${cpuRounds}  ${Math.ceil(roundTimeMs / 1000)}`, WIDTH / 2, 23);
 }
 
 function drawStatusMessage() {
@@ -737,6 +818,9 @@ function setupMainMenu() {
     document.getElementById('start-button').addEventListener('click', initGame);
     document.getElementById('help-button').addEventListener('click', showHelpScreen);
     document.getElementById('back-button').addEventListener('click', hideHelpScreen);
+    document.getElementById('language-select').addEventListener('change', (e) => {
+        setLanguage(e.target.value);
+    });
     document.getElementById('difficulty-select').addEventListener('change', (e) => {
         setDifficulty(e.target.value);
     });
@@ -750,6 +834,7 @@ function setupMainMenu() {
 
 window.addEventListener('load', () => {
     resizeCanvas();
+    renderLanguage();
     renderStats();
     renderMotionPreference();
     showMainMenu();

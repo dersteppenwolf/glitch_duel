@@ -6,6 +6,7 @@ class Fighter {
         this.height = 110;
         this.isPlayer1 = isPlayer1;
         this.label = isPlayer1 ? 'HUMANO' : 'CPU';
+        this.labelKey = isPlayer1 ? 'human' : 'cpu';
         this.accentColor = isPlayer1 ? '#1f6feb' : '#d22';
         this.visualRole = isPlayer1 ? 'human' : 'cpu';
         this.health = 100;
@@ -327,7 +328,7 @@ class Fighter {
             this.gainEnergy(ENERGY_GAIN_ON_BLOCK);
             const bTexts = ['¡BLOCK!', '*ping*', 'CHIP'];
             floatingTexts.push(new FloatingText(this.x, this.y - 80, bTexts[Math.floor(Math.random() * bTexts.length)], '#33f'));
-            showStatusMessage('BLOCK', 28);
+            showStatusMessage(t('blockStatus'), 28);
             triggerImpactFeedback(this.x, this.y - 50, impactDirection, true);
             playHitSound();
             return;

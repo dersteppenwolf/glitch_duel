@@ -29,6 +29,7 @@ Estado actual:
 - Menu principal implementado.
 - Pantalla de ayuda accesible desde el menu principal.
 - Seleccion de dificultad `FACIL`, `NORMAL` y `DIFICIL` desde el menu principal.
+- Interfaz bilingue `es`/`en` con autodeteccion del navegador, selector manual y persistencia en `localStorage`.
 - Combate humano contra CPU implementado.
 - Diferenciacion visual entre humano y CPU con etiquetas, acentos y detalles propios.
 - Sistema de rondas al mejor de 3 implementado.
@@ -67,10 +68,12 @@ Impacto tecnico:
 - El timer de round ahora usa `deltaMs` derivado de `requestAnimationFrame(timestamp)`, por lo que la duracion del round depende menos del frame rate real.
 - `tests/game.test.js` usa helpers locales para iniciar partidas, ubicar luchadores, cargar energia, avanzar frames y simular controles tactiles.
 - La validacion automatica cubre los nuevos archivos con `node --check` y mantiene pruebas sobre IA, render delegado, timer, combos, pausa, preferencias, arenas y controles.
+- `src/i18n.js` centraliza textos de UI en espanol/ingles, detecta idioma del navegador y respeta `xkcdKombatLanguage` si ya existe.
 
 Impacto en UX:
 
 - El menu principal distribuye mejor descripcion, selectores, resumen de controles, opcion `Reducir movimiento` y estadisticas.
+- El menu incluye selector `Idioma / Language`; el valor elegido persiste entre sesiones.
 - La pausa muestra informacion util de round, marcador, tiempo, dificultad, arena y controles clave.
 - La navegacion por teclado tiene foco visible y los controles principales tienen etiquetas ARIA.
 - `Reducir movimiento` persiste en `localStorage` y limita shake, hit-stop y particulas.
@@ -91,6 +94,7 @@ Desde `C:\tmp\game`:
 
 ```powershell
 python -m http.server 8000
+node --check src\i18n.js
 node --check src\config.js
 node --check src\audio.js
 node --check src\effects.js
@@ -171,6 +175,7 @@ http://localhost:8000/src/
 Para validar la sintaxis de los archivos JavaScript principales:
 
 ```powershell
+node --check src\i18n.js
 node --check src\config.js
 node --check src\audio.js
 node --check src\effects.js
@@ -189,6 +194,7 @@ node --test tests\game.test.js
 Flujo recomendado antes de cerrar cambios de codigo:
 
 ```powershell
+node --check src\i18n.js
 node --check src\config.js
 node --check src\audio.js
 node --check src\effects.js
@@ -210,6 +216,8 @@ Validar en navegador antes de considerar listo un cambio visual o de jugabilidad
 - El boton `VOLVER` debe regresar desde ayuda al menu principal.
 - Cambiar la dificultad en el menu debe afectar el comportamiento de la CPU.
 - El foco visible debe aparecer al navegar menus con `Tab`.
+- El selector de idioma debe cambiar menu, ayuda, pausa, HUD y labels principales entre espanol e ingles.
+- Al recargar, el idioma elegido debe persistir; sin preferencia guardada debe respetar `es`/`en` del navegador o caer a espanol.
 - El selector `Reducir movimiento` debe persistir y reducir shake/hit-stop visual en impactos.
 - El canvas debe cargar correctamente.
 - El canvas debe mantenerse proporcionado al redimensionar la ventana.
@@ -305,6 +313,7 @@ En dispositivos tactiles se muestran botones en pantalla durante la partida para
 ├── tests/
 │   └── game.test.js
 └── src/
+    ├── i18n.js
     ├── config.js
     ├── audio.js
     ├── effects.js
@@ -321,6 +330,7 @@ En dispositivos tactiles se muestran botones en pantalla durante la partida para
 - `src/index.html`: estructura de la pagina, menu principal, canvas, controles y pantalla de fin de juego.
 - `src/styles.css`: layout, estilos del canvas, controles tactiles y modales.
 - `src/config.js`: constantes globales, canvas, dimensiones logicas, ataques y dificultad.
+- `src/i18n.js`: diccionario espanol/ingles, autodeteccion de idioma, persistencia y helper `t(...)`.
 - `src/audio.js`: inicializacion de Web Audio y sonidos generados por codigo.
 - `src/effects.js`: textos flotantes y particulas de impacto.
 - `src/ai.js`: decision de acciones de la CPU segun dificultad, distancia, vida y contexto de ataque.
@@ -337,6 +347,7 @@ En dispositivos tactiles se muestran botones en pantalla durante la partida para
 Orden actual:
 
 ```html
+<script src="i18n.js"></script>
 <script src="config.js"></script>
 <script src="audio.js"></script>
 <script src="effects.js"></script>
@@ -411,6 +422,7 @@ Actualmente cubren:
 - Indicador de estado para inicio de combate y bloqueo.
 - Transicion de estado entre `menu` y `playing`.
 - Apertura y cierre de la pantalla de ayuda desde el menu.
+- Deteccion de idioma, cambio a ingles y persistencia de preferencia.
 - Pausa, detencion de simulacion y reanudacion de partida.
 - Seleccion de dificultad y cambio de parametros de movimiento de la CPU.
 - Seleccion de arena y fallback seguro.
@@ -426,6 +438,7 @@ Actualmente cubren:
 - Identidad visual distinta para humano y CPU.
 - Temporizador de round basado en delta time.
 - Preferencia persistente de reducir movimiento y pausa informativa.
+- Labels traducibles de arenas, dificultad, HUD y personajes.
 
 Limitaciones de las pruebas:
 
@@ -448,6 +461,7 @@ Limitaciones de las pruebas:
 - Menu principal.
 - Pantalla de ayuda con objetivo, controles y consejos.
 - Seleccion de dificultad para la CPU.
+- Selector de idioma espanol/ingles con autodeteccion y preferencia persistente.
 - Inicio de partida desde boton.
 - Pausa con `P`, `Esc`, boton `PAUSA` y boton `RESUMIR`.
 - Sistema de rondas al mejor de 3.
@@ -467,6 +481,7 @@ Limitaciones de las pruebas:
 - Foco visible para navegacion por teclado en menus.
 - Etiquetas ARIA en canvas, overlays, indicadores y controles tactiles.
 - Opcion persistente de reducir movimiento para limitar shake, hit-stop y particulas.
+- Idioma persistente con `localStorage` bajo `xkcdKombatLanguage`.
 - Aviso de orientacion movil en pantalla vertical.
 - Barras de vida animadas.
 - Balance de combate con punetazo rapido, patada de mayor recuperacion y daño residual al bloquear.
@@ -484,6 +499,7 @@ Limitaciones de las pruebas:
 - Helpers de pruebas para iniciar partida, cargar energia, avanzar frames y tocar controles.
 - Audio basico generado por Web Audio API.
 - Pruebas unitarias con `node:test` y mocks de DOM/canvas/audio.
+- Interfaz bilingue inicial sin dependencias externas.
 
 ## Tecnologias
 
@@ -644,6 +660,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Diferenciacion de personajes | Implementada con etiquetas `HUMANO`/`CPU`, acentos azules/rojos y detalles de banda, visor y antena. |
 | Bloqueo ergonomico | Implementado `I` como bloqueo alternativo junto a `S`. |
 | Claridad de especial | Documentado que `L` requiere energia llena y consume la barra. |
+| Interfaz bilingue | Implementada con espanol/ingles, autodeteccion del navegador, selector manual y persistencia. |
 
 ### Prioridad Alta
 

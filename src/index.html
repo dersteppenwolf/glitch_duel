@@ -8,64 +8,72 @@
 </head>
 <body>
     <div id="game-container">
-        <div id="instructions" role="status">xkcd KOMBAT - Modo Solo (Humano vs Máquina)</div>
-        <div id="orientation-warning" role="status" aria-live="polite">GIRA EL DISPOSITIVO PARA JUGAR MEJOR</div>
+        <div id="instructions" role="status" data-i18n="instructions">xkcd KOMBAT - Modo Solo (Humano vs Maquina)</div>
+        <div id="orientation-warning" role="status" aria-live="polite" data-i18n="orientationWarning">GIRA EL DISPOSITIVO PARA JUGAR MEJOR</div>
 
-        <canvas id="game" width="1000" height="500" role="img" aria-label="Arena de combate xkcd KOMBAT"></canvas>
+        <canvas id="game" width="1000" height="500" role="img" aria-label="Arena de combate xkcd KOMBAT" data-i18n-aria="canvasLabel"></canvas>
 
-        <button id="pause-button" type="button" aria-label="Pausar partida">PAUSA</button>
+        <button id="pause-button" type="button" aria-label="Pausar partida" data-i18n="pauseButton" data-i18n-aria="pauseButtonLabel">PAUSA</button>
 
         <div id="main-menu" class="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="main-title">
             <div class="menu-card">
-                <div class="menu-kicker">Arcade VS AI</div>
+                <div class="menu-kicker" data-i18n="menuKicker">Arcade VS AI</div>
                 <h1 id="main-title">xkcd KOMBAT</h1>
-                <p class="menu-intro">Derrota a la maquina en un duelo stickman de punetazos, patadas y bugs.</p>
+                <p class="menu-intro" data-i18n="menuIntro">Derrota a la maquina en un duelo stickman de punetazos, patadas y bugs.</p>
 
                 <div class="menu-actions">
-                    <button id="start-button" type="button">INICIAR JUEGO</button>
-                    <button id="help-button" type="button">AYUDA</button>
+                    <button id="start-button" type="button" data-i18n="start">INICIAR JUEGO</button>
+                    <button id="help-button" type="button" data-i18n="help">AYUDA</button>
                 </div>
 
                 <div class="menu-settings" aria-label="Opciones de partida">
+                    <label class="difficulty-picker" for="language-select">
+                        <span data-i18n="language">Idioma</span>
+                        <select id="language-select">
+                            <option value="es">Espanol</option>
+                            <option value="en">English</option>
+                        </select>
+                    </label>
+
                     <label class="difficulty-picker" for="difficulty-select">
-                        <span>Dificultad</span>
+                        <span data-i18n="difficulty">Dificultad</span>
                         <select id="difficulty-select">
-                            <option value="easy">FACIL</option>
-                            <option value="normal" selected>NORMAL</option>
-                            <option value="hard">DIFICIL</option>
+                            <option value="easy" data-i18n="difficultyEasy">FACIL</option>
+                            <option value="normal" selected data-i18n="difficultyNormal">NORMAL</option>
+                            <option value="hard" data-i18n="difficultyHard">DIFICIL</option>
                         </select>
                     </label>
 
                     <label class="difficulty-picker" for="arena-select">
-                        <span>Arena</span>
+                        <span data-i18n="arena">Arena</span>
                         <select id="arena-select">
-                            <option value="notebook" selected>CUADERNO</option>
-                            <option value="cafeteria">CAFETERIA</option>
-                            <option value="lab">LABORATORIO</option>
-                            <option value="meeting">REUNION PRESENCIAL</option>
-                            <option value="remoteMeeting">REUNION REMOTA</option>
+                            <option value="notebook" selected data-i18n="arenaNotebook">CUADERNO</option>
+                            <option value="cafeteria" data-i18n="arenaCafeteria">CAFETERIA</option>
+                            <option value="lab" data-i18n="arenaLab">LABORATORIO</option>
+                            <option value="meeting" data-i18n="arenaMeeting">REUNION PRESENCIAL</option>
+                            <option value="remoteMeeting" data-i18n="arenaRemoteMeeting">REUNION REMOTA</option>
                         </select>
                     </label>
 
                     <label class="motion-picker" for="reduce-motion-toggle">
                         <input id="reduce-motion-toggle" type="checkbox">
-                        <span>Reducir movimiento</span>
+                        <span data-i18n="reduceMotion">Reducir movimiento</span>
                     </label>
                 </div>
 
                 <div id="stats-summary" class="stats-summary" role="status" aria-live="polite">Victorias: 0 | Derrotas: 0 | Mejor racha: 0</div>
 
                 <div class="menu-controls">
-                    <h2>Controles</h2>
+                    <h2 data-i18n="controls">Controles</h2>
                     <div class="control-grid">
-                        <span>A / D / ← / →</span><span>Mover</span>
-                        <span>W / ↑</span><span>Saltar</span>
-                        <span>C / ↓</span><span>Agacharse</span>
-                        <span>S / I</span><span>Bloquear</span>
-                        <span>J</span><span>Punetazo</span>
-                        <span>K</span><span>Patada</span>
-                        <span>L</span><span>Especial (energia llena)</span>
-                        <span>P / Esc</span><span>Pausa</span>
+                        <span>A / D / ← / →</span><span data-i18n="move">Mover</span>
+                        <span>W / ↑</span><span data-i18n="jump">Saltar</span>
+                        <span>C / ↓</span><span data-i18n="crouch">Agacharse</span>
+                        <span>S / I</span><span data-i18n="block">Bloquear</span>
+                        <span>J</span><span data-i18n="punch">Punetazo</span>
+                        <span>K</span><span data-i18n="kick">Patada</span>
+                        <span>L</span><span data-i18n="specialShort">Especial (energia llena)</span>
+                        <span>P / Esc</span><span data-i18n="pause">Pausa</span>
                     </div>
                 </div>
             </div>
@@ -73,91 +81,92 @@
 
         <div id="help-screen" class="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="help-title">
             <div class="menu-card help-card">
-                <div class="menu-kicker">Manual de combate</div>
-                <h1 id="help-title">AYUDA</h1>
+                <div class="menu-kicker" data-i18n="helpKicker">Manual de combate</div>
+                <h1 id="help-title" data-i18n="help">AYUDA</h1>
 
                 <div class="help-section">
-                    <h2>Objetivo</h2>
-                    <p>Reduce la vida de la CPU a 0% antes de que la maquina haga lo mismo contigo.</p>
+                    <h2 data-i18n="objective">Objetivo</h2>
+                    <p data-i18n="objectiveText">Reduce la vida de la CPU a 0% antes de que la maquina haga lo mismo contigo.</p>
                 </div>
 
                 <div class="help-columns">
                     <div class="help-section">
-                        <h2>Controles</h2>
+                        <h2 data-i18n="controls">Controles</h2>
                         <div class="control-grid">
-                            <span>A / D / ← / →</span><span>Mover</span>
-                            <span>W / ↑</span><span>Saltar</span>
-                            <span>C / ↓</span><span>Agacharse</span>
-                            <span>S / I</span><span>Bloquear</span>
-                            <span>J</span><span>Punetazo rapido</span>
-                            <span>K</span><span>Patada larga</span>
-                            <span>L</span><span>Especial: requiere barra llena y consume energia</span>
-                            <span>P / Esc</span><span>Pausar o reanudar</span>
+                            <span>A / D / ← / →</span><span data-i18n="move">Mover</span>
+                            <span>W / ↑</span><span data-i18n="jump">Saltar</span>
+                            <span>C / ↓</span><span data-i18n="crouch">Agacharse</span>
+                            <span>S / I</span><span data-i18n="block">Bloquear</span>
+                            <span>J</span><span data-i18n="punchFast">Punetazo rapido</span>
+                            <span>K</span><span data-i18n="kickLong">Patada larga</span>
+                            <span>L</span><span data-i18n="specialLong">Especial: requiere barra llena y consume energia</span>
+                            <span>P / Esc</span><span data-i18n="pauseResume">Pausar o reanudar</span>
                         </div>
                     </div>
 
                     <div class="help-section">
-                        <h2>Combos</h2>
-                        <p class="combo-note">Pulsa la segunda tecla rapido; si esperas demasiado, sale un ataque normal.</p>
+                        <h2 data-i18n="combos">Combos</h2>
+                        <p class="combo-note" data-i18n="comboNote">Pulsa la segunda tecla rapido; si esperas demasiado, sale un ataque normal.</p>
                         <div class="control-grid">
-                            <span>J, J</span><span>Rapido, buena recuperacion</span>
-                            <span>J, K</span><span>Mas alcance y dano</span>
-                            <span>K, K</span><span>Back kick pesado</span>
+                            <span>J, J</span><span data-i18n="comboJJ">Rapido, buena recuperacion</span>
+                            <span>J, K</span><span data-i18n="comboJK">Mas alcance y dano</span>
+                            <span>K, K</span><span data-i18n="comboKK">Back kick pesado</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="help-section">
-                    <h2>Consejos</h2>
+                    <h2 data-i18n="tips">Consejos</h2>
                     <ul>
-                        <li>El bloqueo reduce el impacto pero te deja quieto.</li>
-                        <li>El punetazo es mas rapido; la patada llega mas lejos.</li>
-                        <li>Si la CPU se acerca demasiado, retrocede y castiga con patada.</li>
+                        <li data-i18n="tipBlock">El bloqueo reduce el impacto pero te deja quieto.</li>
+                        <li data-i18n="tipPunch">El punetazo es mas rapido; la patada llega mas lejos.</li>
+                        <li data-i18n="tipCpu">Si la CPU se acerca demasiado, retrocede y castiga con patada.</li>
                     </ul>
                 </div>
 
                 <div class="menu-actions">
-                    <button id="back-button" type="button">VOLVER</button>
+                    <button id="back-button" type="button" data-i18n="back">VOLVER</button>
                 </div>
             </div>
         </div>
 
         <div id="pause-screen" class="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
             <div class="menu-card">
-                <div class="menu-kicker">Combate detenido</div>
-                <h1 id="pause-title">PAUSA</h1>
-                <p>Respira, revisa tu estrategia y vuelve al duelo cuando estes listo.</p>
+                <div class="menu-kicker" data-i18n="pauseKicker">Combate detenido</div>
+                <h1 id="pause-title" data-i18n="pauseTitle">PAUSA</h1>
+                <p data-i18n="pauseText">Respira, revisa tu estrategia y vuelve al duelo cuando estes listo.</p>
                 <div id="pause-summary" class="pause-summary" aria-live="polite"></div>
 
                 <div class="menu-actions">
-                    <button id="resume-button" type="button">RESUMIR</button>
-                    <button id="pause-menu-button" type="button">MENU</button>
+                    <button id="resume-button" type="button" data-i18n="resume">RESUMIR</button>
+                    <button id="pause-menu-button" type="button" data-i18n="menu">MENU</button>
                 </div>
             </div>
         </div>
 
         <div id="controls" aria-label="Controles tactiles de combate">
             <div id="left-side" class="control-zone">
-                <div class="btn" id="btn-left" role="button" aria-label="Mover izquierda">←</div>
-                <div class="btn" id="btn-right" role="button" aria-label="Mover derecha">→</div>
-                <div class="btn" id="btn-jump" role="button" aria-label="Saltar">↑<br>JUMP</div>
-                <div class="btn" id="btn-crouch" role="button" aria-label="Agacharse">↓<br>CROUCH</div>
-                <div class="btn" id="btn-block" role="button" aria-label="Bloquear">BLOCK</div>
+                <div class="btn" id="btn-left" role="button" aria-label="Mover izquierda" data-i18n-aria="leftLabel">←</div>
+                <div class="btn" id="btn-right" role="button" aria-label="Mover derecha" data-i18n-aria="rightLabel">→</div>
+                <div class="btn" id="btn-jump" role="button" aria-label="Saltar" data-i18n-aria="jump">↑<br>JUMP</div>
+                <div class="btn" id="btn-crouch" role="button" aria-label="Agacharse" data-i18n-aria="crouch">↓<br>CROUCH</div>
+                <div class="btn" id="btn-block" role="button" aria-label="Bloquear" data-i18n-aria="block">BLOCK</div>
             </div>
             <div id="right-side" class="control-zone">
-                <div class="btn" id="btn-punch" role="button" aria-label="Punetazo">PUNCH<br>(J)</div>
-                <div class="btn" id="btn-kick" role="button" aria-label="Patada">KICK<br>(K)</div>
-                <div class="btn" id="btn-special" role="button" aria-label="Ataque especial con energia llena">SPECIAL<br>(L)</div>
+                <div class="btn" id="btn-punch" role="button" aria-label="Punetazo" data-i18n-aria="punch">PUNCH<br>(J)</div>
+                <div class="btn" id="btn-kick" role="button" aria-label="Patada" data-i18n-aria="kick">KICK<br>(K)</div>
+                <div class="btn" id="btn-special" role="button" aria-label="Ataque especial con energia llena" data-i18n-aria="specialButtonLabel">SPECIAL<br>(L)</div>
             </div>
         </div>
 
         <div id="game-over" role="dialog" aria-modal="true" aria-labelledby="winner-text">
             <div id="winner-text" aria-live="assertive"></div>
-            <button id="restart-button" type="button">REINICIAR</button>
-            <button id="menu-button" type="button">MENU</button>
+            <button id="restart-button" type="button" data-i18n="restart">REINICIAR</button>
+            <button id="menu-button" type="button" data-i18n="menu">MENU</button>
         </div>
     </div>
 
+    <script src="i18n.js"></script>
     <script src="config.js"></script>
     <script src="audio.js"></script>
     <script src="effects.js"></script>
