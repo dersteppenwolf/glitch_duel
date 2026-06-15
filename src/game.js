@@ -16,6 +16,7 @@ let cpuRounds = 0;
 let roundTimerFrames = ROUND_TIMER_FRAMES;
 let selectedArena = 'notebook';
 let stats = loadStats();
+let reducedMotionEnabled = loadReducedMotionPreference();
 
 function getDifficultyConfig() {
     return DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.normal;
@@ -36,6 +37,33 @@ function setRoundTimerFrames(value) {
 
 function setArena(value) {
     selectedArena = ARENAS[value] ? value : 'notebook';
+}
+
+function loadReducedMotionPreference() {
+    try {
+        return window.localStorage && window.localStorage.getItem('xkcdKombatReducedMotion') === 'true';
+    } catch (_) {
+        return false;
+    }
+}
+
+function saveReducedMotionPreference() {
+    try {
+        if (window.localStorage) window.localStorage.setItem('xkcdKombatReducedMotion', String(reducedMotionEnabled));
+    } catch (_) {
+        // localStorage can be unavailable in private browsing or tests.
+    }
+}
+
+function setReducedMotion(value) {
+    reducedMotionEnabled = !!value;
+    renderMotionPreference();
+    saveReducedMotionPreference();
+}
+
+function renderMotionPreference() {
+    const toggle = document.getElementById('reduce-motion-toggle');
+    if (toggle) toggle.checked = reducedMotionEnabled;
 }
 
 function getArenaConfig() {
@@ -80,6 +108,17 @@ function renderStats() {
     if (!statsSummary) return;
 
     statsSummary.textContent = `Victorias: ${stats.wins} | Derrotas: ${stats.losses} | Racha: ${stats.currentStreak} | Mejor: ${stats.bestStreak}`;
+}
+
+function renderPauseSummary() {
+    const summary = document.getElementById('pause-summary');
+    if (!summary || !player1 || !player2) return;
+
+    const difficulty = DIFFICULTIES[selectedDifficulty] ? selectedDifficulty.toUpperCase() : 'NORMAL';
+    const arena = getArenaConfig().label;
+    const seconds = Math.ceil(roundTimerFrames / 60);
+
+    summary.textContent = `Round ${currentRound} | Marcador ${playerRounds}-${cpuRounds} | Tiempo ${seconds}s | Dificultad ${difficulty} | Arena ${arena} | Controles: A/D/W/C/S/J/K/L, P o Esc para reanudar`;
 }
 
 function resizeCanvas() {
@@ -182,6 +221,7 @@ function pauseGame() {
 
     keys = {};
     gameState = 'paused';
+    renderPauseSummary();
     document.getElementById('pause-screen').style.display = 'flex';
     updateControlsVisibility();
 }
@@ -319,10 +359,10 @@ function updateHealthAnimations() {
 }
 
 function triggerImpactFeedback(x, y, direction, blocked = false) {
-    screenShake = Math.max(screenShake, blocked ? 4 : 10);
-    hitStopFrames = Math.max(hitStopFrames, blocked ? 2 : 5);
+    screenShake = reducedMotionEnabled ? 0 : Math.max(screenShake, blocked ? 4 : 10);
+    hitStopFrames = reducedMotionEnabled ? 0 : Math.max(hitStopFrames, blocked ? 2 : 5);
 
-    const count = blocked ? 7 : 14;
+    const count = reducedMotionEnabled ? (blocked ? 3 : 5) : (blocked ? 7 : 14);
     const colors = blocked ? ['#33f', '#8af', '#fff'] : ['#c00', '#f90', '#fff'];
 
     for (let i = 0; i < count; i++) {
@@ -533,11 +573,15 @@ function setupMainMenu() {
     document.getElementById('arena-select').addEventListener('change', (e) => {
         setArena(e.target.value);
     });
+    document.getElementById('reduce-motion-toggle').addEventListener('change', (e) => {
+        setReducedMotion(e.target.checked);
+    });
 }
 
 window.addEventListener('load', () => {
     resizeCanvas();
     renderStats();
+    renderMotionPreference();
     showMainMenu();
     setupMobileControls();
     setupKeyboardControls();

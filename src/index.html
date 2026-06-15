@@ -8,17 +8,17 @@
 </head>
 <body>
     <div id="game-container">
-        <div id="instructions">xkcd KOMBAT - Modo Solo (Humano vs Máquina)</div>
-        <div id="orientation-warning">GIRA EL DISPOSITIVO PARA JUGAR MEJOR</div>
+        <div id="instructions" role="status">xkcd KOMBAT - Modo Solo (Humano vs Máquina)</div>
+        <div id="orientation-warning" role="status" aria-live="polite">GIRA EL DISPOSITIVO PARA JUGAR MEJOR</div>
 
-        <canvas id="game" width="1000" height="500"></canvas>
+        <canvas id="game" width="1000" height="500" role="img" aria-label="Arena de combate xkcd KOMBAT"></canvas>
 
-        <button id="pause-button" type="button">PAUSA</button>
+        <button id="pause-button" type="button" aria-label="Pausar partida">PAUSA</button>
 
-        <div id="main-menu" class="panel-overlay">
+        <div id="main-menu" class="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="main-title">
             <div class="menu-card">
                 <div class="menu-kicker">Arcade VS AI</div>
-                <h1>xkcd KOMBAT</h1>
+                <h1 id="main-title">xkcd KOMBAT</h1>
                 <p>Derrota a la maquina en un duelo stickman de punetazos, patadas y bugs.</p>
 
                 <div class="menu-actions">
@@ -44,7 +44,12 @@
                     </select>
                 </label>
 
-                <div id="stats-summary" class="stats-summary">Victorias: 0 | Derrotas: 0 | Mejor racha: 0</div>
+                <label class="motion-picker" for="reduce-motion-toggle">
+                    <input id="reduce-motion-toggle" type="checkbox">
+                    Reducir movimiento
+                </label>
+
+                <div id="stats-summary" class="stats-summary" role="status" aria-live="polite">Victorias: 0 | Derrotas: 0 | Mejor racha: 0</div>
 
                 <div class="menu-controls">
                     <h2>Controles</h2>
@@ -62,10 +67,10 @@
             </div>
         </div>
 
-        <div id="help-screen" class="panel-overlay">
+        <div id="help-screen" class="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="help-title">
             <div class="menu-card help-card">
                 <div class="menu-kicker">Manual de combate</div>
-                <h1>AYUDA</h1>
+                <h1 id="help-title">AYUDA</h1>
 
                 <div class="help-section">
                     <h2>Objetivo</h2>
@@ -113,11 +118,12 @@
             </div>
         </div>
 
-        <div id="pause-screen" class="panel-overlay">
+        <div id="pause-screen" class="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
             <div class="menu-card">
                 <div class="menu-kicker">Combate detenido</div>
-                <h1>PAUSA</h1>
+                <h1 id="pause-title">PAUSA</h1>
                 <p>Respira, revisa tu estrategia y vuelve al duelo cuando estes listo.</p>
+                <div id="pause-summary" class="pause-summary" aria-live="polite"></div>
 
                 <div class="menu-actions">
                     <button id="resume-button" type="button">RESUMIR</button>
@@ -126,23 +132,23 @@
             </div>
         </div>
 
-        <div id="controls">
+        <div id="controls" aria-label="Controles tactiles de combate">
             <div id="left-side" class="control-zone">
-                <div class="btn" id="btn-left">←</div>
-                <div class="btn" id="btn-right">→</div>
-                <div class="btn" id="btn-jump">↑<br>JUMP</div>
-                <div class="btn" id="btn-crouch">↓<br>CROUCH</div>
-                <div class="btn" id="btn-block">BLOCK</div>
+                <div class="btn" id="btn-left" role="button" aria-label="Mover izquierda">←</div>
+                <div class="btn" id="btn-right" role="button" aria-label="Mover derecha">→</div>
+                <div class="btn" id="btn-jump" role="button" aria-label="Saltar">↑<br>JUMP</div>
+                <div class="btn" id="btn-crouch" role="button" aria-label="Agacharse">↓<br>CROUCH</div>
+                <div class="btn" id="btn-block" role="button" aria-label="Bloquear">BLOCK</div>
             </div>
             <div id="right-side" class="control-zone">
-                <div class="btn" id="btn-punch">PUNCH<br>(J)</div>
-                <div class="btn" id="btn-kick">KICK<br>(K)</div>
-                <div class="btn" id="btn-special">SPECIAL<br>(L)</div>
+                <div class="btn" id="btn-punch" role="button" aria-label="Punetazo">PUNCH<br>(J)</div>
+                <div class="btn" id="btn-kick" role="button" aria-label="Patada">KICK<br>(K)</div>
+                <div class="btn" id="btn-special" role="button" aria-label="Ataque especial">SPECIAL<br>(L)</div>
             </div>
         </div>
 
-        <div id="game-over">
-            <div id="winner-text"></div>
+        <div id="game-over" role="dialog" aria-modal="true" aria-labelledby="winner-text">
+            <div id="winner-text" aria-live="assertive"></div>
             <button id="restart-button" type="button">REINICIAR</button>
             <button id="menu-button" type="button">MENU</button>
         </div>

@@ -42,6 +42,7 @@ Estado actual:
 - Pantalla de fin de juego con opciones `REINICIAR` y `MENU`.
 - Controles de teclado y controles tactiles durante la partida.
 - Controles moviles responsivos y aviso de orientacion vertical.
+- Foco visible, etiquetas ARIA y opcion persistente de reducir movimiento.
 - Pausa con `P`, `Esc` o boton `PAUSA` durante la partida.
 - Balance base ajustado para diferenciar velocidad, daño, alcance y bloqueo.
 - Barras de vida con transicion visual al recibir daño.
@@ -168,6 +169,8 @@ Validar en navegador antes de considerar listo un cambio visual o de jugabilidad
 - El boton `AYUDA` debe mostrar controles, objetivo y consejos sin iniciar partida.
 - El boton `VOLVER` debe regresar desde ayuda al menu principal.
 - Cambiar la dificultad en el menu debe afectar el comportamiento de la CPU.
+- El foco visible debe aparecer al navegar menus con `Tab`.
+- El selector `Reducir movimiento` debe persistir y reducir shake/hit-stop visual en impactos.
 - El canvas debe cargar correctamente.
 - El canvas debe mantenerse proporcionado al redimensionar la ventana.
 - Deben aparecer dos personajes stickman.
@@ -178,7 +181,7 @@ Validar en navegador antes de considerar listo un cambio visual o de jugabilidad
 - Con energia llena, `L` debe lanzar el ataque especial.
 - Cambiar la arena en el menu debe cambiar el fondo del combate.
 - Al terminar partidas deben actualizarse las estadisticas locales.
-- `P`, `Esc` o `PAUSA` deben pausar la partida; `RESUMIR` debe continuar.
+- `P`, `Esc` o `PAUSA` deben pausar la partida, mostrar resumen de round/marcador/tiempo/dificultad/arena, y `RESUMIR` debe continuar.
 - El temporizador debe bajar durante `playing` y detenerse en pausa.
 - Los golpes deben reducir la barra de vida del rival.
 - Las barras de vida deben mostrar una transicion breve al bajar.
@@ -374,6 +377,10 @@ Limitaciones de las pruebas:
 - Arenas seleccionables: cuaderno, terminal y laboratorio.
 - Estadisticas locales con `localStorage`.
 - Controles moviles responsivos.
+- Pausa informativa con round, marcador, tiempo, dificultad, arena y controles clave.
+- Foco visible para navegacion por teclado en menus.
+- Etiquetas ARIA en canvas, overlays, indicadores y controles tactiles.
+- Opcion persistente de reducir movimiento para limitar shake, hit-stop y particulas.
 - Aviso de orientacion movil en pantalla vertical.
 - Barras de vida animadas.
 - Balance de combate con punetazo rapido, patada de mayor recuperacion y daño residual al bloquear.
@@ -483,11 +490,11 @@ Estas sugerencias parten del estado actual del codigo y estan ordenadas por impa
 
 | Mejora | Que cambiar | Por que conviene |
 | --- | --- | --- |
-| Navegacion por teclado en menus | Asegurar foco visible, orden de tabulacion y activacion con Enter/Espacio. | Mejora accesibilidad sin afectar combate. |
-| Etiquetas ARIA | Agregar `aria-label` a botones tactiles e indicadores relevantes. | Ayuda a tecnologias asistivas y documenta mejor la intencion de controles. |
-| Pausa mas informativa | Mostrar controles clave, dificultad, arena y marcador dentro del overlay de pausa. | Convierte la pausa en una referencia rapida durante la partida. |
-| Ajuste de controles tactiles | Revisar solapamientos en telefonos pequenos y usar zonas mas adaptables. | Reduce errores de input en movil. |
-| Opcion de reducir movimiento | Permitir reducir shake/hit-stop visual para jugadores sensibles al movimiento. | Mejora comodidad y accesibilidad. |
+| Navegacion por teclado en menus | Implementado con foco visible para botones, selects, inputs y controles tactiles. | Mejora accesibilidad sin afectar combate. |
+| Etiquetas ARIA | Implementado en canvas, overlays, indicadores y botones tactiles. | Ayuda a tecnologias asistivas y documenta mejor la intencion de controles. |
+| Pausa mas informativa | Implementado con controles clave, dificultad, arena, marcador, round y tiempo. | Convierte la pausa en una referencia rapida durante la partida. |
+| Ajuste de controles tactiles | Implementado con zonas mas adaptables, `clamp()` y safe areas. | Reduce errores de input en movil. |
+| Opcion de reducir movimiento | Implementado con preferencia persistente en `localStorage` para limitar shake, hit-stop y particulas. | Mejora comodidad y accesibilidad. |
 
 ### Recomendacion De Orden
 
@@ -529,6 +536,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Navegacion post-partida | Implementados botones `REINICIAR` y `MENU` en la pantalla de fin de juego. |
 | Feedback de golpes | Implementado con shake del canvas, hit-stop breve y particulas/lineas de impacto. |
 | Mejor escalado del canvas | Implementado con resize responsive y backing store ajustado por `devicePixelRatio`. |
+| UX y accesibilidad | Implementado foco visible, ARIA, pausa informativa, controles tactiles ajustados y reduccion de movimiento. |
 
 ### Prioridad Alta
 

@@ -90,6 +90,14 @@ canvas {
     border: 3px solid #000;
 }
 
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+.btn:focus-visible {
+    outline: 4px solid #ffcc00;
+    outline-offset: 3px;
+}
+
 #help-screen {
     display: none;
 }
@@ -136,6 +144,24 @@ canvas {
     font-family: "Comic Sans MS", sans-serif;
     font-size: 15px;
     font-weight: bold;
+}
+
+.motion-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 7px 10px;
+    border: 3px solid #000;
+    background: #fff;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.motion-picker input {
+    width: 18px;
+    height: 18px;
+    accent-color: #111;
 }
 
 .stats-summary {
@@ -199,6 +225,18 @@ canvas {
 
 .combo-note {
     margin-bottom: 6px !important;
+}
+
+.pause-summary {
+    margin: 14px auto 18px;
+    padding: 12px;
+    max-width: 390px;
+    border: 3px solid #000;
+    background: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1.35;
+    text-align: left;
 }
 
 .menu-actions button:hover,
@@ -265,16 +303,16 @@ canvas {
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 25vh;
+    height: 30vh;
     display: none;
     z-index: 100;
 }
 
 .control-zone {
     position: absolute;
-    bottom: 15px;
-    height: 140px;
-    width: 220px;
+    bottom: max(15px, env(safe-area-inset-bottom));
+    height: clamp(150px, 24vh, 190px);
+    width: clamp(190px, 24vw, 240px);
 }
 
 #left-side {
@@ -420,13 +458,13 @@ canvas {
     }
 
     #controls {
-        height: 35vh;
+        height: 38vh;
     }
 
     .control-zone {
         bottom: max(8px, env(safe-area-inset-bottom));
-        width: clamp(150px, 42vw, 220px);
-        height: clamp(150px, 34vw, 190px);
+        width: clamp(150px, 43vw, 220px);
+        height: clamp(170px, 42vw, 210px);
     }
 
     #left-side {
@@ -445,8 +483,8 @@ canvas {
         font-size: 12px;
     }
 
-    #btn-left { left: 0; top: 42px; }
-    #btn-right { left: clamp(92px, 25vw, 130px); top: 42px; }
+    #btn-left { left: 0; top: 46px; }
+    #btn-right { left: clamp(92px, 25vw, 130px); top: 46px; }
     #btn-jump { left: clamp(46px, 12.5vw, 65px); top: 0; }
 
     #btn-block {
@@ -460,14 +498,14 @@ canvas {
         width: clamp(62px, 17vw, 75px);
         height: clamp(42px, 11vw, 50px);
         left: clamp(42px, 12vw, 60px);
-        top: clamp(124px, 31vw, 140px);
+        top: clamp(130px, 33vw, 150px);
     }
 
     #btn-punch,
     #btn-kick {
         width: clamp(62px, 17vw, 85px);
         height: clamp(62px, 17vw, 85px);
-        top: 32px;
+        top: 28px;
         font-size: 12px;
     }
 
@@ -478,7 +516,7 @@ canvas {
         width: clamp(74px, 22vw, 92px);
         height: clamp(38px, 11vw, 48px);
         right: clamp(36px, 11vw, 52px);
-        top: clamp(96px, 25vw, 116px);
+        top: clamp(104px, 27vw, 124px);
         font-size: 10px;
     }
 }

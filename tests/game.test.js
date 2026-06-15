@@ -140,6 +140,7 @@ function loadGame() {
             setDifficulty,
             setRoundTimerFrames,
             setArena,
+            setReducedMotion,
             recordMatchResult,
             update,
             triggerImpactFeedback,
@@ -157,6 +158,7 @@ function loadGame() {
                 cpuRounds,
                 roundTimerFrames,
                 selectedArena,
+                reducedMotionEnabled,
                 stats,
                 screenShake,
                 hitStopFrames,
@@ -166,7 +168,9 @@ function loadGame() {
                 mainMenuDisplay: document.getElementById('main-menu').style.display,
                 helpScreenDisplay: document.getElementById('help-screen').style.display,
                 pauseScreenDisplay: document.getElementById('pause-screen').style.display,
+                pauseSummaryText: document.getElementById('pause-summary').textContent,
                 pauseButtonDisplay: document.getElementById('pause-button').style.display,
+                reducedMotionToggleChecked: document.getElementById('reduce-motion-toggle').checked,
                 orientationWarningDisplay: document.getElementById('orientation-warning').style.display,
                 transform: ctx.lastTransform
             })
@@ -404,6 +408,21 @@ test('blocked hits keep health and create lighter impact feedback', () => {
     assert.equal(state.floatingTexts.length, 1);
 });
 
+test('reduced motion limits shake hit-stop and impact particles', () => {
+    const { api, context } = loadGame();
+
+    api.setReducedMotion(true);
+    api.triggerImpactFeedback(120, 300, 1);
+
+    const state = api.getState();
+    assert.equal(state.reducedMotionEnabled, true);
+    assert.equal(state.reducedMotionToggleChecked, true);
+    assert.equal(context.window.localStorage.getItem('xkcdKombatReducedMotion'), 'true');
+    assert.equal(state.screenShake, 0);
+    assert.equal(state.hitStopFrames, 0);
+    assert.equal(state.impactParticles.length, 5);
+});
+
 test('game state gates simulation until a match starts', () => {
     const { api } = loadGame();
 
@@ -449,6 +468,10 @@ test('pause stops simulation and resume returns to playing', () => {
     assert.equal(pausedState.gameState, 'paused');
     assert.equal(pausedState.pauseScreenDisplay, 'flex');
     assert.equal(pausedState.pauseButtonDisplay, 'none');
+    assert.match(pausedState.pauseSummaryText, /Round 1/);
+    assert.match(pausedState.pauseSummaryText, /Marcador 0-0/);
+    assert.match(pausedState.pauseSummaryText, /Dificultad NORMAL/);
+    assert.match(pausedState.pauseSummaryText, /Arena CUADERNO/);
 
     api.update();
 
