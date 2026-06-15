@@ -549,21 +549,22 @@ function drawRemoteMeetingDetails(arena) {
     const windows = [[95, 86, 'HUMANO'], [315, 86, 'CPU'], [535, 86, 'LAG...'], [755, 86, 'MUTED']];
 
     windows.forEach(([x, y, label], i) => {
-        ctx.fillStyle = i === 1 ? 'rgba(210, 34, 34, 0.24)' : 'rgba(125, 211, 252, 0.18)';
+        ctx.fillStyle = i === 1 ? 'rgba(255, 220, 220, 0.92)' : 'rgba(255, 255, 255, 0.88)';
         ctx.fillRect(x, y, 150, 92);
         ctx.strokeStyle = arena.ground;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.strokeRect(x, y, 150, 92);
-        ctx.fillStyle = '#dff7ff';
+        ctx.fillStyle = i === 1 ? '#991b1b' : '#0f172a';
         ctx.font = '14px "Comic Sans MS"';
         ctx.fillText(label, x + 18, y + 72);
     });
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.10)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.90)';
     ctx.fillRect(705, 210, 210, 96);
     ctx.strokeStyle = arena.ground;
+    ctx.lineWidth = 3;
     ctx.strokeRect(705, 210, 210, 96);
-    ctx.fillStyle = '#dff7ff';
+    ctx.fillStyle = '#0f172a';
     ctx.font = '15px "Comic Sans MS"';
     ctx.fillText("YOU'RE MUTED", 730, 238);
     ctx.fillText('CAN YOU SEE IT?', 730, 270);

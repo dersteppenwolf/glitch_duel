@@ -88,8 +88,8 @@ const ARENAS = {
     },
     remoteMeeting: {
         label: 'REUNION REMOTA',
-        background: '#101827',
-        ground: '#7dd3fc',
-        accent: 'rgba(125, 211, 252, 0.24)'
+        background: '#dbeafe',
+        ground: '#1d4ed8',
+        accent: 'rgba(29, 78, 216, 0.18)'
     }
 };

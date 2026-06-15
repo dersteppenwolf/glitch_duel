@@ -66,7 +66,7 @@ Impacto tecnico:
 - `src/fighter_render.js` separa el dibujo del luchador; `Fighter.draw()` queda como fachada y `src/fighter.js` conserva la logica de combate.
 - El timer de round ahora usa `deltaMs` derivado de `requestAnimationFrame(timestamp)`, por lo que la duracion del round depende menos del frame rate real.
 - `tests/game.test.js` usa helpers locales para iniciar partidas, ubicar luchadores, cargar energia, avanzar frames y simular controles tactiles.
-- La validacion automatica cubre los nuevos archivos con `node --check` y mantiene pruebas sobre IA, render delegado, timer, combos, pausa y preferencias.
+- La validacion automatica cubre los nuevos archivos con `node --check` y mantiene pruebas sobre IA, render delegado, timer, combos, pausa, preferencias, arenas y controles.
 
 Impacto en UX:
 
@@ -75,6 +75,9 @@ Impacto en UX:
 - La navegacion por teclado tiene foco visible y los controles principales tienen etiquetas ARIA.
 - `Reducir movimiento` persiste en `localStorage` y limita shake, hit-stop y particulas.
 - Los controles tactiles usan medidas responsivas con `clamp()` y safe areas para reducir solapamientos en pantallas pequenas.
+- Humano y CPU ahora se distinguen con etiquetas, acentos y detalles visuales propios.
+- Las arenas pasaron a cinco escenarios con identidad propia: cuaderno, cafeteria, laboratorio, reunion presencial y reunion remota.
+- El bloqueo puede hacerse con `S` o `I`, y `L` se documenta claramente como especial que requiere energia llena.
 
 Alcance que se mantuvo fuera para reducir riesgo:
 
@@ -404,12 +407,14 @@ Actualmente cubren:
 - Combos simples y ataque especial con energia.
 - Hitboxes que evitan daño cuando el cuerpo queda fuera del area de ataque.
 - Bloqueo, daño residual y feedback de impacto reducido.
+- Bloqueo con `S` y alternativa `I` cerca de los ataques.
 - Indicador de estado para inicio de combate y bloqueo.
 - Transicion de estado entre `menu` y `playing`.
 - Apertura y cierre de la pantalla de ayuda desde el menu.
 - Pausa, detencion de simulacion y reanudacion de partida.
 - Seleccion de dificultad y cambio de parametros de movimiento de la CPU.
 - Seleccion de arena y fallback seguro.
+- Render de fondos tematicos para nuevas arenas.
 - Estadisticas locales de victorias, derrotas y rachas.
 - Avance de rounds y finalizacion de partida al ganar 2 rounds.
 - Temporizador de round, victoria por vida restante y empate sin puntuacion.
@@ -418,6 +423,7 @@ Actualmente cubren:
 - Aviso de orientacion movil en telefonos verticales.
 - Decision de IA separada con escenarios deterministas.
 - Delegacion de render del luchador hacia `drawFighter(...)`.
+- Identidad visual distinta para humano y CPU.
 - Temporizador de round basado en delta time.
 - Preferencia persistente de reducir movimiento y pausa informativa.
 
@@ -495,6 +501,7 @@ Limitaciones de las pruebas:
 - No existe modo de depuracion visual para hitboxes, energia, estado de IA o datos de round.
 - No hay modo entrenamiento para probar rangos, combos o balance sin presion de la CPU.
 - El audio sigue siendo basico y no diferencia claramente cada tipo de accion.
+- El selector de arena no tiene preview; el fondo se confirma al iniciar partida.
 - El timer de round usa delta time, pero cooldowns, ventana de combo, hit-stun, hit-stop y timers visuales siguen por frames.
 - Las pruebas unitarias no reemplazan validacion visual en navegador.
 
@@ -507,7 +514,7 @@ Estado tecnico actual:
 - `src/config.js` concentra constantes de combate, dificultad y arenas, lo que facilita balancear sin tocar el loop principal.
 - `src/fighter.js` contiene controles del jugador, combos, hitboxes, daño, energia y estado del personaje.
 - `src/ai.js` separa la decision de CPU y `src/fighter_render.js` separa el dibujo del luchador.
-- `src/game.js` concentra estado global, flujo de pantallas, rounds, temporizador por delta time, render del HUD, efectos y eventos de entrada.
+- `src/game.js` concentra estado global, flujo de pantallas, rounds, temporizador por delta time, render del HUD, fondos de arena, efectos y eventos de entrada.
 - `src/styles.css` resuelve menus, overlays y controles moviles; los controles tactiles siguen usando posiciones absolutas calibradas con `clamp()` y safe areas.
 - `tests/game.test.js` cubre reglas principales con mocks de DOM/canvas/audio, aunque no reemplaza pruebas reales en navegador.
 
@@ -516,8 +523,8 @@ Fortalezas actuales:
 - El nucleo de juego es completo: menu, ayuda, partida, pausa, rounds, temporizador y game over.
 - El combate ya usa hitboxes logicas, por lo que se puede balancear con mas precision.
 - La arquitectura esta separada en archivos por responsabilidad y sigue sin dependencias externas.
-- Las pruebas cubren reglas de combate, estados, temporizador, dificultad, arenas, estadisticas, combos y UI basica simulada.
-- Las pruebas ya cubren la decision de IA separada, la delegacion de render y el timer por delta time.
+- Las pruebas cubren reglas de combate, estados, temporizador, dificultad, arenas, estadisticas, combos, controles y UI basica simulada.
+- Las pruebas ya cubren la decision de IA separada, la delegacion de render, el timer por delta time, identidad visual y render de arenas.
 - El README y `AGENTS.md` documentan comandos, filosofia y smoke test manual.
 
 Riesgos actuales:
@@ -527,17 +534,18 @@ Riesgos actuales:
 - El ataque especial existe, pero podria sentirse poco distintivo si no tiene mas feedback audiovisual.
 - Las estadisticas locales existen, pero no hay forma visible de reiniciarlas desde la UI.
 - La IA es mas creible que antes, pero todavia puede sentirse repetitiva porque no tiene personalidades ni memoria.
-- `src/fighter.js` sigue concentrando combate y controles; nuevas mecanicas grandes deberian evitar volver a mezclar render o decision de IA en esa clase.
+- `src/fighter.js` sigue concentrando combate y controles; nuevas mecanicas grandes deberian evitar volver a mezclar render, fondos o decision de IA en esa clase.
 - Combos, cooldowns, hit-stun y timers visuales siguen usando frames; en equipos lentos pueden variar aunque el timer de round ya use delta time.
 - No hay persistencia de preferencias de dificultad o arena; cada carga vuelve a los valores por defecto del HTML.
 - La UI tactil funciona, pero sigue requiriendo validacion manual en varios tamaños de pantalla.
+- `drawBackground()` gano detalle visual y puede crecer demasiado si se agregan mas arenas sin disciplina.
 
 Siguiente enfoque recomendado:
 
 - Priorizar herramientas de desarrollo visibles solo bajo toggle, como hitboxes y estado IA.
-- Mejorar feedback audiovisual antes de sumar mas mecanicas.
-- Agregar modo entrenamiento para validar balance y combos rapidamente.
-- Luego ampliar variedad: personalidades de IA, arenas con detalles propios y mejores resultados post-partida.
+- Completar feedback audiovisual antes de sumar mas mecanicas de ataque.
+- Agregar modo entrenamiento para validar balance, hitboxes, combos y especial rapidamente.
+- Luego mejorar cierre de partida con resultado detallado, telemetria local y opciones de reset/persistencia.
 
 ## Sugerencias De Mejora
 
@@ -552,6 +560,7 @@ Estas sugerencias parten del estado actual del codigo y estan ordenadas por impa
 | Feedback del especial | Parcial | Ya existe halo azul en el golpe especial; faltan texto propio, particulas azules mas distintivas y sonido dedicado. | Hace que gastar energia completa se sienta como un evento importante. |
 | Reset de estadisticas | Pendiente | Agregar boton en menu para borrar `xkcdKombatStats` con confirmacion simple. | Cierra una necesidad visible del sistema de estadisticas actual. |
 | Persistir preferencias | Parcial | `Reducir movimiento` ya persiste; faltan dificultad y arena en `localStorage`. | Evita que el jugador repita configuracion en cada carga. |
+| Preview de arena | Pendiente | Mostrar una franja o mini-preview al cambiar el selector de arena. | Hace visible la eleccion antes de iniciar partida. |
 
 ### Mejoras De Jugabilidad
 
@@ -562,6 +571,7 @@ Estas sugerencias parten del estado actual del codigo y estan ordenadas por impa
 | Personalidades de IA | Pendiente | Agregar variantes `agresiva`, `defensiva` y `evasiva` independientes de dificultad. | Aumenta variedad sin cambiar controles. |
 | Mejor telemetria de combate local | Pendiente | Contar golpes lanzados, aciertos, bloqueos, combos y especiales por partida. | Ayuda a balancear y puede alimentar la pantalla de resultado. |
 | Ventana de combo visible opcional | Parcial | Ya existe pista `J...` / `K...`; falta hacerla opcional o convertirla en barra/pulso configurable. | Hace mas facil entender por que un combo salio o fallo. |
+| Practica del especial | Pendiente | En modo entrenamiento, permitir cargar energia o probar `L` sin pelear una ronda completa. | Hace mas facil aprender cuando conviene gastar la barra. |
 
 ### Mejoras Tecnicas
 
@@ -572,6 +582,7 @@ Estas sugerencias parten del estado actual del codigo y estan ordenadas por impa
 | Temporizador basado en delta time | Implementado parcial por alcance | Implementado para el round timer con `requestAnimationFrame(timestamp)`; cooldowns, combo window y timers visuales siguen por frames. | Hace la duracion del round mas estable cuando el frame rate no es exactamente 60 FPS. |
 | Fixtures de pruebas | Implementado | Implementados helpers locales para iniciar partida, cargar energia y avanzar frames. | Reduce duplicacion en `tests/game.test.js` a medida que crezcan los casos. |
 | Prueba smoke ligera en navegador | Implementado | Documentada como recorrido tecnico corto. | Cubre lo que Node no puede validar visualmente. |
+| Cuidar crecimiento de fondos | Pendiente | Si se agregan mas arenas, separar detalles de fondo en helpers pequenos o archivo cercano. | Evita que `drawBackground()` vuelva dificil de mantener `src/game.js`. |
 
 ### Mejoras De UX Y Accesibilidad
 
@@ -582,16 +593,18 @@ Estas sugerencias parten del estado actual del codigo y estan ordenadas por impa
 | Pausa mas informativa | Implementado | Implementado con controles clave, dificultad, arena, marcador, round y tiempo. | Convierte la pausa en una referencia rapida durante la partida. |
 | Ajuste de controles tactiles | Implementado | Implementado con zonas mas adaptables, `clamp()` y safe areas. | Reduce errores de input en movil. |
 | Opcion de reducir movimiento | Implementado | Implementado con preferencia persistente en `localStorage` para limitar shake, hit-stop y particulas. | Mejora comodidad y accesibilidad. |
+| Bloqueo alternativo en teclado | Implementado | Implementado `I` como bloqueo adicional junto a `S`, cerca de `J/K/L`. | Mejora ergonomia sin romper controles existentes. |
+| Claridad del especial | Implementado | UI y README explican que `L` requiere energia llena y consume la barra. | Reduce confusion sobre por que `L` a veces no dispara nada. |
 
 ### Recomendacion De Orden
 
 1. Depuracion visual opcional.
 2. Completar sonidos diferenciados y feedback del especial.
-3. Reset de estadisticas y persistencia de dificultad/arena.
-4. Modo entrenamiento.
+3. Reset de estadisticas, persistencia de dificultad/arena y preview de arena.
+4. Modo entrenamiento con practica del especial.
 5. Resultado detallado con telemetria local de combate.
 6. Personalidades de IA.
-7. Mantener IA/render separados cuando futuras mejoras toquen esas areas.
+7. Mantener IA/render/fondos separados cuando futuras mejoras toquen esas areas.
 
 ## Backlog
 
@@ -629,6 +642,8 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Mejoras tecnicas | Implementadas con IA/render separados, timer por delta time, fixtures de pruebas y smoke tecnico documentado. |
 | Layout del menu principal | Implementado con distribucion mas clara para selectores, ayuda, controles, reduccion de movimiento y estadisticas. |
 | Diferenciacion de personajes | Implementada con etiquetas `HUMANO`/`CPU`, acentos azules/rojos y detalles de banda, visor y antena. |
+| Bloqueo ergonomico | Implementado `I` como bloqueo alternativo junto a `S`. |
+| Claridad de especial | Documentado que `L` requiere energia llena y consume la barra. |
 
 ### Prioridad Alta
 
@@ -637,6 +652,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Depuracion visual opcional | Agregar un modo para dibujar hitboxes y puntos de impacto. | Acelera el desarrollo de combate sin afectar el modo normal. |
 | Completar sonidos diferenciados | Agregar sonidos propios para patada, bloqueo, combo, especial, round y victoria. | Mejora claridad audiovisual. |
 | Modo entrenamiento | Permitir probar golpes contra una CPU inmovil o con vida infinita. | Facilita ajustar controles, rangos y balance. |
+| Preview de arena | Mostrar una vista previa del fondo seleccionado en el menu. | Hace mas clara la seleccion antes de jugar. |
 
 ### Prioridad Media
 
@@ -647,6 +663,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Completar persistencia de preferencias | Guardar dificultad y arena seleccionadas entre sesiones. | Reduce friccion al volver al juego. |
 | Personalidades de IA | Agregar estilos agresivo, defensivo y balanceado ademas de dificultad. | Aumenta rejugabilidad y variedad del rival. |
 | Completar feedback del especial | Agregar texto, particulas y sonido propios al especial. | Hace que gastar energia se sienta mas satisfactorio. |
+| Telemetria local de combate | Contar golpes lanzados, aciertos, bloqueos, combos y especiales por partida. | Ayuda a balancear y alimenta resultados detallados. |
 
 ### Prioridad Baja
 
@@ -654,13 +671,15 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | --- | --- | --- |
 | Combos adicionales | Agregar variantes como `K, J`, ataque aereo o combo con especial. | Amplia profundidad sin rehacer el sistema. |
 | Balance avanzado | Ajustar energia, daño y cooldown por dificultad o arena. | Permite mayor control del ritmo de combate. |
+| Organizacion de fondos | Separar detalles de arenas si `drawBackground()` sigue creciendo. | Mantiene `src/game.js` legible. |
 
 ### Orden Recomendado De Implementacion
 
 1. Depuracion visual opcional.
 2. Completar sonidos diferenciados y feedback del especial.
-3. Modo entrenamiento.
-4. Completar pantalla de resultado detallada.
-5. Reinicio de estadisticas.
+3. Preview de arena y persistencia de preferencias.
+4. Modo entrenamiento.
+5. Completar pantalla de resultado detallada con telemetria.
+6. Reinicio de estadisticas.
 
 Este orden prioriza mejoras visibles para el jugador sin reescribir completamente la arquitectura actual.
