@@ -341,7 +341,7 @@ class Fighter {
         this.velX = attacker.facingRight ? 7 : -7;
         this.velY = -5;
         this.onGround = false;
-        triggerImpactFeedback(this.x, this.y - 55, impactDirection);
+        triggerImpactFeedback(this.x, this.y - 55, impactDirection, false, attacker.accentColor);
         playImpactSound(attacker.lastAttackType);
 
         if (!this.isPlayer1) this.aiDecisionTimer = 0;

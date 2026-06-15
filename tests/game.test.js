@@ -527,6 +527,17 @@ test('blocked hits keep health and create lighter impact feedback', () => {
     assert.equal(state.floatingTexts.length, 1);
 });
 
+test('normal impacts include attacker identity color', () => {
+    const { api } = loadGame();
+    const attacker = new api.Fighter(170, false);
+    const defender = new api.Fighter(100, true);
+
+    defender.takeHit(10, attacker);
+
+    const state = api.getState();
+    assert(state.impactParticles.some((particle) => particle.color === attacker.accentColor));
+});
+
 test('reduced motion limits shake hit-stop and impact particles', () => {
     const { api, context } = loadGame();
 
@@ -569,6 +580,8 @@ test('fighters expose distinct visual identities and render labels', () => {
     cpu.draw();
 
     const state = api.getState();
+    assert(state.textCalls.includes('P1'));
+    assert(state.textCalls.includes('AI'));
     assert(state.textCalls.includes('HUMANO'));
     assert(state.textCalls.includes('CPU'));
     assert(state.ctxCalls.includes('strokeRect'));

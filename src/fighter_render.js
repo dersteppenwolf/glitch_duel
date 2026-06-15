@@ -3,9 +3,8 @@ function drawFighter(fighter) {
     const baseX = fighter.x;
     const baseY = fighter.y;
     const accentColor = fighter.accentColor || (fighter.isPlayer1 ? '#1f6feb' : '#d22');
-    const label = fighter.labelKey ? t(fighter.labelKey) : (fighter.label || (fighter.isPlayer1 ? t('human') : t('cpu')));
 
-    drawFighterIdentityMarker(baseX, baseY, label, accentColor);
+    drawFighterIdentityMarker(fighter, baseX, baseY, accentColor);
 
     if (!fighter.facingRight) {
         ctx.scale(-1, 1);
@@ -184,19 +183,29 @@ function drawFighter(fighter) {
     ctx.restore();
 }
 
-function drawFighterIdentityMarker(baseX, baseY, label, accentColor) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.82)';
-    ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(baseX, baseY - 136, 38, 13, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+function drawFighterIdentityMarker(fighter, baseX, baseY, accentColor) {
+    const tag = fighter.isPlayer1 ? 'P1' : 'AI';
+    const label = fighter.labelKey ? t(fighter.labelKey) : (fighter.label || (fighter.isPlayer1 ? t('human') : t('cpu')));
+    const badgeX = baseX - 28;
+    const badgeY = baseY - 150;
 
-    ctx.font = 'bold 13px "Comic Sans MS"';
-    ctx.textAlign = 'center';
     ctx.fillStyle = accentColor;
-    ctx.fillText(label, baseX, baseY - 132);
+    ctx.fillRect(badgeX, badgeY, 56, 24);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(badgeX, badgeY, 56, 24);
+
+    ctx.font = 'bold 17px "Comic Sans MS"';
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#000';
+    ctx.strokeText(tag, baseX, baseY - 132);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(tag, baseX, baseY - 132);
+
+    ctx.font = 'bold 10px "Comic Sans MS"';
+    ctx.strokeText(label, baseX, baseY - 115);
+    ctx.fillText(label, baseX, baseY - 115);
 }
 
 function drawFighterFaceAndDetail(fighter, baseX, baseY, headY, accentColor) {

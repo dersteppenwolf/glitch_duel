@@ -121,9 +121,10 @@ Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de
 
 ### Visual Y Audio
 
-- Personajes diferenciados: humano con acento azul y banda; CPU con acento rojo, visor y antena.
+- Personajes diferenciados: humano con placa azul `P1` y banda; CPU con placa roja `AI`, visor y antena.
 - Barras de vida animadas de alto contraste con colores por umbral de dano.
 - Barras de energia de alto contraste con marca visual cuando el especial esta listo.
+- HUD e impactos asociados al color del personaje para leer quien ataca.
 - Feedback de combos con texto, halo/trail y pista de ventana.
 - Sacudida, hit-stop y particulas en impactos.
 - Fondos tematicos por arena.

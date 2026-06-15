@@ -450,19 +450,19 @@ function updateHealthAnimations() {
     });
 }
 
-function triggerImpactFeedback(x, y, direction, blocked = false) {
+function triggerImpactFeedback(x, y, direction, blocked = false, accentColor = null) {
     screenShake = reducedMotionEnabled ? 0 : Math.max(screenShake, blocked ? 4 : 10);
     hitStopFrames = reducedMotionEnabled ? 0 : Math.max(hitStopFrames, blocked ? 2 : 5);
 
     const count = reducedMotionEnabled ? (blocked ? 3 : 5) : (blocked ? 7 : 14);
-    const colors = blocked ? ['#33f', '#8af', '#fff'] : ['#c00', '#f90', '#fff'];
+    const colors = blocked ? ['#33f', '#8af', '#fff'] : [accentColor || '#c00', '#f90', '#fff'];
 
     for (let i = 0; i < count; i++) {
         const spread = -1.2 + Math.random() * 2.4;
         const speed = blocked ? 3 + Math.random() * 3 : 5 + Math.random() * 6;
         const vx = direction * speed;
         const vy = spread * speed;
-        const color = colors[Math.floor(Math.random() * colors.length)];
+        const color = !blocked && accentColor && i === 0 ? accentColor : colors[Math.floor(Math.random() * colors.length)];
         const type = i % 3 === 0 ? 'dot' : 'line';
 
         impactParticles.push(new ImpactParticle(x, y, vx, vy, color, type));
@@ -655,25 +655,25 @@ function drawRemoteMeetingDetails(arena) {
 function drawHealthBars() {
     if (!player1 || !player2) return;
 
-    drawHealthBar(50, 30, player1.health, player1.displayHealth, false);
-    drawHealthBar(WIDTH - 354, 30, player2.health, player2.displayHealth, true);
+    drawHealthBar(50, 30, player1.health, player1.displayHealth, false, player1.accentColor);
+    drawHealthBar(WIDTH - 354, 30, player2.health, player2.displayHealth, true, player2.accentColor);
 
     ctx.font = 'bold 20px "Comic Sans MS"';
     ctx.fillStyle = '#000';
     ctx.textAlign = 'left';
     ctx.fillText(`${t('human')}: ${player1.health}%`, 50, 23);
-    drawEnergyBar(52, 62, player1.energy, false);
+    drawEnergyBar(52, 62, player1.energy, false, player1.accentColor);
     ctx.fillStyle = '#000';
     ctx.textAlign = 'right';
     ctx.fillText(`${t('cpuAI')}: ${player2.health}%`, WIDTH - 50, 23);
-    drawEnergyBar(WIDTH - 252, 62, player2.energy, true);
+    drawEnergyBar(WIDTH - 252, 62, player2.energy, true, player2.accentColor);
     ctx.fillStyle = '#000';
 
     ctx.textAlign = 'center';
     ctx.fillText(`${t('round')} ${currentRound}  ${playerRounds}-${cpuRounds}  ${Math.ceil(roundTimeMs / 1000)}`, WIDTH / 2, 23);
 }
 
-function drawHealthBar(x, y, health, displayHealth, alignRight) {
+function drawHealthBar(x, y, health, displayHealth, alignRight, accentColor = '#000') {
     const width = 304;
     const height = 26;
     const inset = 3;
@@ -687,6 +687,9 @@ function drawHealthBar(x, y, health, displayHealth, alignRight) {
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 4;
     ctx.strokeRect(x, y, width, height);
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 3, y + 3, width - 6, height - 6);
 
     if (displayWidth > 0) {
         ctx.fillStyle = '#9ca3af';
@@ -715,7 +718,7 @@ function getHealthBarColor(health) {
     return '#22c55e';
 }
 
-function drawEnergyBar(x, y, energy, alignRight) {
+function drawEnergyBar(x, y, energy, alignRight, accentColor = '#000') {
     const width = 200;
     const height = 12;
     const fillWidth = Math.max(0, Math.min(width, energy * 2));
@@ -726,6 +729,9 @@ function drawEnergyBar(x, y, energy, alignRight) {
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 3;
     ctx.strokeRect(x, y, width, height);
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 2, y + 2, width - 4, height - 4);
 
     if (fillWidth > 0) {
         ctx.fillStyle = full ? '#ffd400' : '#00d5ff';
