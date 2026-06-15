@@ -336,7 +336,7 @@ class Fighter {
         ctx.moveTo(baseX, baseY - 48);
 
         if (this.state === 'punch') {
-            ctx.lineTo(baseX + 45, baseY - 48);
+            ctx.lineTo(baseX + 52, baseY - 48);
         } else if (this.state === 'kick') {
             ctx.quadraticCurveTo(baseX + 15, baseY - 35, baseX + 22, baseY - 20);
         } else if (this.state === 'block') {
@@ -347,6 +347,37 @@ class Fighter {
         }
 
         ctx.stroke();
+
+        if (this.state === 'punch') {
+            const fistX = baseX + 62;
+            const fistY = baseY - 48;
+
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(baseX + 22, fistY - 10);
+            ctx.lineTo(baseX + 48, fistY - 10);
+            ctx.moveTo(baseX + 16, fistY + 10);
+            ctx.lineTo(baseX + 42, fistY + 10);
+            ctx.stroke();
+
+            ctx.fillStyle = '#fff';
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.ellipse(fistX, fistY, 11, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(fistX - 3, fistY - 8);
+            ctx.lineTo(fistX - 3, fistY + 8);
+            ctx.moveTo(fistX + 3, fistY - 8);
+            ctx.lineTo(fistX + 3, fistY + 8);
+            ctx.stroke();
+        }
 
         if (this.state === 'kick') {
             const footX = baseX + 54;
