@@ -4,6 +4,44 @@ const WIDTH = 1000;
 const HEIGHT = 500;
 const GROUND_Y = 380;
 const MAX_DEVICE_PIXEL_RATIO = 2;
+const DIFFICULTIES = {
+    easy: {
+        decisionMin: 22,
+        decisionSpread: 14,
+        moveSpeed: 3.5,
+        approachLong: 0.65,
+        approachMid: 0.45,
+        retreatMid: 0.75,
+        jumpMid: 0.88,
+        punchClose: 0.25,
+        kickClose: 0.52,
+        blockClose: 0.78
+    },
+    normal: {
+        decisionMin: 12,
+        decisionSpread: 10,
+        moveSpeed: 4.5,
+        approachLong: 0.85,
+        approachMid: 0.60,
+        retreatMid: 0.80,
+        jumpMid: 0.95,
+        punchClose: 0.40,
+        kickClose: 0.75,
+        blockClose: 0.90
+    },
+    hard: {
+        decisionMin: 7,
+        decisionSpread: 6,
+        moveSpeed: 5.2,
+        approachLong: 0.95,
+        approachMid: 0.72,
+        retreatMid: 0.86,
+        jumpMid: 0.93,
+        punchClose: 0.52,
+        kickClose: 0.88,
+        blockClose: 0.96
+    }
+};
 
 let audioCtx;
 
@@ -193,32 +231,33 @@ class Fighter {
 
     updateAI(opponent) {
         const dist = Math.abs(this.x - opponent.x);
+        const difficulty = getDifficultyConfig();
         this.aiDecisionTimer--;
 
         if (this.aiDecisionTimer <= 0) {
-            this.aiDecisionTimer = 12 + Math.floor(Math.random() * 10);
+            this.aiDecisionTimer = difficulty.decisionMin + Math.floor(Math.random() * difficulty.decisionSpread);
             const rand = Math.random();
 
             if (dist > 250) {
-                this.aiAction = rand < 0.85 ? 'approach' : 'idle';
+                this.aiAction = rand < difficulty.approachLong ? 'approach' : 'idle';
             } else if (dist > 110) {
-                if (rand < 0.60) this.aiAction = 'approach';
-                else if (rand < 0.80) this.aiAction = 'retreat';
-                else if (rand < 0.95 && this.onGround) this.aiAction = 'jump';
+                if (rand < difficulty.approachMid) this.aiAction = 'approach';
+                else if (rand < difficulty.retreatMid) this.aiAction = 'retreat';
+                else if (rand < difficulty.jumpMid && this.onGround) this.aiAction = 'jump';
                 else this.aiAction = 'block';
             } else {
-                if (rand < 0.40) this.aiAction = 'punch';
-                else if (rand < 0.75) this.aiAction = 'kick';
-                else if (rand < 0.90) this.aiAction = 'block';
+                if (rand < difficulty.punchClose) this.aiAction = 'punch';
+                else if (rand < difficulty.kickClose) this.aiAction = 'kick';
+                else if (rand < difficulty.blockClose) this.aiAction = 'block';
                 else this.aiAction = 'retreat';
             }
         }
 
         if (this.aiAction === 'approach') {
-            this.velX = this.x < opponent.x ? 4.5 : -4.5;
+            this.velX = this.x < opponent.x ? difficulty.moveSpeed : -difficulty.moveSpeed;
             if (this.onGround && this.attackCooldown === 0) this.state = 'walk';
         } else if (this.aiAction === 'retreat') {
-            this.velX = this.x < opponent.x ? -4.5 : 4.5;
+            this.velX = this.x < opponent.x ? -difficulty.moveSpeed : difficulty.moveSpeed;
             if (this.onGround && this.attackCooldown === 0) this.state = 'walk';
         } else if (this.aiAction === 'jump' && this.onGround) {
             this.velY = -18;
@@ -443,6 +482,15 @@ let gameState = 'menu';
 let mobileControlsEnabled = false;
 let screenShake = 0;
 let hitStopFrames = 0;
+let selectedDifficulty = 'normal';
+
+function getDifficultyConfig() {
+    return DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.normal;
+}
+
+function setDifficulty(value) {
+    selectedDifficulty = DIFFICULTIES[value] ? value : 'normal';
+}
 
 function resizeCanvas() {
     const aspectRatio = WIDTH / HEIGHT;
@@ -744,6 +792,9 @@ function setupMainMenu() {
     document.getElementById('start-button').addEventListener('click', initGame);
     document.getElementById('help-button').addEventListener('click', showHelpScreen);
     document.getElementById('back-button').addEventListener('click', hideHelpScreen);
+    document.getElementById('difficulty-select').addEventListener('change', (e) => {
+        setDifficulty(e.target.value);
+    });
 }
 
 window.addEventListener('load', () => {

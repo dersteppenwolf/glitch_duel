@@ -25,6 +25,7 @@ Estado actual:
 - Juego web estatico sin dependencias externas.
 - Menu principal implementado.
 - Pantalla de ayuda accesible desde el menu principal.
+- Seleccion de dificultad `FACIL`, `NORMAL` y `DIFICIL` desde el menu principal.
 - Combate humano contra CPU implementado.
 - Pantalla de fin de juego con opciones `REINICIAR` y `MENU`.
 - Controles de teclado y controles tactiles durante la partida.
@@ -137,6 +138,7 @@ Validar en navegador antes de considerar listo un cambio visual o de jugabilidad
 - El boton `INICIAR JUEGO` debe comenzar la partida.
 - El boton `AYUDA` debe mostrar controles, objetivo y consejos sin iniciar partida.
 - El boton `VOLVER` debe regresar desde ayuda al menu principal.
+- Cambiar la dificultad en el menu debe afectar el comportamiento de la CPU.
 - El canvas debe cargar correctamente.
 - El canvas debe mantenerse proporcionado al redimensionar la ventana.
 - Deben aparecer dos personajes stickman.
@@ -207,13 +209,14 @@ En dispositivos tactiles se muestran botones en pantalla durante la partida para
 2. El menu muestra el titulo, una descripcion corta, el resumen de controles y el acceso `AYUDA`.
 3. El boton `AYUDA` muestra objetivo, controles y consejos sin iniciar la partida.
 4. El boton `VOLVER` regresa al menu principal.
-5. El boton `INICIAR JUEGO` crea una nueva partida y oculta el menu.
-6. Durante la partida, el jugador controla al luchador humano y la CPU controla al rival.
-7. Durante la partida, `P`, `Esc` o `PAUSA` detienen la simulacion y muestran la pantalla de pausa.
-8. El boton `RESUMIR` continua la partida desde pausa.
-9. Cuando un luchador llega a `0%` de vida, aparece la pantalla de fin de juego.
-10. El boton `REINICIAR` empieza una partida nueva inmediatamente.
-11. El boton `MENU` vuelve al menu principal.
+5. El selector de dificultad ajusta ritmo, velocidad y agresividad de la CPU.
+6. El boton `INICIAR JUEGO` crea una nueva partida y oculta el menu.
+7. Durante la partida, el jugador controla al luchador humano y la CPU controla al rival.
+8. Durante la partida, `P`, `Esc` o `PAUSA` detienen la simulacion y muestran la pantalla de pausa.
+9. El boton `RESUMIR` continua la partida desde pausa.
+10. Cuando un luchador llega a `0%` de vida, aparece la pantalla de fin de juego.
+11. El boton `REINICIAR` empieza una partida nueva inmediatamente.
+12. El boton `MENU` vuelve al menu principal.
 
 ### Estados Del Juego
 
@@ -254,6 +257,7 @@ Actualmente cubren:
 - Transicion de estado entre `menu` y `playing`.
 - Apertura y cierre de la pantalla de ayuda desde el menu.
 - Pausa, detencion de simulacion y reanudacion de partida.
+- Seleccion de dificultad y cambio de parametros de movimiento de la CPU.
 
 Limitaciones de las pruebas:
 
@@ -275,6 +279,7 @@ Limitaciones de las pruebas:
 
 - Menu principal.
 - Pantalla de ayuda con objetivo, controles y consejos.
+- Seleccion de dificultad para la CPU.
 - Inicio de partida desde boton.
 - Pausa con `P`, `Esc`, boton `PAUSA` y boton `RESUMIR`.
 - Regreso al menu desde pantalla de fin de juego.
@@ -301,7 +306,6 @@ Limitaciones de las pruebas:
 
 - La deteccion de golpes usa distancia simple, no hitboxes detalladas.
 - La IA es probabilistica y no aprende del jugador.
-- No hay seleccion de dificultad.
 - Las pruebas unitarias no reemplazan validacion visual en navegador.
 
 ## Backlog
@@ -315,6 +319,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Menu principal | Implementado con titulo, descripcion, controles y boton `INICIAR JUEGO`. |
 | Pantalla de ayuda | Implementada con objetivo, controles, consejos y boton `VOLVER`. |
 | Pausa | Implementada con `P`, `Esc`, boton `PAUSA`, overlay y boton `RESUMIR`. |
+| Seleccion de dificultad | Implementada con niveles `FACIL`, `NORMAL` y `DIFICIL` que ajustan la IA. |
 | Navegacion post-partida | Implementados botones `REINICIAR` y `MENU` en la pantalla de fin de juego. |
 | Feedback de golpes | Implementado con shake del canvas, hit-stop breve y particulas/lineas de impacto. |
 | Mejor escalado del canvas | Implementado con resize responsive y backing store ajustado por `devicePixelRatio`. |
@@ -323,7 +328,6 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 
 | Mejora | Objetivo | Beneficio |
 | --- | --- | --- |
-| Seleccion de dificultad | Configurar niveles facil, normal y dificil para la CPU. | Permite adaptar el reto a distintos jugadores. |
 | Ajuste de balance | Revisar daño, rango, cooldown y bloqueo para punetazo y patada. | Hace que el combate se sienta mas justo y expresivo. |
 
 ### Prioridad Media
@@ -353,11 +357,10 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 
 ### Orden Recomendado De Implementacion
 
-1. Seleccion de dificultad.
-2. Ajuste de balance.
-3. Hitboxes reales.
-4. Indicador de estado.
-5. Sistema de rondas.
-6. Temporizador.
+1. Ajuste de balance.
+2. Hitboxes reales.
+3. Indicador de estado.
+4. Sistema de rondas.
+5. Temporizador.
 
 Este orden prioriza mejoras visibles para el jugador sin reescribir completamente la arquitectura actual.

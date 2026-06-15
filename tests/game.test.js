@@ -127,6 +127,7 @@ function loadGame() {
             pauseGame,
             resumeGame,
             togglePause,
+            setDifficulty,
             update,
             triggerImpactFeedback,
             getState: () => ({
@@ -135,6 +136,7 @@ function loadGame() {
                 floatingTexts,
                 impactParticles,
                 gameState,
+                selectedDifficulty,
                 screenShake,
                 hitStopFrames,
                 canvasWidth: canvas.width,
@@ -269,4 +271,22 @@ test('pause stops simulation and resume returns to playing', () => {
     assert.equal(resumedState.gameState, 'playing');
     assert.equal(resumedState.pauseScreenDisplay, 'none');
     assert.equal(resumedState.pauseButtonDisplay, 'block');
+});
+
+test('difficulty selection changes CPU movement tuning', () => {
+    const { api } = loadGame();
+    const cpu = new api.Fighter(200, false);
+    const opponent = new api.Fighter(500, true);
+
+    api.setDifficulty('hard');
+    cpu.aiAction = 'approach';
+    cpu.aiDecisionTimer = 99;
+    cpu.updateAI(opponent);
+
+    assert.equal(api.getState().selectedDifficulty, 'hard');
+    assert.equal(cpu.velX, 5.2);
+
+    api.setDifficulty('invalid');
+
+    assert.equal(api.getState().selectedDifficulty, 'normal');
 });
