@@ -2,9 +2,9 @@
 
 Juego web arcade de pelea estilo stickman/xkcd, hecho con HTML, CSS y JavaScript puro sobre Canvas. El jugador humano pelea contra una CPU en rondas al mejor de 3, con combos, bloqueo, ataque especial, arenas tematicas, controles tactiles e interfaz en espanol/ingles.
 
-Jugar en linea: https://dersteppenwolf.github.io/xkcd_kombat/
+Jugar en linea: [https://dersteppenwolf.github.io/xkcd_kombat/](https://dersteppenwolf.github.io/xkcd_kombat/)
 
-Codigo fuente: https://github.com/dersteppenwolf/xkcd_kombat
+Codigo fuente: [https://github.com/dersteppenwolf/xkcd_kombat](https://github.com/dersteppenwolf/xkcd_kombat)
 
 ## Resumen
 
@@ -17,6 +17,7 @@ Codigo fuente: https://github.com/dersteppenwolf/xkcd_kombat
 | URL publica | `https://dersteppenwolf.github.io/xkcd_kombat/`. |
 | Deploy | GitHub Pages con Actions publicando `src/`. |
 | Tests | `node --test tests\game.test.js`. |
+| Estado | Jugable, publicado y con backlog priorizado. |
 
 ## Tabla De Contenido
 
@@ -48,19 +49,14 @@ Codigo fuente: https://github.com/dersteppenwolf/xkcd_kombat
 - [Pruebas](#pruebas)
 - [Solucion De Problemas](#solucion-de-problemas)
 - [Decisiones Tecnicas](#decisiones-tecnicas)
-- [No Implementado Todavia](#no-implementado-todavia)
-- [Sugerencias De Mejora](#sugerencias-de-mejora)
-- [Sugerencias: Atractivo Visual Y Arcade](#atractivo-visual-y-arcade)
-- [Sugerencias: Backlog General](#backlog-general)
+- [Backlog Priorizado](#backlog-priorizado)
 - [Backlog Completado](#backlog-completado)
 
 ## Inicio Rapido
 
 Para jugar sin instalar nada, abrir la version publicada:
 
-```text
-https://dersteppenwolf.github.io/xkcd_kombat/
-```
+[https://dersteppenwolf.github.io/xkcd_kombat/](https://dersteppenwolf.github.io/xkcd_kombat/)
 
 Para ejecutar localmente, usar servidor estatico desde la raiz del proyecto.
 
@@ -431,48 +427,36 @@ Limitaciones de las pruebas:
 - Actualizar `Readme.md` cuando cambien comandos, controles, estados, pruebas o funcionalidades.
 - Usar ExecPlans en `plans/` para cambios sustanciales.
 
-## No Implementado Todavia
+## Backlog Priorizado
 
-- Modo entrenamiento.
-- Preview de arena en menu.
-- Reset visible de estadisticas.
-- Persistencia de dificultad y arena.
-- Resultado detallado con telemetria de combate.
-- Personalidades de IA.
-- Feedback visual mas fuerte para el especial.
-- Modo de depuracion visual de hitboxes/estado IA.
+Priorizacion orientada a atraer y retener usuarios: primero mejoras visibles en los primeros segundos, luego motivacion para rejugar y finalmente profundidad o mantenimiento.
 
-## Sugerencias De Mejora
+Siguiente mejora recomendada: `Preview de arena en menu`, porque aumenta el atractivo visual del primer contacto sin tocar reglas de combate ni balance.
 
-### Atractivo Visual Y Arcade
-
-Estas ideas buscan que el juego se sienta mas pulido y llamativo sin cambiar necesariamente el balance:
-
-- Intro `VS` antes de cada partida con `P1`, `AI`, dificultad y arena seleccionada.
-- Preview de arena en el menu con miniatura, descripcion corta y chiste tecnico por arena.
-- Indicador de especial listo sobre el personaje, ademas de la barra de energia.
-- Ataque especial mas espectacular con flash, rastro grande, texto `SPECIAL!` y particulas unicas.
-- Pantalla final enriquecida con marcador, dificultad, arena, racha y causa humoristica de victoria/derrota.
-- Ayuda mas visual con diagrama de teclado, botones moviles y combos con flechas.
-- Animaciones de HUD: vida baja parpadeante, marcador de rounds iluminado y energia llena pulsante.
-
-### Backlog General
-
-| Prioridad | Mejora | Motivo |
-| --- | --- | --- |
-| Alta | Depuracion visual opcional | Acelera ajuste de hitboxes, combos y agacharse. |
-| Alta | Feedback visual del especial | Hace que gastar energia llena se sienta importante. |
-| Alta | Preview de arena | Permite ver la seleccion antes de iniciar partida. |
-| Alta | Intro VS arcade | Da contexto y anticipacion antes de cada combate. |
-| Alta | Modo entrenamiento | Facilita practicar rangos, combos y especial. |
-| Media | Reset de estadisticas | Da control sobre datos locales. |
-| Media | Persistir dificultad/arena | Reduce friccion al volver al juego. |
-| Media | Resultado detallado | Da mejor cierre arcade y muestra progreso. |
-| Media | Telemetria local de combate | Ayuda a balancear y alimentar resultados. |
-| Media | Personalidades de IA | Aumenta variedad sin cambiar controles. |
-| Baja | Combos adicionales | Amplia profundidad sin rehacer el sistema. |
-| Baja | Balance avanzado | Ajustes finos por dificultad o arena. |
-| Baja | Organizacion de fondos | Separar detalles si `drawBackground()` sigue creciendo. |
+| Prioridad | Mejora | Motivo | Tipo |
+| --- | --- | --- | --- |
+| Alta | Preview de arena en menu | Permite ver la seleccion antes de iniciar partida y hace el menu mas atractivo. | UX / visual |
+| Alta | Intro `VS` arcade | Da contexto y anticipacion antes de cada combate con `P1`, `AI`, dificultad y arena. | Presentacion |
+| Alta | Feedback visual mas fuerte para el especial | Hace que gastar energia llena se sienta importante con flash, rastro y texto `SPECIAL!`. | Visual / combate |
+| Alta | Indicador de especial listo sobre el personaje | Evita que el jugador tenga que mirar solo el HUD y aumenta la emocion de usar `L`. | Visual / UX |
+| Alta | Pantalla final enriquecida | Muestra marcador, dificultad, arena, racha, medalla y frase humoristica para dar mejor cierre. | UX / progresion |
+| Alta | Trailer GIF o captura animada en README | Comunica el atractivo del juego antes de abrirlo y mejora la pagina del repositorio. | Documentacion / marketing |
+| Alta | Modo entrenamiento | Facilita practicar rangos, combos, bloqueo y especial sin presion del timer. | Gameplay |
+| Alta | Depuracion visual opcional | Acelera ajuste de hitboxes, estados, cooldowns y decisiones de IA. | Herramienta dev |
+| Media | Misiones rapidas diarias/locales | Propone retos como ganar sin especial, conectar 3 combos o bloquear 5 golpes. | Retencion |
+| Media | Logros locales | Da objetivos persistentes sin servidor: primera victoria, rey del bloqueo, exterminador de bugs. | Progresion |
+| Media | Selector de tema visual del HUD | Permite elegir estilo comic, terminal o cuaderno sin alterar gameplay. | Personalizacion |
+| Media | Persistir dificultad y arena | Reduce friccion al volver al juego y conserva preferencias habituales. | Persistencia |
+| Media | Reset visible de estadisticas | Da control sobre datos locales sin depender de limpiar `localStorage`. | UX / datos |
+| Media | Personalidades de IA | Aumenta variedad sin cambiar controles: agresiva, defensiva, saltarina o aleatoria. | Gameplay / IA |
+| Media | Ayuda mas visual | Explica teclado, tactil y combos con diagramas en vez de solo texto. | Accesibilidad |
+| Media | Animaciones de HUD | Refuerza estados importantes: vida baja, round ganado y energia llena. | Visual |
+| Media | Telemetria local de combate | Ayuda a balancear con datos de combos, bloqueos, especiales y tiempos. | Balance |
+| Baja | Nuevas frases de impacto y medallas | Amplia humor y personalidad con bajo riesgo tecnico. | Contenido |
+| Baja | Mas arenas visuales | Aumenta variedad cosmetica sin tocar balance ni hitboxes. | Contenido / visual |
+| Baja | Combos adicionales | Amplia profundidad sin rehacer el sistema base de combate. | Gameplay |
+| Baja | Balance avanzado | Ajustes finos por dificultad, ataque o estilo de CPU. | Balance |
+| Baja | Organizacion de fondos | Separar detalles de arenas si `drawBackground()` sigue creciendo. | Mantenimiento |
 
 ## Backlog Completado
 
