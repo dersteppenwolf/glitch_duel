@@ -109,9 +109,36 @@ canvas {
 button:focus-visible,
 select:focus-visible,
 input:focus-visible,
+.github-link:focus-visible,
 .btn:focus-visible {
     outline: 4px solid #ffcc00;
     outline-offset: 3px;
+}
+
+.github-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 7px 12px;
+    border: 3px solid #000;
+    background: #fff;
+    color: #000;
+    font-size: 15px;
+    font-weight: bold;
+    text-decoration: none;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.25);
+}
+
+.github-link:hover {
+    background: #000;
+    color: #fff;
+}
+
+.github-link svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
 }
 
 #help-screen {

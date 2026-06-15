@@ -2,6 +2,8 @@
 
 Juego web arcade de pelea estilo stickman/xkcd, hecho con HTML, CSS y JavaScript puro sobre Canvas. El jugador humano pelea contra una CPU en rondas al mejor de 3, con combos, bloqueo, ataque especial, arenas tematicas, controles tactiles e interfaz en espanol/ingles.
 
+Jugar en linea: https://dersteppenwolf.github.io/xkcd_kombat/
+
 ## Tabla De Contenido
 
 - [Inicio Rapido](#inicio-rapido)
