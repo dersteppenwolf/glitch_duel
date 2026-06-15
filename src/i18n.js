@@ -76,7 +76,11 @@ const I18N = {
         arenaCafeteria: 'CAFETERIA',
         arenaLab: 'LABORATORIO',
         arenaMeeting: 'REUNION PRESENCIAL',
-        arenaRemoteMeeting: 'REUNION REMOTA'
+        arenaRemoteMeeting: 'REUNION REMOTA',
+        arenaTerminal: 'TERMINAL',
+        arenaMathClass: 'CLASE DE MATEMATICAS',
+        arenaServerDown: 'SERVIDOR CAIDO',
+        arenaGeekConvention: 'CONVENCION GEEK'
     },
     en: {
         htmlLang: 'en',
@@ -151,7 +155,11 @@ const I18N = {
         arenaCafeteria: 'CAFETERIA',
         arenaLab: 'LAB',
         arenaMeeting: 'IN-PERSON MEETING',
-        arenaRemoteMeeting: 'REMOTE MEETING'
+        arenaRemoteMeeting: 'REMOTE MEETING',
+        arenaTerminal: 'TERMINAL',
+        arenaMathClass: 'MATH CLASS',
+        arenaServerDown: 'SERVER DOWN',
+        arenaGeekConvention: 'GEEK CONVENTION'
     }
 };
 

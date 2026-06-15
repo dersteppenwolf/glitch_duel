@@ -723,6 +723,22 @@ test('arena selection supports themed arenas and falls back to notebook', () => 
     assert.equal(api.getState().selectedArena, 'remoteMeeting');
     assert.equal(api.getArenaLabel(), 'REUNION REMOTA');
 
+    api.setArena('terminal');
+    assert.equal(api.getState().selectedArena, 'terminal');
+    assert.equal(api.getArenaLabel(), 'TERMINAL');
+
+    api.setArena('mathClass');
+    assert.equal(api.getState().selectedArena, 'mathClass');
+    assert.equal(api.getArenaLabel(), 'CLASE DE MATEMATICAS');
+
+    api.setArena('serverDown');
+    assert.equal(api.getState().selectedArena, 'serverDown');
+    assert.equal(api.getArenaLabel(), 'SERVIDOR CAIDO');
+
+    api.setArena('geekConvention');
+    assert.equal(api.getState().selectedArena, 'geekConvention');
+    assert.equal(api.getArenaLabel(), 'CONVENCION GEEK');
+
     api.setArena('missing');
     assert.equal(api.getState().selectedArena, 'notebook');
     assert.equal(api.getArenaLabel(), 'CUADERNO');
@@ -737,6 +753,14 @@ test('new arena backgrounds render themed canvas primitives', () => {
     api.drawBackground();
     api.setArena('remoteMeeting');
     api.drawBackground();
+    api.setArena('terminal');
+    api.drawBackground();
+    api.setArena('mathClass');
+    api.drawBackground();
+    api.setArena('serverDown');
+    api.drawBackground();
+    api.setArena('geekConvention');
+    api.drawBackground();
 
     const state = api.getState();
     assert(state.ctxCalls.includes('strokeRect'));
@@ -744,6 +768,10 @@ test('new arena backgrounds render themed canvas primitives', () => {
     assert(state.textCalls.includes('COFFEE'));
     assert(state.textCalls.includes('THIS COULD BE AN EMAIL'));
     assert(state.textCalls.includes("YOU'RE MUTED"));
+    assert(state.textCalls.includes('> ./kombat --no-mercy'));
+    assert(state.textCalls.includes('f(punch) = pain'));
+    assert(state.textCalls.includes('SERVER DOWN'));
+    assert(state.textCalls.includes('BOOTH 404'));
 });
 
 test('local stats track wins, losses, and best streak', () => {
@@ -839,6 +867,24 @@ test('round system advances rounds and ends match at two wins', () => {
     state = api.getState();
     assert.equal(state.playerRounds, 2);
     assert.equal(state.gameState, 'gameOver');
+    assert.equal(state.player1.state, 'victory');
+    assert.equal(state.player2.state, 'defeat');
+});
+
+test('finish poses render victory and defeat labels', () => {
+    const { api } = loadGame();
+    const winner = new api.Fighter(120, true);
+    const loser = new api.Fighter(260, false);
+
+    winner.state = 'victory';
+    loser.state = 'defeat';
+
+    winner.draw();
+    loser.draw();
+
+    const state = api.getState();
+    assert(state.textCalls.includes('WIN'));
+    assert(state.textCalls.includes('404'));
 });
 
 test('round timer awards round to fighter with more health', () => {

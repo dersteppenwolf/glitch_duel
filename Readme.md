@@ -87,6 +87,10 @@ No todos los textos decorativos de arenas o chistes tecnicos se traducen; alguno
 | LABORATORIO / LAB | Ciencia, formulas y paneles. |
 | REUNION PRESENCIAL / IN-PERSON MEETING | Oficina, proyector y post-its. |
 | REUNION REMOTA / REMOTE MEETING | Videollamada, chat, mute y lag. |
+| TERMINAL / TERMINAL | Consola, procesos y errores. |
+| CLASE DE MATEMATICAS / MATH CLASS | Pizarra, formulas y teoremas absurdos. |
+| SERVIDOR CAIDO / SERVER DOWN | Rack roto, errores 500 y reintentos. |
+| CONVENCION GEEK / GEEK CONVENTION | Stands, stickers y cola infinita. |
 
 Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de victoria.
 
@@ -125,6 +129,7 @@ Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de
 - Barras de vida animadas de alto contraste con colores por umbral de dano.
 - Barras de energia de alto contraste con marca visual cuando el especial esta listo.
 - HUD e impactos asociados al color del personaje para leer quien ataca.
+- Poses de victoria y derrota al cerrar rounds o partidas.
 - Feedback de combos con texto, halo/trail y pista de ventana.
 - Sacudida, hit-stop y particulas en impactos.
 - Fondos tematicos por arena.

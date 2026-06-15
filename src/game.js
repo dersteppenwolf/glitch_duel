@@ -377,6 +377,7 @@ function finishRound(playerWon) {
     else if (playerWon === false) cpuRounds++;
 
     document.getElementById('pause-screen').style.display = 'none';
+    setFinishPoses(playerWon);
 
     if (playerRounds >= ROUNDS_TO_WIN || cpuRounds >= ROUNDS_TO_WIN) {
         gameState = 'gameOver';
@@ -396,6 +397,22 @@ function finishRound(playerWon) {
         currentRound++;
         startRound();
     }, 1400);
+}
+
+function setFinishPoses(playerWon) {
+    if (playerWon === null || !player1 || !player2) return;
+
+    const winner = playerWon ? player1 : player2;
+    const loser = playerWon ? player2 : player1;
+
+    winner.state = 'victory';
+    winner.velX = 0;
+    winner.velY = 0;
+    winner.onGround = true;
+    loser.state = 'defeat';
+    loser.velX = 0;
+    loser.velY = 0;
+    loser.onGround = true;
 }
 
 function updateRoundTimer(deltaMs = 1000 / 60) {
@@ -506,6 +523,10 @@ function drawArenaDetails(arenaKey, arena) {
     else if (arenaKey === 'lab') drawLabDetails(arena);
     else if (arenaKey === 'meeting') drawMeetingDetails(arena);
     else if (arenaKey === 'remoteMeeting') drawRemoteMeetingDetails(arena);
+    else if (arenaKey === 'terminal') drawTerminalDetails(arena);
+    else if (arenaKey === 'mathClass') drawMathClassDetails(arena);
+    else if (arenaKey === 'serverDown') drawServerDownDetails(arena);
+    else if (arenaKey === 'geekConvention') drawGeekConventionDetails(arena);
     else drawNotebookDetails(arena);
 
     ctx.restore();
@@ -650,6 +671,82 @@ function drawRemoteMeetingDetails(arena) {
     ctx.fillText("YOU'RE MUTED", 730, 238);
     ctx.fillText('CAN YOU SEE IT?', 730, 270);
     ctx.fillText('RECONNECTING', 730, 292);
+}
+
+function drawTerminalDetails(arena) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.fillRect(86, 72, 828, 230);
+    ctx.strokeStyle = arena.ground;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(86, 72, 828, 230);
+
+    ctx.fillStyle = '#86efac';
+    ctx.font = 'bold 17px "Comic Sans MS"';
+    ctx.fillText('> ./kombat --no-mercy', 120, 112);
+    ctx.fillText('> cpu_process: RUNNING', 120, 152);
+    ctx.fillText('> human_input: mashing J,K,L', 120, 192);
+    ctx.fillText('SEGFAULT? not today.', 590, 252);
+}
+
+function drawMathClassDetails(arena) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.fillRect(105, 72, 790, 210);
+    ctx.strokeStyle = arena.ground;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(105, 72, 790, 210);
+
+    ctx.fillStyle = arena.ground;
+    ctx.font = 'bold 21px "Comic Sans MS"';
+    ctx.fillText('f(punch) = pain', 145, 126);
+    ctx.fillText('CPU != friend', 560, 128);
+    ctx.font = '18px "Comic Sans MS"';
+    ctx.fillText('lim combo -> K.O.', 190, 190);
+    ctx.fillText('xkcd theorem: stickmen win', 520, 220);
+}
+
+function drawServerDownDetails(arena) {
+    ctx.fillStyle = 'rgba(17, 24, 39, 0.82)';
+    ctx.fillRect(90, 76, 240, 210);
+    ctx.fillRect(670, 76, 240, 210);
+    ctx.strokeStyle = arena.ground;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(90, 76, 240, 210);
+    ctx.strokeRect(670, 76, 240, 210);
+
+    ctx.fillStyle = '#fecaca';
+    ctx.font = 'bold 18px "Comic Sans MS"';
+    ctx.fillText('SERVER DOWN', 126, 122);
+    ctx.fillText('500', 760, 122);
+    ctx.font = '15px "Comic Sans MS"';
+    ctx.fillText('retrying...', 130, 170);
+    ctx.fillText('coffee required', 718, 172);
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.42)';
+    ctx.fillRect(420, 98, 160, 120);
+}
+
+function drawGeekConventionDetails(arena) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+    ctx.fillRect(135, 92, 250, 126);
+    ctx.fillRect(620, 92, 245, 126);
+    ctx.strokeStyle = arena.ground;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(135, 92, 250, 126);
+    ctx.strokeRect(620, 92, 245, 126);
+
+    ctx.fillStyle = arena.ground;
+    ctx.font = 'bold 17px "Comic Sans MS"';
+    ctx.fillText('BOOTH 404', 172, 132);
+    ctx.fillText('COSPLAY: BUG', 648, 132);
+    ctx.font = '15px "Comic Sans MS"';
+    ctx.fillText('free stickers', 174, 172);
+    ctx.fillText('queue overflow', 650, 172);
+
+    for (let x = 240; x <= 760; x += 130) {
+        ctx.fillStyle = 'rgba(154, 52, 18, 0.26)';
+        ctx.fillRect(x, 250, 46, 58);
+        ctx.strokeStyle = arena.ground;
+        ctx.strokeRect(x, 250, 46, 58);
+    }
 }
 
 function drawHealthBars() {

@@ -96,5 +96,33 @@ const ARENAS = {
         background: '#dbeafe',
         ground: '#1d4ed8',
         accent: 'rgba(29, 78, 216, 0.18)'
+    },
+    terminal: {
+        label: 'TERMINAL',
+        labelKey: 'arenaTerminal',
+        background: '#07130c',
+        ground: '#22c55e',
+        accent: 'rgba(34, 197, 94, 0.24)'
+    },
+    mathClass: {
+        label: 'CLASE DE MATEMATICAS',
+        labelKey: 'arenaMathClass',
+        background: '#eef7e5',
+        ground: '#365314',
+        accent: 'rgba(54, 83, 20, 0.16)'
+    },
+    serverDown: {
+        label: 'SERVIDOR CAIDO',
+        labelKey: 'arenaServerDown',
+        background: '#1f2937',
+        ground: '#ef4444',
+        accent: 'rgba(239, 68, 68, 0.22)'
+    },
+    geekConvention: {
+        label: 'CONVENCION GEEK',
+        labelKey: 'arenaGeekConvention',
+        background: '#fff7ed',
+        ground: '#9a3412',
+        accent: 'rgba(154, 52, 18, 0.18)'
     }
 };
