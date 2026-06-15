@@ -72,6 +72,13 @@ canvas {
     font-weight: bold;
 }
 
+.menu-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
 .menu-actions button,
 #game-over button {
     padding: 12px 30px;
@@ -81,6 +88,41 @@ canvas {
     cursor: pointer;
     background: #fff;
     border: 3px solid #000;
+}
+
+#help-screen {
+    display: none;
+}
+
+.help-card {
+    max-height: calc(100vh - 32px);
+    overflow: auto;
+}
+
+.help-section {
+    margin-top: 18px;
+    text-align: left;
+}
+
+.help-section h2 {
+    margin: 0 0 8px;
+    font-size: 20px;
+    text-align: center;
+}
+
+.help-section p {
+    margin: 0;
+    max-width: none;
+}
+
+.help-section ul {
+    margin: 0;
+    padding-left: 22px;
+    font-weight: bold;
+}
+
+.help-section li + li {
+    margin-top: 6px;
 }
 
 .menu-actions button:hover,

@@ -476,6 +476,7 @@ function initGame() {
     gameState = 'playing';
     document.getElementById('game-over').style.display = 'none';
     document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('help-screen').style.display = 'none';
     updateControlsVisibility();
 }
 
@@ -490,6 +491,22 @@ function showMainMenu() {
     gameState = 'menu';
     document.getElementById('game-over').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
+    document.getElementById('help-screen').style.display = 'none';
+    updateControlsVisibility();
+}
+
+function showHelpScreen() {
+    gameState = 'menu';
+    document.getElementById('game-over').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'none';
+    document.getElementById('help-screen').style.display = 'flex';
+    updateControlsVisibility();
+}
+
+function hideHelpScreen() {
+    document.getElementById('help-screen').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+    gameState = 'menu';
     updateControlsVisibility();
 }
 
@@ -685,6 +702,8 @@ function setupRestartButton() {
 
 function setupMainMenu() {
     document.getElementById('start-button').addEventListener('click', initGame);
+    document.getElementById('help-button').addEventListener('click', showHelpScreen);
+    document.getElementById('back-button').addEventListener('click', hideHelpScreen);
 }
 
 window.addEventListener('load', () => {

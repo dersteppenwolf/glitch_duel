@@ -24,6 +24,7 @@ Estado actual:
 
 - Juego web estatico sin dependencias externas.
 - Menu principal implementado.
+- Pantalla de ayuda accesible desde el menu principal.
 - Combate humano contra CPU implementado.
 - Pantalla de fin de juego con opciones `REINICIAR` y `MENU`.
 - Controles de teclado y controles tactiles durante la partida.
@@ -133,6 +134,8 @@ Validar en navegador antes de considerar listo un cambio visual o de jugabilidad
 
 - Debe aparecer el menu principal al cargar.
 - El boton `INICIAR JUEGO` debe comenzar la partida.
+- El boton `AYUDA` debe mostrar controles, objetivo y consejos sin iniciar partida.
+- El boton `VOLVER` debe regresar desde ayuda al menu principal.
 - El canvas debe cargar correctamente.
 - El canvas debe mantenerse proporcionado al redimensionar la ventana.
 - Deben aparecer dos personajes stickman.
@@ -197,12 +200,14 @@ En dispositivos tactiles se muestran botones en pantalla durante la partida para
 ### Flujo Del Juego
 
 1. Al abrir `src/index.html`, aparece el menu principal.
-2. El menu muestra el titulo, una descripcion corta y el resumen de controles.
-3. El boton `INICIAR JUEGO` crea una nueva partida y oculta el menu.
-4. Durante la partida, el jugador controla al luchador humano y la CPU controla al rival.
-5. Cuando un luchador llega a `0%` de vida, aparece la pantalla de fin de juego.
-6. El boton `REINICIAR` empieza una partida nueva inmediatamente.
-7. El boton `MENU` vuelve al menu principal.
+2. El menu muestra el titulo, una descripcion corta, el resumen de controles y el acceso `AYUDA`.
+3. El boton `AYUDA` muestra objetivo, controles y consejos sin iniciar la partida.
+4. El boton `VOLVER` regresa al menu principal.
+5. El boton `INICIAR JUEGO` crea una nueva partida y oculta el menu.
+6. Durante la partida, el jugador controla al luchador humano y la CPU controla al rival.
+7. Cuando un luchador llega a `0%` de vida, aparece la pantalla de fin de juego.
+8. El boton `REINICIAR` empieza una partida nueva inmediatamente.
+9. El boton `MENU` vuelve al menu principal.
 
 ### Estados Del Juego
 
@@ -240,6 +245,7 @@ Actualmente cubren:
 - Ataque de patada con `K` y aplicacion de daño.
 - Bloqueo, vida conservada y feedback de impacto reducido.
 - Transicion de estado entre `menu` y `playing`.
+- Apertura y cierre de la pantalla de ayuda desde el menu.
 
 Limitaciones de las pruebas:
 
@@ -260,6 +266,7 @@ Limitaciones de las pruebas:
 ## Funcionalidades Implementadas
 
 - Menu principal.
+- Pantalla de ayuda con objetivo, controles y consejos.
 - Inicio de partida desde boton.
 - Regreso al menu desde pantalla de fin de juego.
 - Reinicio de partida.
@@ -285,7 +292,6 @@ Limitaciones de las pruebas:
 
 - La deteccion de golpes usa distancia simple, no hitboxes detalladas.
 - La IA es probabilistica y no aprende del jugador.
-- La simulacion sigue usando coordenadas logicas fijas de `1000x500`.
 - No hay pausa ni seleccion de dificultad.
 - Las pruebas unitarias no reemplazan validacion visual en navegador.
 
@@ -298,6 +304,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Mejora | Resultado |
 | --- | --- |
 | Menu principal | Implementado con titulo, descripcion, controles y boton `INICIAR JUEGO`. |
+| Pantalla de ayuda | Implementada con objetivo, controles, consejos y boton `VOLVER`. |
 | Navegacion post-partida | Implementados botones `REINICIAR` y `MENU` en la pantalla de fin de juego. |
 | Feedback de golpes | Implementado con shake del canvas, hit-stop breve y particulas/lineas de impacto. |
 | Mejor escalado del canvas | Implementado con resize responsive y backing store ajustado por `devicePixelRatio`. |
@@ -308,7 +315,6 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | --- | --- | --- |
 | Pausa | Permitir pausar con `P`, `Esc` o un boton tactil. | Mejora la experiencia en sesiones largas y en movil. |
 | Seleccion de dificultad | Configurar niveles facil, normal y dificil para la CPU. | Permite adaptar el reto a distintos jugadores. |
-| Pantalla de ayuda | Mostrar controles y reglas desde el menu sin iniciar partida. | Reduce friccion para nuevos jugadores. |
 | Ajuste de balance | Revisar daño, rango, cooldown y bloqueo para punetazo y patada. | Hace que el combate se sienta mas justo y expresivo. |
 
 ### Prioridad Media

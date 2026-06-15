@@ -122,6 +122,8 @@ function loadGame() {
             resizeCanvas,
             initGame,
             showMainMenu,
+            showHelpScreen,
+            hideHelpScreen,
             update,
             triggerImpactFeedback,
             getState: () => ({
@@ -135,6 +137,8 @@ function loadGame() {
                 canvasWidth: canvas.width,
                 canvasHeight: canvas.height,
                 canvasStyle: { ...canvas.style },
+                mainMenuDisplay: document.getElementById('main-menu').style.display,
+                helpScreenDisplay: document.getElementById('help-screen').style.display,
                 transform: ctx.lastTransform
             })
         };
@@ -217,4 +221,23 @@ test('game state gates simulation until a match starts', () => {
     api.initGame();
 
     assert.equal(api.getState().gameState, 'playing');
+});
+
+test('help screen opens from menu state and returns to main menu', () => {
+    const { api } = loadGame();
+
+    api.showMainMenu();
+    api.showHelpScreen();
+
+    const helpState = api.getState();
+    assert.equal(helpState.gameState, 'menu');
+    assert.equal(helpState.mainMenuDisplay, 'none');
+    assert.equal(helpState.helpScreenDisplay, 'flex');
+
+    api.hideHelpScreen();
+
+    const menuState = api.getState();
+    assert.equal(menuState.gameState, 'menu');
+    assert.equal(menuState.mainMenuDisplay, 'flex');
+    assert.equal(menuState.helpScreenDisplay, 'none');
 });
