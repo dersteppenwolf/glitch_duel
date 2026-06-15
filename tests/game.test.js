@@ -137,6 +137,8 @@ function loadGame() {
                 impactParticles,
                 gameState,
                 selectedDifficulty,
+                statusMessage,
+                statusTimer,
                 screenShake,
                 hitStopFrames,
                 canvasWidth: canvas.width,
@@ -302,4 +304,21 @@ test('difficulty selection changes CPU movement tuning', () => {
     api.setDifficulty('invalid');
 
     assert.equal(api.getState().selectedDifficulty, 'normal');
+});
+
+test('status indicator announces fight and block states', () => {
+    const { api } = loadGame();
+    const attacker = new api.Fighter(100, true);
+    const defender = new api.Fighter(170, false);
+
+    api.initGame();
+
+    assert.equal(api.getState().statusMessage, 'FIGHT!');
+
+    defender.state = 'block';
+    defender.takeHit(14, attacker);
+
+    const state = api.getState();
+    assert.equal(state.statusMessage, 'BLOCK');
+    assert.equal(state.statusTimer, 28);
 });

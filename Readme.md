@@ -32,6 +32,7 @@ Estado actual:
 - Pausa con `P`, `Esc` o boton `PAUSA` durante la partida.
 - Balance base ajustado para diferenciar velocidad, daño, alcance y bloqueo.
 - Deteccion de golpes con hitboxes logicas de cuerpo y ataque.
+- Indicador central para eventos como `FIGHT!`, `BLOCK` y `K.O.`.
 - Canvas responsive con soporte para `devicePixelRatio`.
 - Feedback de golpes con sacudida, hit-stop y particulas.
 - Pruebas unitarias basicas con `node:test`.
@@ -257,6 +258,7 @@ Actualmente cubren:
 - Ataque de patada con `K` y aplicacion de daño.
 - Hitboxes que evitan daño cuando el cuerpo queda fuera del area de ataque.
 - Bloqueo, daño residual y feedback de impacto reducido.
+- Indicador de estado para inicio de combate y bloqueo.
 - Transicion de estado entre `menu` y `playing`.
 - Apertura y cierre de la pantalla de ayuda desde el menu.
 - Pausa, detencion de simulacion y reanudacion de partida.
@@ -286,6 +288,7 @@ Limitaciones de las pruebas:
 - Inicio de partida desde boton.
 - Pausa con `P`, `Esc`, boton `PAUSA` y boton `RESUMIR`.
 - Hitboxes logicas para cuerpo, punetazo y patada.
+- Indicador central de estado para `FIGHT!`, `BLOCK` y `K.O.`.
 - Balance de combate con punetazo rapido, patada de mayor recuperacion y daño residual al bloquear.
 - Regreso al menu desde pantalla de fin de juego.
 - Reinicio de partida.
@@ -326,6 +329,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Seleccion de dificultad | Implementada con niveles `FACIL`, `NORMAL` y `DIFICIL` que ajustan la IA. |
 | Ajuste de balance | Implementado con valores centralizados de daño, rango, cooldown y bloqueo. |
 | Hitboxes reales | Implementadas para cuerpo, punetazo y patada en coordenadas logicas. |
+| Indicador de estado | Implementado con mensajes centrales `FIGHT!`, `BLOCK` y `K.O.`. |
 | Navegacion post-partida | Implementados botones `REINICIAR` y `MENU` en la pantalla de fin de juego. |
 | Feedback de golpes | Implementado con shake del canvas, hit-stop breve y particulas/lineas de impacto. |
 | Mejor escalado del canvas | Implementado con resize responsive y backing store ajustado por `devicePixelRatio`. |
@@ -334,13 +338,12 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 
 | Mejora | Objetivo | Beneficio |
 | --- | --- | --- |
-| Indicador de estado | Mostrar mensajes como `FIGHT!`, `K.O.`, `BLOCK` o `ROUND`. | Mejora claridad durante transiciones y momentos importantes. |
+| Sistema de rondas | Implementar mejor de 3, marcador y reinicio entre rondas. | Da estructura arcade al combate. |
 
 ### Prioridad Media
 
 | Mejora | Objetivo | Beneficio |
 | --- | --- | --- |
-| Sistema de rondas | Implementar mejor de 3, marcador y reinicio entre rondas. | Da estructura arcade al combate. |
 | Temporizador | Agregar limite de tiempo por round. | Evita partidas demasiado largas y permite ganar por vida restante. |
 | IA mejorada | Hacer que la CPU ataque solo en rango, bloquee ataques y retroceda con baja vida. | Rival mas creible y menos aleatorio. |
 | Controles moviles responsivos | Ajustar tamanos y posicion de botones segun orientacion y pantalla. | Mejor jugabilidad tactil. |
@@ -361,8 +364,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 
 ### Orden Recomendado De Implementacion
 
-1. Indicador de estado.
-2. Sistema de rondas.
-3. Temporizador.
+1. Sistema de rondas.
+2. Temporizador.
 
 Este orden prioriza mejoras visibles para el jugador sin reescribir completamente la arquitectura actual.

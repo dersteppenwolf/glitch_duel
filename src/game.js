@@ -361,6 +361,7 @@ class Fighter {
             this.health = Math.max(0, this.health - damage);
             const bTexts = ['¡BLOCK!', '*ping*', 'CHIP'];
             floatingTexts.push(new FloatingText(this.x, this.y - 80, bTexts[Math.floor(Math.random() * bTexts.length)], '#33f'));
+            showStatusMessage('BLOCK', 28);
             triggerImpactFeedback(this.x, this.y - 50, impactDirection, true);
             playHitSound();
             return;
@@ -532,6 +533,8 @@ let mobileControlsEnabled = false;
 let screenShake = 0;
 let hitStopFrames = 0;
 let selectedDifficulty = 'normal';
+let statusMessage = '';
+let statusTimer = 0;
 
 function getDifficultyConfig() {
     return DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.normal;
@@ -539,6 +542,11 @@ function getDifficultyConfig() {
 
 function setDifficulty(value) {
     selectedDifficulty = DIFFICULTIES[value] ? value : 'normal';
+}
+
+function showStatusMessage(text, frames = 80) {
+    statusMessage = text;
+    statusTimer = frames;
 }
 
 function resizeCanvas() {
@@ -571,6 +579,7 @@ function initGame() {
     screenShake = 0;
     hitStopFrames = 0;
     gameState = 'playing';
+    showStatusMessage('FIGHT!', 75);
     document.getElementById('game-over').style.display = 'none';
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('help-screen').style.display = 'none';
@@ -586,6 +595,8 @@ function showMainMenu() {
     keys = {};
     screenShake = 0;
     hitStopFrames = 0;
+    statusMessage = '';
+    statusTimer = 0;
     gameState = 'menu';
     document.getElementById('game-over').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
@@ -666,6 +677,7 @@ function update() {
 
     if (player1.health <= 0 || player2.health <= 0) {
         gameState = 'gameOver';
+        showStatusMessage('K.O.', 180);
         const winText = document.getElementById('winner-text');
         winText.innerHTML = player1.health <= 0 ? '¡LA MÁQUINA GANA!<br>🤖' : '¡SISTEMA DOMINADO!<br>😎';
         document.getElementById('game-over').style.display = 'block';
@@ -674,7 +686,16 @@ function update() {
     }
 }
 
+function updateStatusMessage() {
+    if (statusTimer > 0) {
+        statusTimer--;
+        if (statusTimer === 0) statusMessage = '';
+    }
+}
+
 function updateEffects() {
+    updateStatusMessage();
+
     for (let i = floatingTexts.length - 1; i >= 0; i--) {
         floatingTexts[i].update();
         if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
@@ -741,6 +762,23 @@ function drawHealthBars() {
     ctx.fillText(`CPU (IA): ${player2.health}%`, WIDTH - 50, 23);
 }
 
+function drawStatusMessage() {
+    if (!statusMessage) return;
+
+    const alpha = Math.min(1, Math.max(0.25, statusTimer / 20));
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 58px "Comic Sans MS"';
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#000';
+    ctx.strokeText(statusMessage, WIDTH / 2, 135);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(statusMessage, WIDTH / 2, 135);
+    ctx.restore();
+}
+
 function draw() {
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
@@ -762,6 +800,7 @@ function draw() {
     impactParticles.forEach((p) => p.draw());
     floatingTexts.forEach((t) => t.draw());
     drawHealthBars();
+    drawStatusMessage();
 
     ctx.restore();
 }
