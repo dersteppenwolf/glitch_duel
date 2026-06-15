@@ -655,19 +655,8 @@ function drawRemoteMeetingDetails(arena) {
 function drawHealthBars() {
     if (!player1 || !player2) return;
 
-    ctx.fillStyle = '#000';
-    ctx.fillRect(50, 30, 304, 26);
-    ctx.fillStyle = '#aaa';
-    if (player1.displayHealth > 0) ctx.fillRect(52, 32, player1.displayHealth * 3, 22);
-    ctx.fillStyle = player1.health > 30 ? '#222' : '#c00';
-    if (player1.health > 0) ctx.fillRect(52, 32, player1.health * 3, 22);
-
-    ctx.fillStyle = '#000';
-    ctx.fillRect(WIDTH - 354, 30, 304, 26);
-    ctx.fillStyle = '#aaa';
-    if (player2.displayHealth > 0) ctx.fillRect(WIDTH - 52 - (player2.displayHealth * 3), 32, player2.displayHealth * 3, 22);
-    ctx.fillStyle = player2.health > 30 ? '#222' : '#c00';
-    if (player2.health > 0) ctx.fillRect(WIDTH - 52 - (player2.health * 3), 32, player2.health * 3, 22);
+    drawHealthBar(50, 30, player1.health, player1.displayHealth, false);
+    drawHealthBar(WIDTH - 354, 30, player2.health, player2.displayHealth, true);
 
     ctx.font = 'bold 20px "Comic Sans MS"';
     ctx.fillStyle = '#000';
@@ -682,6 +671,48 @@ function drawHealthBars() {
 
     ctx.textAlign = 'center';
     ctx.fillText(`${t('round')} ${currentRound}  ${playerRounds}-${cpuRounds}  ${Math.ceil(roundTimeMs / 1000)}`, WIDTH / 2, 23);
+}
+
+function drawHealthBar(x, y, health, displayHealth, alignRight) {
+    const width = 304;
+    const height = 26;
+    const inset = 3;
+    const innerWidth = width - inset * 2;
+    const innerHeight = height - inset * 2;
+    const healthWidth = Math.max(0, Math.min(innerWidth, (health / 100) * innerWidth));
+    const displayWidth = Math.max(0, Math.min(innerWidth, (displayHealth / 100) * innerWidth));
+
+    ctx.fillStyle = '#fffdf2';
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(x, y, width, height);
+
+    if (displayWidth > 0) {
+        ctx.fillStyle = '#9ca3af';
+        ctx.fillRect(alignRight ? x + width - inset - displayWidth : x + inset, y + inset, displayWidth, innerHeight);
+    }
+
+    if (healthWidth > 0) {
+        ctx.fillStyle = getHealthBarColor(health);
+        ctx.fillRect(alignRight ? x + width - inset - healthWidth : x + inset, y + inset, healthWidth, innerHeight);
+    }
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+        const markerX = x + (width / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(markerX, y + 3);
+        ctx.lineTo(markerX, y + height - 3);
+        ctx.stroke();
+    }
+}
+
+function getHealthBarColor(health) {
+    if (health <= 30) return '#e11d48';
+    if (health <= 60) return '#facc15';
+    return '#22c55e';
 }
 
 function drawEnergyBar(x, y, energy, alignRight) {
