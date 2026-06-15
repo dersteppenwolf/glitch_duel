@@ -37,6 +37,14 @@ El juego incluye:
 - Python opcional para servir el proyecto con `python -m http.server 8000`.
 - No se requiere `npm install`, `package.json`, bundler ni servidor backend.
 
+## Filosofia De Desarrollo
+
+- Mantener el proyecto como juego web estatico, simple y facil de ejecutar.
+- Usar APIs nativas del navegador y de Node.js siempre que sea posible.
+- No importar librerias externas ni agregar dependencias salvo que una decision explicita de arquitectura lo justifique.
+- Si se propone una dependencia externa, primero debe documentarse el motivo, el impacto en ejecucion local y el cambio de flujo de validacion.
+- Priorizar cambios pequenos y verificables sobre reestructuraciones grandes.
+
 ## Como Ejecutar
 
 No requiere instalacion ni dependencias externas.

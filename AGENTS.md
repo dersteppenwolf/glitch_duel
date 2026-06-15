@@ -21,6 +21,7 @@
 - Canvas simulation uses fixed logical dimensions `1000x500`; `resizeCanvas()` maps that space to a responsive CSS size and DPR-aware backing store. Keep hitboxes in logical coordinates.
 
 ## Conventions
-- Preserve the current no-dependency setup unless a requested feature clearly needs tooling.
+- Preserve the current no-dependency setup: use browser/Node native APIs only, unless an explicit architecture decision justifies external libraries.
+- If proposing an external dependency, document why it is needed and how it changes local run/test commands before adding it.
 - Keep UI text Spanish unless the user asks otherwise.
 - Update `Readme.md` when changing run instructions, controls, game states, or implemented backlog items.
