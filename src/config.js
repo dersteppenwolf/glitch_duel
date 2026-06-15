@@ -7,9 +7,18 @@ const MAX_DEVICE_PIXEL_RATIO = 2;
 const ROUNDS_TO_WIN = 2;
 const ROUND_TIME_SECONDS = 60;
 const ROUND_TIMER_FRAMES = ROUND_TIME_SECONDS * 60;
+const MAX_ENERGY = 100;
+const SPECIAL_ENERGY_COST = 100;
+const COMBO_WINDOW_FRAMES = 36;
+const ENERGY_GAIN_ON_HIT = 14;
+const ENERGY_GAIN_ON_BLOCK = 6;
+const ENERGY_GAIN_ON_DAMAGE = 8;
 const ATTACKS = {
-    punch: { damage: 8, range: 95, cooldown: 12 },
-    kick: { damage: 14, range: 135, cooldown: 24 }
+    punch: { damage: 8, range: 95, cooldown: 12, height: 36, yOffset: -66, xOffset: 20, animation: 'punch' },
+    kick: { damage: 14, range: 135, cooldown: 24, height: 42, yOffset: -32, xOffset: 18, animation: 'kick' },
+    comboPunch: { damage: 12, range: 108, cooldown: 18, height: 38, yOffset: -68, xOffset: 22, animation: 'punch' },
+    comboKick: { damage: 18, range: 150, cooldown: 30, height: 46, yOffset: -34, xOffset: 18, animation: 'kick' },
+    special: { damage: 26, range: 185, cooldown: 45, height: 64, yOffset: -76, xOffset: 20, animation: 'special' }
 };
 const BLOCK_DAMAGE_MULTIPLIER = 0.2;
 const DIFFICULTIES = {
@@ -48,5 +57,25 @@ const DIFFICULTIES = {
         punchClose: 0.52,
         kickClose: 0.88,
         blockClose: 0.96
+    }
+};
+const ARENAS = {
+    notebook: {
+        label: 'CUADERNO',
+        background: '#f8f6f0',
+        ground: '#222',
+        accent: 'rgba(0, 0, 0, 0.08)'
+    },
+    terminal: {
+        label: 'TERMINAL',
+        background: '#06120a',
+        ground: '#39ff88',
+        accent: 'rgba(57, 255, 136, 0.15)'
+    },
+    lab: {
+        label: 'LABORATORIO',
+        background: '#e8f4ff',
+        ground: '#24537a',
+        accent: 'rgba(36, 83, 122, 0.12)'
     }
 };

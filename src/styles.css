@@ -138,6 +138,12 @@ canvas {
     font-weight: bold;
 }
 
+.stats-summary {
+    margin-top: 12px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
 .help-card {
     max-height: calc(100vh - 32px);
     overflow: auto;
@@ -322,6 +328,16 @@ canvas {
     background: rgba(0, 0, 150, 0.75);
 }
 
+#btn-special {
+    width: 92px;
+    height: 48px;
+    right: 52px;
+    top: 116px;
+    border-radius: 12px;
+    background: rgba(0, 120, 255, 0.78);
+    font-size: 11px;
+}
+
 #game-over {
     display: none;
     position: absolute;
@@ -407,6 +423,14 @@ canvas {
 
     #btn-punch { right: clamp(78px, 21vw, 110px); }
     #btn-kick { right: 0; }
+
+    #btn-special {
+        width: clamp(74px, 22vw, 92px);
+        height: clamp(38px, 11vw, 48px);
+        right: clamp(36px, 11vw, 52px);
+        top: clamp(96px, 25vw, 116px);
+        font-size: 10px;
+    }
 }
 
 @media (orientation: portrait) and (max-width: 760px) {

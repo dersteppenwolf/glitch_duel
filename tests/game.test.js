@@ -88,6 +88,7 @@ function loadGame() {
     }
 
     const windowListeners = {};
+    const storage = new Map();
     const MockAudioContext = createMockAudioContext();
     const context = {
         console,
@@ -105,6 +106,11 @@ function loadGame() {
             devicePixelRatio: 2,
             AudioContext: MockAudioContext,
             webkitAudioContext: MockAudioContext,
+            localStorage: {
+                getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+                setItem(key, value) { storage.set(key, value); },
+                clear() { storage.clear(); }
+            },
             addEventListener(type, handler) {
                 windowListeners[type] = handler;
             }
@@ -133,6 +139,8 @@ function loadGame() {
             togglePause,
             setDifficulty,
             setRoundTimerFrames,
+            setArena,
+            recordMatchResult,
             update,
             triggerImpactFeedback,
             getState: () => ({
@@ -148,6 +156,8 @@ function loadGame() {
                 playerRounds,
                 cpuRounds,
                 roundTimerFrames,
+                selectedArena,
+                stats,
                 screenShake,
                 hitStopFrames,
                 canvasWidth: canvas.width,
@@ -209,6 +219,34 @@ test('K triggers kick damage when opponent is in range', () => {
     assert.equal(player.state, 'kick');
     assert.equal(player.attackCooldown, 24);
     assert.equal(opponent.health, 86);
+});
+
+test('simple combos increase damage and cooldown', () => {
+    const { api } = loadGame();
+    const player = new api.Fighter(100, true);
+    const opponent = new api.Fighter(170, false);
+
+    player.updatePlayerControls({ j: true }, opponent);
+    player.updatePlayerControls({}, opponent);
+    player.attackCooldown = 0;
+    player.updatePlayerControls({ j: true }, opponent);
+
+    assert.equal(player.state, 'punch');
+    assert.equal(player.attackCooldown, 18);
+    assert.equal(opponent.health, 80);
+});
+
+test('special attack consumes full energy and deals heavy damage', () => {
+    const { api } = loadGame();
+    const player = new api.Fighter(100, true);
+    const opponent = new api.Fighter(220, false);
+    player.energy = 100;
+
+    player.updatePlayerControls({ l: true }, opponent);
+
+    assert.equal(player.state, 'special');
+    assert.equal(player.energy, 0);
+    assert.equal(opponent.health, 74);
 });
 
 test('hitboxes prevent damage when opponent body is outside attack box', () => {
@@ -314,6 +352,30 @@ test('difficulty selection changes CPU movement tuning', () => {
     api.setDifficulty('invalid');
 
     assert.equal(api.getState().selectedDifficulty, 'normal');
+});
+
+test('arena selection falls back to notebook for invalid values', () => {
+    const { api } = loadGame();
+
+    api.setArena('terminal');
+    assert.equal(api.getState().selectedArena, 'terminal');
+
+    api.setArena('missing');
+    assert.equal(api.getState().selectedArena, 'notebook');
+});
+
+test('local stats track wins, losses, and best streak', () => {
+    const { api } = loadGame();
+
+    api.recordMatchResult(true);
+    api.recordMatchResult(true);
+    api.recordMatchResult(false);
+
+    const stats = api.getState().stats;
+    assert.equal(stats.wins, 2);
+    assert.equal(stats.losses, 1);
+    assert.equal(stats.currentStreak, 0);
+    assert.equal(stats.bestStreak, 2);
 });
 
 test('improved CPU blocks incoming close attacks', () => {

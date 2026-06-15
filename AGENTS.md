@@ -12,7 +12,7 @@
 - Node alternative from `C:\tmp\game`: `npx http-server . -p 8000`, then browse to `http://localhost:8000/src/`.
 - JS syntax check: run `node --check` for each `src\*.js` file.
 - Unit tests: `node --test tests\game.test.js`.
-- Manual smoke test: menu appears, difficulty selector changes CPU behavior, `AYUDA` opens help, `VOLVER` returns, `INICIAR JUEGO` starts, `A/D/W/S/J/K` work, `P`/`Esc` pause and resume, timer counts down during play, health bars animate after damage, portrait phone shows orientation warning, canvas stays proportional after resize, game over appears at `0%`, `REINICIAR` restarts, `MENU` returns to menu.
+- Manual smoke test: menu appears, difficulty selector changes CPU behavior, arena selector changes background, `AYUDA` opens help, `VOLVER` returns, `INICIAR JUEGO` starts, `A/D/W/S/J/K/L` work, combos `J,J` and `J,K` work, `P`/`Esc` pause and resume, timer counts down during play, health bars animate after damage, stats update after game over, portrait phone shows orientation warning, canvas stays proportional after resize, game over appears at `0%`, `REINICIAR` restarts, `MENU` returns to menu.
 
 ## Runtime Notes
 - `gameState` in `src/game.js` controls simulation: `menu`, `paused`, `roundOver`, and `gameOver` stop updates; only `playing` advances physics, AI, and combat.

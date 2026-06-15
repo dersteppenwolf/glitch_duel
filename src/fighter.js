@@ -7,6 +7,7 @@ class Fighter {
         this.isPlayer1 = isPlayer1;
         this.health = 100;
         this.displayHealth = 100;
+        this.energy = 0;
         this.velX = 0;
         this.velY = 0;
         this.facingRight = isPlayer1;
@@ -17,6 +18,11 @@ class Fighter {
         this.onGround = true;
         this.aiDecisionTimer = 0;
         this.aiAction = 'idle';
+        this.comboBuffer = [];
+        this.comboTimer = 0;
+        this.prevPunchPressed = false;
+        this.prevKickPressed = false;
+        this.prevSpecialPressed = false;
     }
 
     update(keys, opponent) {
@@ -31,6 +37,11 @@ class Fighter {
 
         if (this.attackCooldown > 0) {
             this.attackCooldown--;
+        }
+
+        if (this.comboTimer > 0) {
+            this.comboTimer--;
+            if (this.comboTimer === 0) this.comboBuffer = [];
         }
 
         this.velX = 0;
@@ -68,8 +79,39 @@ class Fighter {
             this.velX = 0;
         }
 
-        if (keys.j || keys.punch) this.attack('punch', opponent);
-        if (keys.k || keys.kick) this.attack('kick', opponent);
+        const punchPressed = !!(keys.j || keys.punch);
+        const kickPressed = !!(keys.k || keys.kick);
+        const specialPressed = !!(keys.l || keys.special);
+
+        if (specialPressed && !this.prevSpecialPressed) this.attack('special', opponent);
+        if (punchPressed && !this.prevPunchPressed) this.handleAttackCommand('punch', opponent);
+        if (kickPressed && !this.prevKickPressed) this.handleAttackCommand('kick', opponent);
+
+        this.prevPunchPressed = punchPressed;
+        this.prevKickPressed = kickPressed;
+        this.prevSpecialPressed = specialPressed;
+    }
+
+    handleAttackCommand(input, opponent) {
+        if (this.attackCooldown > 0 || this.state === 'block') return;
+
+        if (this.comboTimer <= 0) this.comboBuffer = [];
+
+        this.comboBuffer.push(input);
+        this.comboBuffer = this.comboBuffer.slice(-2);
+        this.comboTimer = COMBO_WINDOW_FRAMES;
+
+        const combo = this.comboBuffer.join(',');
+
+        if (combo === 'punch,punch') {
+            this.comboBuffer = [];
+            this.attack('comboPunch', opponent);
+        } else if (combo === 'punch,kick') {
+            this.comboBuffer = [];
+            this.attack('comboKick', opponent);
+        } else {
+            this.attack(input, opponent);
+        }
     }
 
     updateAI(opponent) {
@@ -96,7 +138,8 @@ class Fighter {
                 else if (rand < difficulty.jumpMid && this.onGround) this.aiAction = 'jump';
                 else this.aiAction = 'block';
             } else {
-                if (canPunch && rand < difficulty.punchClose) this.aiAction = 'punch';
+                if (this.energy >= SPECIAL_ENERGY_COST && (canPunch || canKick) && rand < 0.18) this.aiAction = 'special';
+                else if (canPunch && rand < difficulty.punchClose) this.aiAction = 'punch';
                 else if (canKick && rand < difficulty.kickClose) this.aiAction = 'kick';
                 else if (rand < difficulty.blockClose) this.aiAction = 'block';
                 else this.aiAction = canPunch || canKick ? 'retreat' : 'approach';
@@ -121,7 +164,13 @@ class Fighter {
             this.attack('punch', opponent);
         } else if (this.aiAction === 'kick') {
             this.attack('kick', opponent);
+        } else if (this.aiAction === 'special') {
+            this.attack('special', opponent);
         }
+    }
+
+    gainEnergy(amount) {
+        this.energy = Math.min(MAX_ENERGY, this.energy + amount);
     }
 
     applyPhysics() {
@@ -152,21 +201,21 @@ class Fighter {
         const attack = ATTACKS[type];
         if (!attack) return null;
 
-        if (type === 'punch') {
+        if (type === 'punch' || type === 'comboPunch' || type === 'special') {
             return {
-                x: this.facingRight ? this.x + 20 : this.x - 20 - attack.range,
-                y: this.y - 66,
+                x: this.facingRight ? this.x + attack.xOffset : this.x - attack.xOffset - attack.range,
+                y: this.y + attack.yOffset,
                 width: attack.range,
-                height: 36
+                height: attack.height
             };
         }
 
-        if (type === 'kick') {
+        if (type === 'kick' || type === 'comboKick') {
             return {
-                x: this.facingRight ? this.x + 18 : this.x - 18 - attack.range,
-                y: this.y - 32,
+                x: this.facingRight ? this.x + attack.xOffset : this.x - attack.xOffset - attack.range,
+                y: this.y + attack.yOffset,
                 width: attack.range,
-                height: 42
+                height: attack.height
             };
         }
 
@@ -191,7 +240,12 @@ class Fighter {
         const attack = ATTACKS[type];
         if (!attack) return;
 
-        this.state = type;
+        if (type === 'special') {
+            if (this.energy < SPECIAL_ENERGY_COST) return;
+            this.energy -= SPECIAL_ENERGY_COST;
+        }
+
+        this.state = attack.animation || type;
         this.attackCooldown = attack.cooldown;
         playPunchSound();
 
@@ -200,6 +254,7 @@ class Fighter {
 
         if (attackBox && this.intersects(attackBox, opponentBox)) {
             opponent.takeHit(attack.damage, this);
+            if (type !== 'special') this.gainEnergy(ENERGY_GAIN_ON_HIT);
         }
     }
 
@@ -209,6 +264,7 @@ class Fighter {
         if (this.state === 'block') {
             damage = Math.floor(damage * BLOCK_DAMAGE_MULTIPLIER);
             this.health = Math.max(0, this.health - damage);
+            this.gainEnergy(ENERGY_GAIN_ON_BLOCK);
             const bTexts = ['¡BLOCK!', '*ping*', 'CHIP'];
             floatingTexts.push(new FloatingText(this.x, this.y - 80, bTexts[Math.floor(Math.random() * bTexts.length)], '#33f'));
             showStatusMessage('BLOCK', 28);
@@ -218,6 +274,7 @@ class Fighter {
         }
 
         this.health = Math.max(0, this.health - damage);
+        this.gainEnergy(ENERGY_GAIN_ON_DAMAGE);
         this.hitStun = 20;
         this.state = 'hit';
         this.velX = attacker.facingRight ? 7 : -7;
@@ -275,7 +332,7 @@ class Fighter {
         ctx.beginPath();
         ctx.moveTo(baseX, baseY - 48);
 
-        if (this.state === 'punch') {
+        if (this.state === 'punch' || this.state === 'special') {
             ctx.lineTo(baseX + 52, baseY - 48);
         } else if (this.state === 'kick') {
             ctx.quadraticCurveTo(baseX + 15, baseY - 35, baseX + 22, baseY - 20);
@@ -288,7 +345,7 @@ class Fighter {
 
         ctx.stroke();
 
-        if (this.state === 'punch') {
+        if (this.state === 'punch' || this.state === 'special') {
             const fistX = baseX + 62;
             const fistY = baseY - 48;
 
@@ -317,6 +374,14 @@ class Fighter {
             ctx.moveTo(fistX + 3, fistY - 8);
             ctx.lineTo(fistX + 3, fistY + 8);
             ctx.stroke();
+
+            if (this.state === 'special') {
+                ctx.strokeStyle = 'rgba(0, 120, 255, 0.55)';
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.arc(fistX + 8, fistY, 24, 0, Math.PI * 2);
+                ctx.stroke();
+            }
         }
 
         if (this.state === 'kick') {

@@ -14,6 +14,8 @@ let currentRound = 1;
 let playerRounds = 0;
 let cpuRounds = 0;
 let roundTimerFrames = ROUND_TIMER_FRAMES;
+let selectedArena = 'notebook';
+let stats = loadStats();
 
 function getDifficultyConfig() {
     return DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.normal;
@@ -30,6 +32,54 @@ function showStatusMessage(text, frames = 80) {
 
 function setRoundTimerFrames(value) {
     roundTimerFrames = Math.max(0, value);
+}
+
+function setArena(value) {
+    selectedArena = ARENAS[value] ? value : 'notebook';
+}
+
+function getArenaConfig() {
+    return ARENAS[selectedArena] || ARENAS.notebook;
+}
+
+function loadStats() {
+    const defaults = { wins: 0, losses: 0, currentStreak: 0, bestStreak: 0 };
+
+    try {
+        const raw = window.localStorage && window.localStorage.getItem('xkcdKombatStats');
+        return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
+    } catch (_) {
+        return defaults;
+    }
+}
+
+function saveStats() {
+    try {
+        if (window.localStorage) window.localStorage.setItem('xkcdKombatStats', JSON.stringify(stats));
+    } catch (_) {
+        // localStorage can be unavailable in private browsing or tests.
+    }
+}
+
+function recordMatchResult(playerWon) {
+    if (playerWon) {
+        stats.wins++;
+        stats.currentStreak++;
+        stats.bestStreak = Math.max(stats.bestStreak, stats.currentStreak);
+    } else {
+        stats.losses++;
+        stats.currentStreak = 0;
+    }
+
+    saveStats();
+    renderStats();
+}
+
+function renderStats() {
+    const statsSummary = document.getElementById('stats-summary');
+    if (!statsSummary) return;
+
+    statsSummary.textContent = `Victorias: ${stats.wins} | Derrotas: ${stats.losses} | Racha: ${stats.currentStreak} | Mejor: ${stats.bestStreak}`;
 }
 
 function resizeCanvas() {
@@ -106,6 +156,7 @@ function showMainMenu() {
     document.getElementById('main-menu').style.display = 'flex';
     document.getElementById('help-screen').style.display = 'none';
     document.getElementById('pause-screen').style.display = 'none';
+    renderStats();
     updateControlsVisibility();
 }
 
@@ -198,6 +249,7 @@ function finishRound(playerWon) {
     if (playerRounds >= ROUNDS_TO_WIN || cpuRounds >= ROUNDS_TO_WIN) {
         gameState = 'gameOver';
         showStatusMessage('K.O.', 180);
+        recordMatchResult(playerRounds >= ROUNDS_TO_WIN);
         const winText = document.getElementById('winner-text');
         winText.innerHTML = playerRounds >= ROUNDS_TO_WIN ? '¡SISTEMA DOMINADO!<br>😎' : '¡LA MÁQUINA GANA!<br>🤖';
         document.getElementById('game-over').style.display = 'block';
@@ -286,9 +338,21 @@ function triggerImpactFeedback(x, y, direction, blocked = false) {
 }
 
 function drawBackground() {
-    ctx.fillStyle = '#f8f6f0';
+    const arena = getArenaConfig();
+
+    ctx.fillStyle = arena.background;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    ctx.strokeStyle = '#222';
+    ctx.strokeStyle = arena.accent;
+    ctx.lineWidth = 1;
+
+    for (let x = 0; x < WIDTH; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, HEIGHT);
+        ctx.stroke();
+    }
+
+    ctx.strokeStyle = arena.ground;
     ctx.lineWidth = 6;
     ctx.beginPath();
     ctx.moveTo(0, GROUND_Y + 35);
@@ -321,8 +385,18 @@ function drawHealthBars() {
     ctx.fillStyle = '#000';
     ctx.textAlign = 'left';
     ctx.fillText(`HUMANO: ${player1.health}%`, 50, 23);
+    ctx.fillStyle = '#06f';
+    ctx.fillRect(52, 62, player1.energy * 2, 8);
+    ctx.strokeStyle = '#000';
+    ctx.strokeRect(52, 62, 200, 8);
+    ctx.fillStyle = '#000';
     ctx.textAlign = 'right';
     ctx.fillText(`CPU (IA): ${player2.health}%`, WIDTH - 50, 23);
+    ctx.fillStyle = '#06f';
+    ctx.fillRect(WIDTH - 252, 62, player2.energy * 2, 8);
+    ctx.strokeStyle = '#000';
+    ctx.strokeRect(WIDTH - 252, 62, 200, 8);
+    ctx.fillStyle = '#000';
 
     ctx.textAlign = 'center';
     ctx.fillText(`ROUND ${currentRound}  ${playerRounds}-${cpuRounds}  ${Math.ceil(roundTimerFrames / 60)}`, WIDTH / 2, 23);
@@ -393,7 +467,8 @@ function setupMobileControls() {
         jump: document.getElementById('btn-jump'),
         block: document.getElementById('btn-block'),
         punch: document.getElementById('btn-punch'),
-        kick: document.getElementById('btn-kick')
+        kick: document.getElementById('btn-kick'),
+        special: document.getElementById('btn-special')
     };
 
     Object.keys(btns).forEach((key) => {
@@ -450,10 +525,14 @@ function setupMainMenu() {
     document.getElementById('difficulty-select').addEventListener('change', (e) => {
         setDifficulty(e.target.value);
     });
+    document.getElementById('arena-select').addEventListener('change', (e) => {
+        setArena(e.target.value);
+    });
 }
 
 window.addEventListener('load', () => {
     resizeCanvas();
+    renderStats();
     showMainMenu();
     setupMobileControls();
     setupKeyboardControls();

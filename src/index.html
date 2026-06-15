@@ -35,6 +35,17 @@
                     </select>
                 </label>
 
+                <label class="difficulty-picker" for="arena-select">
+                    Arena
+                    <select id="arena-select">
+                        <option value="notebook" selected>CUADERNO</option>
+                        <option value="terminal">TERMINAL</option>
+                        <option value="lab">LABORATORIO</option>
+                    </select>
+                </label>
+
+                <div id="stats-summary" class="stats-summary">Victorias: 0 | Derrotas: 0 | Mejor racha: 0</div>
+
                 <div class="menu-controls">
                     <h2>Controles</h2>
                     <div class="control-grid">
@@ -43,6 +54,7 @@
                         <span>S</span><span>Bloquear</span>
                         <span>J</span><span>Punetazo</span>
                         <span>K</span><span>Patada</span>
+                        <span>L</span><span>Especial</span>
                         <span>P / Esc</span><span>Pausa</span>
                     </div>
                 </div>
@@ -67,6 +79,7 @@
                         <span>S</span><span>Bloquear</span>
                         <span>J</span><span>Punetazo rapido</span>
                         <span>K</span><span>Patada de mayor alcance</span>
+                        <span>L</span><span>Ataque especial con energia llena</span>
                         <span>P / Esc</span><span>Pausar o reanudar</span>
                     </div>
                 </div>
@@ -109,6 +122,7 @@
             <div id="right-side" class="control-zone">
                 <div class="btn" id="btn-punch">PUNCH<br>(J)</div>
                 <div class="btn" id="btn-kick">KICK<br>(K)</div>
+                <div class="btn" id="btn-special">SPECIAL<br>(L)</div>
             </div>
         </div>
 
