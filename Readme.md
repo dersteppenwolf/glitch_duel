@@ -15,6 +15,7 @@ Juego web arcade de pelea estilo stickman/xkcd, implementado con HTML, CSS y Jav
 - [Filosofia De Desarrollo](#filosofia-de-desarrollo)
 - [Limitaciones Conocidas](#limitaciones-conocidas)
 - [Analisis Actual](#analisis-actual)
+- [Sugerencias De Mejora](#sugerencias-de-mejora)
 - [Backlog](#backlog)
 
 ## Estado Del Proyecto
@@ -407,14 +408,22 @@ Limitaciones de las pruebas:
 
 ## Analisis Actual
 
-El juego ya supero la etapa de prototipo minimo: tiene flujo arcade completo, rondas, temporizador, dificultad, arenas, combos, especial, estadisticas locales y pruebas automatizadas. La prioridad ahora no deberia ser agregar mas sistemas grandes, sino mejorar claridad, expresividad y herramientas de ajuste.
+El juego ya supero la etapa de prototipo minimo: tiene flujo arcade completo, rondas, temporizador, dificultad, arenas, combos, especial, estadisticas locales, feedback visual de golpes y pruebas automatizadas. La prioridad ahora no deberia ser agregar mas sistemas grandes, sino mejorar claridad, expresividad, accesibilidad y herramientas de ajuste.
+
+Estado tecnico actual:
+
+- `src/config.js` concentra constantes de combate, dificultad y arenas, lo que facilita balancear sin tocar el loop principal.
+- `src/fighter.js` contiene la mayor parte de la complejidad: controles del jugador, IA, combos, hitboxes, daño, energia, estados y dibujo del personaje.
+- `src/game.js` concentra estado global, flujo de pantallas, rounds, temporizador, render del HUD, efectos y eventos de entrada.
+- `src/styles.css` ya resuelve menus, overlays y controles moviles, pero el diseño tactil todavia depende de posiciones absolutas.
+- `tests/game.test.js` cubre reglas principales con mocks de DOM/canvas/audio, aunque no reemplaza pruebas reales en navegador.
 
 Fortalezas actuales:
 
 - El nucleo de juego es completo: menu, ayuda, partida, pausa, rounds, temporizador y game over.
 - El combate ya usa hitboxes logicas, por lo que se puede balancear con mas precision.
 - La arquitectura esta separada en archivos por responsabilidad y sigue sin dependencias externas.
-- Las pruebas cubren reglas de combate, estados, temporizador, dificultad, arenas, estadisticas y UI basica simulada.
+- Las pruebas cubren reglas de combate, estados, temporizador, dificultad, arenas, estadisticas, combos y UI basica simulada.
 - El README y `AGENTS.md` documentan comandos, filosofia y smoke test manual.
 
 Riesgos actuales:
@@ -424,6 +433,10 @@ Riesgos actuales:
 - El ataque especial existe, pero podria sentirse poco distintivo si no tiene mas feedback audiovisual.
 - Las estadisticas locales existen, pero no hay forma visible de reiniciarlas desde la UI.
 - La IA es mas creible que antes, pero todavia puede sentirse repetitiva porque no tiene personalidades ni memoria.
+- `src/fighter.js` crecio como punto central de mecanicas; nuevas acciones pueden volverlo dificil de mantener si no se separan helpers de dibujo, IA o combate.
+- El loop asume 60 FPS para temporizador, combos y cooldowns; en equipos lentos o pestanas en segundo plano la duracion real puede variar.
+- No hay persistencia de preferencias de dificultad o arena; cada carga vuelve a los valores por defecto del HTML.
+- La UI tactil funciona, pero faltan estados de foco/etiquetas ARIA y validacion manual en varios tamaños de pantalla.
 
 Siguiente enfoque recomendado:
 
@@ -431,6 +444,59 @@ Siguiente enfoque recomendado:
 - Mejorar feedback audiovisual antes de sumar mas mecanicas.
 - Agregar modo entrenamiento para validar balance y combos rapidamente.
 - Luego ampliar variedad: personalidades de IA, arenas con detalles propios y accesibilidad.
+
+## Sugerencias De Mejora
+
+Estas sugerencias parten del estado actual del codigo y estan ordenadas por impacto practico. La recomendacion es convertir cada mejora sustancial en un ExecPlan dentro de `plans/` antes de implementarla.
+
+### Mejoras Inmediatas
+
+| Mejora | Que cambiar | Por que conviene |
+| --- | --- | --- |
+| Depuracion visual opcional | Agregar toggle de desarrollador para dibujar `getBodyBox()` y `getAttackBox()` sobre el canvas. | Reduce ensayo manual al ajustar daño, alcance, agacharse y combos. |
+| Sonidos diferenciados | Separar sonidos para punetazo, patada, bloqueo, combo, especial, round y victoria. | Mejora lectura del combate sin agregar assets externos. |
+| Feedback del especial | Dar al especial texto propio, particulas azules, halo mas grande y sonido dedicado. | Hace que gastar energia completa se sienta como un evento importante. |
+| Reset de estadisticas | Agregar boton en menu para borrar `xkcdKombatStats` con confirmacion simple. | Cierra una necesidad visible del sistema de estadisticas actual. |
+| Persistir preferencias | Guardar dificultad y arena seleccionadas en `localStorage`. | Evita que el jugador repita configuracion en cada carga. |
+
+### Mejoras De Jugabilidad
+
+| Mejora | Que cambiar | Por que conviene |
+| --- | --- | --- |
+| Modo entrenamiento | Permitir CPU inmovil, vida infinita, energia configurable y reinicio rapido de posicion. | Facilita aprender combos y validar balance sin presion. |
+| Resultado detallado | Mostrar ganador, dificultad, arena, marcador, tiempo restante, golpes clave y estadisticas actualizadas. | Da cierre arcade y hace mas visible el progreso. |
+| Personalidades de IA | Agregar variantes `agresiva`, `defensiva` y `evasiva` independientes de dificultad. | Aumenta variedad sin cambiar controles. |
+| Mejor telemetria de combate local | Contar golpes lanzados, aciertos, bloqueos, combos y especiales por partida. | Ayuda a balancear y puede alimentar la pantalla de resultado. |
+| Ventana de combo visible opcional | Mostrar una barra breve o pulso junto al jugador cuando hay input pendiente. | Hace mas facil entender por que un combo salio o fallo. |
+
+### Mejoras Tecnicas
+
+| Mejora | Que cambiar | Por que conviene |
+| --- | --- | --- |
+| Separar dibujo del luchador | Mover helpers de render de `Fighter.draw()` a funciones pequeñas o a un archivo cercano. | `src/fighter.js` queda mas facil de modificar sin tocar logica de combate. |
+| Separar IA | Extraer decisiones de CPU a funciones puras que reciban distancia, vida, energia y dificultad. | Permite probar la IA con menos mocks y agregar personalidades con menor riesgo. |
+| Temporizador basado en delta time | Medir tiempo real con `requestAnimationFrame(timestamp)` para round timer y, si aplica, cooldowns. | Hace la duracion mas estable cuando el frame rate no es exactamente 60 FPS. |
+| Fixtures de pruebas | Crear helpers de test para ubicar jugadores, cargar energia y avanzar frames. | Reduce duplicacion en `tests/game.test.js` a medida que crezcan los casos. |
+| Prueba smoke ligera en navegador | Documentar o automatizar una prueba manual guiada por escenario antes de releases. | Cubre lo que Node no puede validar visualmente. |
+
+### Mejoras De UX Y Accesibilidad
+
+| Mejora | Que cambiar | Por que conviene |
+| --- | --- | --- |
+| Navegacion por teclado en menus | Asegurar foco visible, orden de tabulacion y activacion con Enter/Espacio. | Mejora accesibilidad sin afectar combate. |
+| Etiquetas ARIA | Agregar `aria-label` a botones tactiles e indicadores relevantes. | Ayuda a tecnologias asistivas y documenta mejor la intencion de controles. |
+| Pausa mas informativa | Mostrar controles clave, dificultad, arena y marcador dentro del overlay de pausa. | Convierte la pausa en una referencia rapida durante la partida. |
+| Ajuste de controles tactiles | Revisar solapamientos en telefonos pequenos y usar zonas mas adaptables. | Reduce errores de input en movil. |
+| Opcion de reducir movimiento | Permitir reducir shake/hit-stop visual para jugadores sensibles al movimiento. | Mejora comodidad y accesibilidad. |
+
+### Recomendacion De Orden
+
+1. Depuracion visual opcional.
+2. Sonidos diferenciados y feedback del especial.
+3. Reset de estadisticas y persistencia de preferencias.
+4. Modo entrenamiento.
+5. Resultado detallado con telemetria local de combate.
+6. Refactor pequeño de dibujo/IA solo cuando una mejora nueva toque esas areas.
 
 ## Backlog
 
