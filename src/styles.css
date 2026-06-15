@@ -472,6 +472,29 @@ input:focus-visible,
     margin-bottom: 15px;
 }
 
+.post-match-medal {
+    margin: 18px auto 4px;
+    padding: 10px 14px;
+    max-width: 360px;
+    border: 4px solid #000;
+    background: #fff7c2;
+    box-shadow: 6px 6px 0 #000;
+    font-size: 16px;
+    line-height: 1.25;
+}
+
+.post-match-medal span {
+    display: block;
+    font-size: 22px;
+    color: #111;
+}
+
+.post-match-medal small {
+    display: block;
+    margin-top: 4px;
+    font-size: 13px;
+}
+
 #game-over button + button {
     margin-left: 8px;
 }

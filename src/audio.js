@@ -19,6 +19,14 @@ const IMPACT_SOUND_PROFILES = {
     block: { wave: 'square', start: 620, end: 420, gain: 0.12, duration: 70 }
 };
 
+const UI_SOUND_PROFILES = {
+    select: { wave: 'square', start: 520, end: 660, gain: 0.08, duration: 55 },
+    start: { wave: 'triangle', start: 360, end: 720, gain: 0.12, duration: 120 },
+    pause: { wave: 'square', start: 260, end: 180, gain: 0.1, duration: 90 },
+    resume: { wave: 'triangle', start: 300, end: 540, gain: 0.1, duration: 95 },
+    menu: { wave: 'sine', start: 420, end: 260, gain: 0.09, duration: 85 }
+};
+
 function initAudio() {
     if (!audioCtx) {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -55,6 +63,11 @@ function playAttackSound(type) {
 
 function playImpactSound(type, blocked = false) {
     const profile = blocked ? IMPACT_SOUND_PROFILES.block : (IMPACT_SOUND_PROFILES[type] || IMPACT_SOUND_PROFILES.punch);
+    playTone(profile);
+}
+
+function playUISound(type) {
+    const profile = UI_SOUND_PROFILES[type] || UI_SOUND_PROFILES.select;
     playTone(profile);
 }
 

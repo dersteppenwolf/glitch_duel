@@ -10,6 +10,7 @@
 - Quick local run: open `C:\tmp\game\src\index.html` in a browser.
 - Preferred local run from `C:\tmp\game`: `python -m http.server 8000`, then browse to `http://localhost:8000/src/`.
 - Node alternative from `C:\tmp\game`: `npx http-server . -p 8000`, then browse to `http://localhost:8000/src/`.
+- GitHub Pages deploy uses `.github/workflows/pages.yml` and publishes `src/` as the site root via GitHub Actions; keep this no-build workflow unless the project architecture changes.
 - JS syntax check: run `node --check` for each `src\*.js` file.
 - Unit tests: `node --test tests\game.test.js`.
 - Manual smoke test: menu appears with balanced text layout, language selector switches Spanish/English and persists, `Tab` shows visible focus, difficulty selector changes CPU behavior, arena selector changes background, `Reducir movimiento` persists and reduces impact shake, `AYUDA`/`HELP` opens help, `VOLVER`/`BACK` returns, `INICIAR JUEGO`/`START GAME` starts, `A/D/W/S/I/J/K/L` work, arrow keys move/jump/crouch, `C` crouches, `S` and `I` block, combos `J,J`, `J,K`, and `K,K` work and show distinct visual feedback, `P`/`Esc` pause and resume with round/score/time/difficulty/arena summary, timer counts down in real seconds during play, health bars animate after damage, stats update after game over, portrait phone shows orientation warning, canvas stays proportional after resize, game over appears at `0%`, `REINICIAR`/`RESTART` restarts, `MENU` returns to menu.

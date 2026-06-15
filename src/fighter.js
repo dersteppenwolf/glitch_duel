@@ -130,16 +130,19 @@ class Fighter {
             this.comboBuffer = [];
             this.clearComboHint();
             this.attack('comboPunch', opponent);
+            if (this.isPlayer1) recordPlayerCombo();
             this.showComboFeedback('comboPunch');
         } else if (combo === 'punch,kick') {
             this.comboBuffer = [];
             this.clearComboHint();
             this.attack('comboKick', opponent);
+            if (this.isPlayer1) recordPlayerCombo();
             this.showComboFeedback('comboKick');
         } else if (combo === 'kick,kick') {
             this.comboBuffer = [];
             this.clearComboHint();
             this.attack('backKick', opponent);
+            if (this.isPlayer1) recordPlayerCombo();
             this.showComboFeedback('backKick');
         } else {
             this.showComboHint(input);
@@ -303,6 +306,7 @@ class Fighter {
         if (type === 'special') {
             if (this.energy < SPECIAL_ENERGY_COST) return;
             this.energy -= SPECIAL_ENERGY_COST;
+            if (this.isPlayer1) recordPlayerSpecial();
         }
 
         this.lastAttackType = type;
@@ -326,6 +330,7 @@ class Fighter {
             damage = Math.floor(damage * BLOCK_DAMAGE_MULTIPLIER);
             this.health = Math.max(0, this.health - damage);
             this.gainEnergy(ENERGY_GAIN_ON_BLOCK);
+            if (this.isPlayer1) recordPlayerBlock();
             const bTexts = ['¡BLOCK!', '*ping*', 'CHIP'];
             floatingTexts.push(new FloatingText(this.x, this.y - 80, bTexts[Math.floor(Math.random() * bTexts.length)], '#33f'));
             showStatusMessage(t('blockStatus'), 28);

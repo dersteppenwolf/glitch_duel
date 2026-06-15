@@ -153,6 +153,7 @@ function loadGame(options = {}) {
             ImpactParticle,
             playAttackSound,
             playImpactSound,
+            playUISound,
             t,
             setLanguage,
             getLanguage,
@@ -178,6 +179,10 @@ function loadGame(options = {}) {
             setReducedMotion,
             renderLanguage,
             recordMatchResult,
+            recordPlayerCombo,
+            recordPlayerBlock,
+            recordPlayerSpecial,
+            getPostMatchMedal,
             update,
             triggerImpactFeedback,
             getState: () => ({
@@ -202,12 +207,14 @@ function loadGame(options = {}) {
                 hitStopFrames,
                 visualFrame,
                 impactFlash,
+                matchStats,
                 canvasWidth: canvas.width,
                 canvasHeight: canvas.height,
                 canvasStyle: { ...canvas.style },
                 mainMenuDisplay: document.getElementById('main-menu').style.display,
                 helpScreenDisplay: document.getElementById('help-screen').style.display,
                 pauseScreenDisplay: document.getElementById('pause-screen').style.display,
+                winnerTextHtml: document.getElementById('winner-text').innerHTML,
                 pauseSummaryText: document.getElementById('pause-summary').textContent,
                 startButtonText: document.getElementById('start-button').textContent,
                 helpButtonText: document.getElementById('help-button').textContent,
@@ -334,6 +341,24 @@ test('special and block sounds have stronger distinct profiles', () => {
             ['sawtooth', 95],
             ['triangle', 180],
             ['square', 620]
+        ]
+    );
+});
+
+test('UI sounds use lightweight arcade profiles', () => {
+    const { api, audioEvents } = loadGame();
+
+    api.playUISound('select');
+    api.playUISound('start');
+    api.playUISound('menu');
+
+    const starts = audioEvents.filter((event) => event.event === 'start');
+    assert.deepEqual(
+        starts.map((event) => [event.type, event.frequency]),
+        [
+            ['square', 520],
+            ['triangle', 360],
+            ['sine', 420]
         ]
     );
 });
@@ -898,6 +923,18 @@ test('status indicator announces fight and block states', () => {
     assert.equal(state.statusTimer, 28);
 });
 
+test('status messages render as comic panels', () => {
+    const { api } = loadGame();
+
+    api.initGame();
+    api.draw();
+
+    const state = api.getState();
+    assert(state.ctxCalls.includes('strokeRect'));
+    assert(state.ctxCalls.includes('fillRect'));
+    assert(state.textCalls.includes('ROUND 1'));
+});
+
 test('round system advances rounds and ends match at two wins', () => {
     const { api } = loadGame();
 
@@ -919,6 +956,25 @@ test('round system advances rounds and ends match at two wins', () => {
     assert.equal(state.gameState, 'gameOver');
     assert.equal(state.player1.state, 'victory');
     assert.equal(state.player2.state, 'defeat');
+    assert.match(state.winnerTextHtml, /Bug Exterminator/);
+});
+
+test('post-match medals use simple match stats', () => {
+    const { api } = loadGame();
+
+    assert.equal(api.getPostMatchMedal(true).title, 'Bug Exterminator');
+    api.recordPlayerCombo();
+    assert.equal(api.getPostMatchMedal(true).title, 'Combo Goblin');
+
+    api.initGame();
+    api.recordPlayerBlock();
+    api.recordPlayerBlock();
+    assert.equal(api.getPostMatchMedal(true).title, 'Firewall Humano');
+
+    api.initGame();
+    api.getState().player1.health = 20;
+    assert.equal(api.getPostMatchMedal(true).title, '404 Survivor');
+    assert.equal(api.getPostMatchMedal(false).title, 'Machine Approved');
 });
 
 test('finish poses render victory and defeat labels', () => {

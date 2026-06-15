@@ -118,7 +118,7 @@ Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de
 - Selector de arena.
 - Opcion `Reducir movimiento` persistida en `xkcdKombatReducedMotion`.
 - Pausa con resumen de round, marcador, tiempo, dificultad, arena y controles.
-- Pantalla de fin de juego con `REINICIAR` / `RESTART` y `MENU`.
+- Pantalla de fin de juego con medalla post-partida, `REINICIAR` / `RESTART` y `MENU`.
 - Estadisticas locales con victorias, derrotas, racha actual y mejor racha.
 - Foco visible y etiquetas ARIA en controles principales.
 - Controles tactiles responsivos y aviso de orientacion vertical.
@@ -131,10 +131,12 @@ Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de
 - Barras de energia de alto contraste con marca visual cuando el especial esta listo.
 - HUD e impactos asociados al color del personaje para leer quien ataca.
 - Poses de victoria y derrota al cerrar rounds o partidas.
+- Medallas post-partida como `Bug Exterminator`, `Firewall Humano`, `Combo Goblin` y `404 Survivor`.
+- Mensajes `ROUND`, `FIGHT!`, `TIME!`, `K.O.` y bloqueo con panel estilo comic.
 - Feedback de combos con texto, halo/trail y pista de ventana.
 - Sacudida, hit-stop estilizado y particulas en impactos.
 - Fondos tematicos por arena con animaciones ligeras que respetan `Reducir movimiento`.
-- Audio generado con Web Audio API, con sonidos diferenciados por ataque, impacto, bloqueo, combo y especial.
+- Audio generado con Web Audio API, con sonidos diferenciados por ataque, impacto, bloqueo, combo, especial y UI.
 
 ### Tecnico
 
@@ -177,6 +179,24 @@ Alternativa con Node:
 ```powershell
 npx http-server . -p 8000
 ```
+
+## Publicacion En Linea
+
+El repo incluye GitHub Pages con Actions en `.github/workflows/pages.yml`.
+
+El workflow publica la carpeta `src/` como raiz del sitio, por lo que la URL esperada es:
+
+```text
+https://dersteppenwolf.github.io/xkcd_kombat/
+```
+
+Configuracion requerida en GitHub:
+
+- Ir a `Settings > Pages`.
+- En `Build and deployment`, seleccionar `Source: GitHub Actions`.
+- Hacer push a `main` o ejecutar manualmente `Deploy GitHub Pages` desde `Actions`.
+
+No hay build step: se suben directamente `src/index.html`, `src/styles.css` y los scripts de `src/`.
 
 ## Validacion
 
@@ -221,7 +241,7 @@ node --test tests\game.test.js
 - El selector de arena cambia el fondo.
 - `Reducir movimiento` persiste y reduce shake/hit-stop/particulas.
 - Humano y CPU se distinguen visualmente.
-- Las cinco arenas se ven diferentes.
+- Las nueve arenas se ven diferentes.
 - En telefono vertical aparece la sugerencia de orientacion.
 - El canvas mantiene proporcion al redimensionar.
 
@@ -292,6 +312,7 @@ Las pruebas cubren, entre otros puntos:
 - Idioma detectado, cambio manual y persistencia.
 - Pausa, ayuda, stats, rounds, timer y game over.
 - Identidad visual de humano/CPU.
+- Medallas post-partida, sonidos UI y mensajes estilo comic.
 
 Limitaciones de las pruebas:
 
@@ -331,9 +352,6 @@ Estas ideas buscan que el juego se sienta mas pulido y llamativo sin cambiar nec
 - Indicador de especial listo sobre el personaje, ademas de la barra de energia.
 - Ataque especial mas espectacular con flash, rastro grande, texto `SPECIAL!` y particulas unicas.
 - Pantalla final enriquecida con marcador, dificultad, arena, racha y causa humoristica de victoria/derrota.
-- Medallas post-partida como `Bug Exterminator`, `Firewall Humano`, `Combo Goblin` o `404 Survivor`.
-- Mensajes de round con estilo comic para `ROUND`, `FIGHT!`, `TIME!` y `K.O.`.
-- Sonidos de UI para selector, inicio de partida, pausa, reanudar y volver al menu.
 - Ayuda mas visual con diagrama de teclado, botones moviles y combos con flechas.
 - Animaciones de HUD: vida baja parpadeante, marcador de rounds iluminado y energia llena pulsante.
 
@@ -351,8 +369,6 @@ Estas ideas buscan que el juego se sienta mas pulido y llamativo sin cambiar nec
 | Media | Resultado detallado | Da mejor cierre arcade y muestra progreso. |
 | Media | Telemetria local de combate | Ayuda a balancear y alimentar resultados. |
 | Media | Personalidades de IA | Aumenta variedad sin cambiar controles. |
-| Media | Sonidos de UI | Hace que menu y pausa se sientan mas arcade. |
-| Media | Medallas post-partida | Da recompensas rapidas y memorables. |
 | Baja | Combos adicionales | Amplia profundidad sin rehacer el sistema. |
 | Baja | Balance avanzado | Ajustes finos por dificultad o arena. |
 | Baja | Organizacion de fondos | Separar detalles si `drawBackground()` sigue creciendo. |

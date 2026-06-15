@@ -21,6 +21,7 @@ let reducedMotionEnabled = loadReducedMotionPreference();
 let lastFrameTimestamp = null;
 let visualFrame = 0;
 let impactFlash = null;
+let matchStats = createMatchStats();
 
 function getDifficultyConfig() {
     return DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.normal;
@@ -56,6 +57,30 @@ function getArenaLabel() {
 
 function getDifficultyLabel() {
     return t(`difficulty${selectedDifficulty.charAt(0).toUpperCase()}${selectedDifficulty.slice(1)}`);
+}
+
+function createMatchStats() {
+    return { playerCombos: 0, playerBlocks: 0, playerSpecials: 0 };
+}
+
+function recordPlayerCombo() {
+    matchStats.playerCombos++;
+}
+
+function recordPlayerBlock() {
+    matchStats.playerBlocks++;
+}
+
+function recordPlayerSpecial() {
+    matchStats.playerSpecials++;
+}
+
+function getPostMatchMedal(playerWon) {
+    if (!playerWon) return { title: t('medalMachine'), detail: t('medalMachineDetail') };
+    if (matchStats.playerCombos > 0) return { title: t('medalCombo'), detail: t('medalComboDetail') };
+    if (matchStats.playerBlocks >= 2) return { title: t('medalFirewall'), detail: t('medalFirewallDetail') };
+    if (player1 && player1.health <= 25) return { title: t('medalSurvivor'), detail: t('medalSurvivorDetail') };
+    return { title: t('medalBug'), detail: t('medalBugDetail') };
 }
 
 function loadReducedMotionPreference() {
@@ -193,7 +218,9 @@ function renderGameOverText() {
     const winText = document.getElementById('winner-text');
     if (!winText) return;
 
-    winText.innerHTML = playerRounds >= ROUNDS_TO_WIN ? t('playerWins') : t('cpuWins');
+    const playerWon = playerRounds >= ROUNDS_TO_WIN;
+    const medal = getPostMatchMedal(playerWon);
+    winText.innerHTML = `${playerWon ? t('playerWins') : t('cpuWins')}<div class="post-match-medal"><span>${medal.title}</span><small>${medal.detail}</small></div>`;
 }
 
 function renderPauseSummary() {
@@ -267,6 +294,7 @@ function initGame() {
     currentRound = 1;
     playerRounds = 0;
     cpuRounds = 0;
+    matchStats = createMatchStats();
     startRound();
 }
 
@@ -284,6 +312,7 @@ function showMainMenu() {
     currentRound = 1;
     playerRounds = 0;
     cpuRounds = 0;
+    matchStats = createMatchStats();
     roundTimerFrames = ROUND_TIMER_FRAMES;
     roundTimeMs = ROUND_TIME_MS;
     gameState = 'menu';
@@ -315,6 +344,7 @@ function hideHelpScreen() {
 function pauseGame() {
     if (gameState !== 'playing') return;
 
+    playUISound('pause');
     keys = {};
     gameState = 'paused';
     renderPauseSummary();
@@ -325,6 +355,7 @@ function pauseGame() {
 function resumeGame() {
     if (gameState !== 'paused') return;
 
+    playUISound('resume');
     keys = {};
     gameState = 'playing';
     document.getElementById('pause-screen').style.display = 'none';
@@ -889,17 +920,50 @@ function drawStatusMessage() {
     if (!statusMessage) return;
 
     const alpha = Math.min(1, Math.max(0.25, statusTimer / 20));
+    const accent = getStatusAccent(statusMessage);
+    const panelWidth = Math.min(620, Math.max(260, statusMessage.length * 34));
+    const panelHeight = 86;
+    const x = WIDTH / 2 - panelWidth / 2;
+    const y = 84;
 
     ctx.save();
     ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.78)';
+    ctx.fillRect(x + 10, y + 10, panelWidth, panelHeight);
+    ctx.fillStyle = '#fffdf2';
+    ctx.fillRect(x, y, panelWidth, panelHeight);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(x, y, panelWidth, panelHeight);
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(x + 10, y + 10, panelWidth - 20, panelHeight - 20);
+
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x + 20, y - 10);
+    ctx.lineTo(x + 54, y + 6);
+    ctx.moveTo(x + panelWidth - 20, y + panelHeight + 10);
+    ctx.lineTo(x + panelWidth - 58, y + panelHeight - 6);
+    ctx.stroke();
+
     ctx.textAlign = 'center';
     ctx.font = 'bold 58px "Comic Sans MS"';
     ctx.lineWidth = 8;
     ctx.strokeStyle = '#000';
-    ctx.strokeText(statusMessage, WIDTH / 2, 135);
-    ctx.fillStyle = '#fff';
-    ctx.fillText(statusMessage, WIDTH / 2, 135);
+    ctx.strokeText(statusMessage, WIDTH / 2, y + 61);
+    ctx.fillStyle = accent;
+    ctx.fillText(statusMessage, WIDTH / 2, y + 61);
     ctx.restore();
+}
+
+function getStatusAccent(text) {
+    if (text === t('ko')) return '#e11d48';
+    if (text === t('time')) return '#f59e0b';
+    if (text === t('fight')) return '#22c55e';
+    if (text === t('blockStatus')) return '#2563eb';
+    return '#111';
 }
 
 function drawImpactFlash() {
@@ -1032,27 +1096,49 @@ function setupKeyboardControls() {
 }
 
 function setupRestartButton() {
-    document.getElementById('restart-button').addEventListener('click', initGame);
-    document.getElementById('menu-button').addEventListener('click', showMainMenu);
+    document.getElementById('restart-button').addEventListener('click', () => {
+        playUISound('start');
+        initGame();
+    });
+    document.getElementById('menu-button').addEventListener('click', () => {
+        playUISound('menu');
+        showMainMenu();
+    });
     document.getElementById('pause-button').addEventListener('click', pauseGame);
     document.getElementById('resume-button').addEventListener('click', resumeGame);
-    document.getElementById('pause-menu-button').addEventListener('click', showMainMenu);
+    document.getElementById('pause-menu-button').addEventListener('click', () => {
+        playUISound('menu');
+        showMainMenu();
+    });
 }
 
 function setupMainMenu() {
-    document.getElementById('start-button').addEventListener('click', initGame);
-    document.getElementById('help-button').addEventListener('click', showHelpScreen);
-    document.getElementById('back-button').addEventListener('click', hideHelpScreen);
+    document.getElementById('start-button').addEventListener('click', () => {
+        playUISound('start');
+        initGame();
+    });
+    document.getElementById('help-button').addEventListener('click', () => {
+        playUISound('select');
+        showHelpScreen();
+    });
+    document.getElementById('back-button').addEventListener('click', () => {
+        playUISound('menu');
+        hideHelpScreen();
+    });
     document.getElementById('language-select').addEventListener('change', (e) => {
+        playUISound('select');
         setLanguage(e.target.value);
     });
     document.getElementById('difficulty-select').addEventListener('change', (e) => {
+        playUISound('select');
         setDifficulty(e.target.value);
     });
     document.getElementById('arena-select').addEventListener('change', (e) => {
+        playUISound('select');
         setArena(e.target.value);
     });
     document.getElementById('reduce-motion-toggle').addEventListener('change', (e) => {
+        playUISound('select');
         setReducedMotion(e.target.checked);
     });
 }
