@@ -381,6 +381,17 @@ test('block takes precedence over crouch', () => {
     assert.equal(player.state, 'block');
 });
 
+test('I key blocks near attack controls', () => {
+    const { api } = loadGame();
+    const player = new api.Fighter(100, true);
+    const opponent = new api.Fighter(170, false);
+
+    player.updatePlayerControls({ i: true }, opponent);
+
+    assert.equal(player.state, 'block');
+    assert.equal(player.velX, 0);
+});
+
 test('crouch lowers body box under punches but remains vulnerable to kicks', () => {
     const { api } = loadGame();
     const attacker = new api.Fighter(100, true);

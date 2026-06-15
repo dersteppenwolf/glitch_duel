@@ -212,8 +212,8 @@ Validar en navegador antes de considerar listo un cambio visual o de jugabilidad
 - El canvas debe mantenerse proporcionado al redimensionar la ventana.
 - Deben aparecer dos personajes stickman.
 - El humano debe mostrar etiqueta `HUMANO`, acentos azules y banda; la CPU debe mostrar etiqueta `CPU`, acentos rojos, visor y antena.
-- Los controles de teclado deben responder: `A`, `D`, `W`, flechas, `C`, `S`, `J`, `K`, `P` y `Esc`.
-- `C` o flecha abajo deben agachar al jugador; `S` debe seguir bloqueando.
+- Los controles de teclado deben responder: `A`, `D`, `W`, flechas, `C`, `S`, `I`, `J`, `K`, `P` y `Esc`.
+- `C` o flecha abajo deben agachar al jugador; `S` e `I` deben bloquear.
 - Los combos `J, J`, `J, K` y `K, K` deben aplicar ataques de mayor impacto.
 - Los combos deben mostrar pista/feedback visual sin tapar barras, timer ni mensajes centrales.
 - Con energia llena, `L` debe lanzar el ataque especial.
@@ -258,7 +258,7 @@ La distribucion usa la mano izquierda para movimiento y defensa, y la mano derec
 | Mover derecha | D / flecha derecha |
 | Saltar | W / flecha arriba |
 | Agacharse | C / flecha abajo |
-| Bloquear | S |
+| Bloquear | S / I |
 | Punetazo | J |
 | Patada | K |
 | Especial | L |

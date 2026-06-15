@@ -74,7 +74,7 @@ class Fighter {
     }
 
     updatePlayerControls(keys, opponent) {
-        const blockPressed = !!(keys.s || keys.block);
+        const blockPressed = !!(keys.s || keys.i || keys.block);
         const crouchPressed = !!(keys.c || keys.arrowdown || keys.crouch);
 
         if (blockPressed) {
