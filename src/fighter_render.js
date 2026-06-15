@@ -31,6 +31,8 @@ function drawFighter(fighter) {
         return;
     }
 
+    drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor);
+
     ctx.strokeStyle = accentColor;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -218,6 +220,27 @@ function drawFighterIdentityMarker(fighter, baseX, baseY, accentColor) {
     ctx.font = 'bold 10px "Comic Sans MS"';
     ctx.strokeText(label, baseX, baseY - 115);
     ctx.fillText(label, baseX, baseY - 115);
+}
+
+function drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor) {
+    if (fighter.energy < MAX_ENERGY || fighter.state === 'special') return;
+
+    const y = baseY - 176;
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(baseX, baseY - 74, 34 + Math.sin(fighter.frame / 5) * 3, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#fffdf2';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.fillRect(baseX - 62, y - 18, 124, 24);
+    ctx.strokeRect(baseX - 62, y - 18, 124, 24);
+    ctx.font = 'bold 12px "Comic Sans MS"';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = accentColor;
+    ctx.fillText(t('specialReady'), baseX, y - 2);
 }
 
 function drawVictoryPose(fighter, baseX, baseY, accentColor) {

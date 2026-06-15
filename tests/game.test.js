@@ -666,6 +666,16 @@ test('CPU visual personality changes by difficulty', () => {
     assert(state.textCalls.includes('!!'));
 });
 
+test('full energy draws special ready indicator above fighter', () => {
+    const { api } = loadGame();
+    const player = new api.Fighter(120, true);
+
+    player.energy = 100;
+    player.draw();
+
+    assert(api.getState().textCalls.includes('ESPECIAL LISTO'));
+});
+
 test('game state gates simulation until a match starts', () => {
     const { api } = loadGame();
 

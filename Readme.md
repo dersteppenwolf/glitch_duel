@@ -189,6 +189,7 @@ Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de
 - CPU con detalles visuales distintos segun dificultad.
 - Barras de vida animadas de alto contraste con colores por umbral de dano.
 - Barras de energia de alto contraste con marca visual cuando el especial esta listo.
+- Indicador `ESPECIAL LISTO` sobre el personaje al llenar energia.
 - HUD e impactos asociados al color del personaje para leer quien ataca.
 - Poses de victoria y derrota al cerrar rounds o partidas.
 - Medallas post-partida como `Bug Exterminator`, `Firewall Humano`, `Combo Goblin` y `404 Survivor`.
@@ -436,11 +437,10 @@ Limitaciones de las pruebas:
 
 Priorizacion orientada a atraer y retener usuarios: primero mejoras visibles en los primeros segundos, luego motivacion para rejugar y finalmente profundidad o mantenimiento.
 
-Siguiente mejora recomendada: `Indicador de especial listo sobre el personaje`, porque comunica la oportunidad de usar `L` sin depender solo del HUD.
+Siguiente mejora recomendada: `Pantalla final enriquecida`, porque mejora el cierre de cada partida y refuerza la motivacion para rejugar.
 
 | Prioridad | Mejora | Motivo | Tipo |
 | --- | --- | --- | --- |
-| Alta | Indicador de especial listo sobre el personaje | Evita que el jugador tenga que mirar solo el HUD y aumenta la emocion de usar `L`. | Visual / UX |
 | Alta | Pantalla final enriquecida | Muestra marcador, dificultad, arena, racha, medalla y frase humoristica para dar mejor cierre. | UX / progresion |
 | Alta | Trailer GIF o captura animada en README | Comunica el atractivo del juego antes de abrirlo y mejora la pagina del repositorio. | Documentacion / marketing |
 | Alta | Modo entrenamiento | Facilita practicar rangos, combos, bloqueo y especial sin presion del timer. | Gameplay |
@@ -468,6 +468,7 @@ Siguiente mejora recomendada: `Indicador de especial listo sobre el personaje`, 
 | Combate base | Movimiento, ataques, bloqueo, hitboxes y rondas. |
 | Combos y especial | `J,J`, `J,K`, `K,K` y `L` con energia llena. |
 | Feedback del especial | Flash, rastro y texto `SPECIAL!` al usar la barra completa. |
+| Indicador de especial listo | Texto y aura sobre el personaje al llenar energia. |
 | Accesibilidad inicial | Foco visible, ARIA y reducir movimiento. |
 | Mobile | Controles tactiles, safe areas y aviso de orientacion. |
 | Arenas | Nueve fondos tematicos sin efectos jugables. |
