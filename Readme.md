@@ -38,7 +38,7 @@ Estado actual:
 - Feedback visual de combos con pista de ventana, texto y halo/trail implementado.
 - Agacharse implementado con `C`, flecha abajo y boton tactil `CROUCH`.
 - Movimiento alternativo con flechas implementado.
-- Ataque especial con energia llena implementado en `L`.
+- Ataque especial con `L`: requiere barra de energia llena, consume esa energia y lanza un golpe de mayor alcance/daño.
 - Arenas seleccionables desde el menu principal: cuaderno, cafeteria, laboratorio, reunion presencial y reunion remota.
 - Estadisticas locales con victorias, derrotas y rachas.
 - Pantalla de fin de juego con opciones `REINICIAR` y `MENU`.
@@ -216,7 +216,7 @@ Validar en navegador antes de considerar listo un cambio visual o de jugabilidad
 - `C` o flecha abajo deben agachar al jugador; `S` e `I` deben bloquear.
 - Los combos `J, J`, `J, K` y `K, K` deben aplicar ataques de mayor impacto.
 - Los combos deben mostrar pista/feedback visual sin tapar barras, timer ni mensajes centrales.
-- Con energia llena, `L` debe lanzar el ataque especial.
+- Con energia llena, `L` debe lanzar el ataque especial y consumir la barra de energia.
 - Cambiar la arena en el menu debe cambiar el fondo del combate.
 - Las cinco arenas deben verse distintas: cuaderno, cafeteria, laboratorio, reunion presencial y reunion remota.
 - Al terminar partidas deben actualizarse las estadisticas locales.
@@ -261,7 +261,7 @@ La distribucion usa la mano izquierda para movimiento y defensa, y la mano derec
 | Bloquear | S / I |
 | Punetazo | J |
 | Patada | K |
-| Especial | L |
+| Especial | L, solo con barra de energia llena; consume la barra al activarse. |
 | Pausar / reanudar | P / Esc |
 
 Combos disponibles:
@@ -273,6 +273,8 @@ Combos disponibles:
 | K, K | Back kick; patada pesada con mas daño y recuperacion lenta. |
 
 La segunda tecla debe pulsarse rapido, dentro de la ventana de combo. Si esperas demasiado, el juego ejecuta el ataque normal de la tecla presionada.
+
+La tecla `L` no es un golpe normal: activa el especial solo cuando la barra de energia esta llena. La energia se carga al golpear, recibir daño o bloquear; al usar el especial, la barra se consume completa.
 
 ### Movil
 
@@ -451,7 +453,7 @@ Limitaciones de las pruebas:
 - Feedback visual de combos con pista breve, texto propio y halo/trail.
 - Agacharse con hitbox baja para esquivar golpes altos.
 - Movimiento alternativo con flechas.
-- Ataque especial con barra de energia y tecla `L`.
+- Ataque especial con barra de energia: `L` solo funciona con energia llena y consume la barra completa.
 - Arenas seleccionables: cuaderno, cafeteria, laboratorio, reunion presencial y reunion remota.
 - Estadisticas locales con `localStorage`.
 - Controles moviles responsivos.
@@ -616,7 +618,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Visualizacion de combos | Implementada con pista de ventana, textos `COMBO x2`, `PUNCH+KICK`, `BACK KICK` y halo/trail breve. |
 | Agacharse | Implementado con `C`, flecha abajo y boton tactil `CROUCH`; reduce la hitbox vertical. |
 | Movimiento con flechas | Implementado con flechas izquierda, derecha y arriba como alternativa a `A`, `D` y `W`. |
-| Ataque especial | Implementado con energia llena, tecla `L` y boton tactil `SPECIAL`. |
+| Ataque especial | Implementado con energia llena, tecla `L` y boton tactil `SPECIAL`; consume la barra al activarse. |
 | Arenas diferentes | Implementadas con seleccion de cuaderno, cafeteria, laboratorio, reunion presencial y reunion remota. |
 | Detalles por arena | Implementados con fondos tematicos propios para cuaderno, cafeteria, laboratorio, reunion presencial y reunion remota. |
 | Estadisticas locales | Implementadas con victorias, derrotas, racha actual y mejor racha en `localStorage`. |

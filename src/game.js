@@ -126,7 +126,7 @@ function renderPauseSummary() {
     const arena = getArenaConfig().label;
     const seconds = Math.ceil(roundTimeMs / 1000);
 
-    summary.textContent = `Round ${currentRound} | Marcador ${playerRounds}-${cpuRounds} | Tiempo ${seconds}s | Dificultad ${difficulty} | Arena ${arena} | Controles: A/D/W/C, S/I bloqueo, J/K/L, P o Esc para reanudar`;
+    summary.textContent = `Round ${currentRound} | Marcador ${playerRounds}-${cpuRounds} | Tiempo ${seconds}s | Dificultad ${difficulty} | Arena ${arena} | Controles: A/D/W/C, S/I bloqueo, J/K, L especial con energia llena, P o Esc para reanudar`;
 }
 
 function resizeCanvas() {
