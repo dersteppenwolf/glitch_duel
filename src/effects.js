@@ -16,7 +16,7 @@ class FloatingText {
     draw() {
         ctx.save();
         ctx.globalAlpha = this.life / 60;
-        ctx.font = 'bold 24px "Comic Sans MS"';
+        ctx.font = `bold 24px ${GAME_FONT_FAMILY}`;
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 4;
         ctx.strokeText(this.text, this.x, this.y);

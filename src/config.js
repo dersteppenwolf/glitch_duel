@@ -4,6 +4,7 @@ const WIDTH = 1000;
 const HEIGHT = 500;
 const GROUND_Y = 380;
 const MAX_DEVICE_PIXEL_RATIO = 2;
+const GAME_FONT_FAMILY = '"JetBrains Mono", "Cascadia Mono", Consolas, monospace';
 const ROUNDS_TO_WIN = 2;
 const ROUND_TIME_SECONDS = 60;
 const ROUND_TIME_MS = ROUND_TIME_SECONDS * 1000;

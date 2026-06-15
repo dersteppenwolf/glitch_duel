@@ -670,7 +670,7 @@ function drawNotebookDetails(arena) {
     }
 
     ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
-    ctx.font = '20px "Comic Sans MS"';
+    ctx.font = `20px ${GAME_FONT_FAMILY}`;
     ctx.fillText('TODO: esquivar', 130, 120);
     ctx.fillText('combo = J + K', 710, 170);
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
@@ -690,9 +690,9 @@ function drawCafeteriaDetails(arena) {
     ctx.strokeRect(110, 90, 230, 115);
 
     ctx.fillStyle = arena.ground;
-    ctx.font = 'bold 20px "Comic Sans MS"';
+    ctx.font = `bold 20px ${GAME_FONT_FAMILY}`;
     ctx.fillText('COFFEE', 135, 125);
-    ctx.font = '16px "Comic Sans MS"';
+    ctx.font = `16px ${GAME_FONT_FAMILY}`;
     ctx.fillText('404 CAFFEINE', 135, 155);
     ctx.fillText('MEETING FUEL', 135, 180);
 
@@ -730,7 +730,7 @@ function drawLabDetails(arena) {
     ctx.strokeRect(92, 105, 190, 95);
     ctx.strokeRect(720, 85, 170, 130);
     ctx.fillStyle = 'rgba(36, 83, 122, 0.55)';
-    ctx.font = '18px "Comic Sans MS"';
+    ctx.font = `18px ${GAME_FONT_FAMILY}`;
     ctx.fillText('E = mc^2?', 120, 145);
     ctx.fillText('NaN sample', 745, 125);
     ctx.fillText('DO NOT LICK', 742, 165);
@@ -756,9 +756,9 @@ function drawMeetingDetails(arena) {
     ctx.strokeRect(340, 72, 320, 150);
 
     ctx.fillStyle = arena.ground;
-    ctx.font = 'bold 18px "Comic Sans MS"';
+    ctx.font = `bold 18px ${GAME_FONT_FAMILY}`;
     ctx.fillText('THIS COULD BE AN EMAIL', 372, 118);
-    ctx.font = '16px "Comic Sans MS"';
+    ctx.font = `16px ${GAME_FONT_FAMILY}`;
     ctx.fillText('ACTION ITEMS?', 420, 165);
 
     const notes = [[185, 105], [715, 120], [760, 175]];
@@ -766,7 +766,7 @@ function drawMeetingDetails(arena) {
         ctx.fillStyle = i === 1 ? 'rgba(255, 210, 80, 0.7)' : 'rgba(255, 245, 130, 0.7)';
         ctx.fillRect(x, y, 60, 45);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.font = '13px "Comic Sans MS"';
+        ctx.font = `13px ${GAME_FONT_FAMILY}`;
         ctx.fillText(i === 2 ? '???' : 'TODO', x + 10, y + 27);
     });
 }
@@ -782,7 +782,7 @@ function drawRemoteMeetingDetails(arena) {
         ctx.lineWidth = 3;
         ctx.strokeRect(x, y, 150, 92);
         ctx.fillStyle = i === 1 ? '#991b1b' : '#0f172a';
-        ctx.font = '14px "Comic Sans MS"';
+        ctx.font = `14px ${GAME_FONT_FAMILY}`;
         ctx.fillText(label, x + 18, y + 72);
     });
 
@@ -792,7 +792,7 @@ function drawRemoteMeetingDetails(arena) {
     ctx.lineWidth = 3;
     ctx.strokeRect(705, 210, 210, 96);
     ctx.fillStyle = '#0f172a';
-    ctx.font = '15px "Comic Sans MS"';
+    ctx.font = `15px ${GAME_FONT_FAMILY}`;
     ctx.fillText("YOU'RE MUTED", 730, 238);
     ctx.fillText('CAN YOU SEE IT?', 730, 270);
     ctx.fillText('RECONNECTING', 730, 292);
@@ -808,10 +808,10 @@ function drawMathClassDetails(arena) {
     ctx.strokeRect(105, 72, 790, 210);
 
     ctx.fillStyle = arena.ground;
-    ctx.font = 'bold 21px "Comic Sans MS"';
+    ctx.font = `bold 21px ${GAME_FONT_FAMILY}`;
     ctx.fillText('f(punch) = pain', 145, 126);
     ctx.fillText('CPU != friend', 560, 128);
-    ctx.font = '18px "Comic Sans MS"';
+    ctx.font = `18px ${GAME_FONT_FAMILY}`;
     ctx.fillText('lim combo -> K.O.', 190, 190);
     ctx.fillText('xkcd theorem: stickmen win', 520, 220);
 }
@@ -827,10 +827,10 @@ function drawServerDownDetails(arena) {
     ctx.strokeRect(670, 76, 240, 210);
 
     ctx.fillStyle = '#fecaca';
-    ctx.font = 'bold 18px "Comic Sans MS"';
+    ctx.font = `bold 18px ${GAME_FONT_FAMILY}`;
     ctx.fillText('SERVER DOWN', 126, 122);
     ctx.fillText('500', 760, 122);
-    ctx.font = '15px "Comic Sans MS"';
+    ctx.font = `15px ${GAME_FONT_FAMILY}`;
     ctx.fillText('retrying...', 130, 170);
     ctx.fillText('coffee required', 718, 172);
     ctx.fillStyle = 'rgba(239, 68, 68, 0.42)';
@@ -850,10 +850,10 @@ function drawGeekConventionDetails(arena) {
     ctx.strokeRect(620, 92, 245, 126);
 
     ctx.fillStyle = arena.ground;
-    ctx.font = 'bold 17px "Comic Sans MS"';
+    ctx.font = `bold 17px ${GAME_FONT_FAMILY}`;
     ctx.fillText('BOOTH 404', 172, 132);
     ctx.fillText('COSPLAY: BUG', 648, 132);
-    ctx.font = '15px "Comic Sans MS"';
+    ctx.font = `15px ${GAME_FONT_FAMILY}`;
     ctx.fillText('free stickers', 174, 172);
     ctx.fillText('queue overflow', 650, 172);
     ctx.fillStyle = motionFrame % 50 < 25 ? 'rgba(154, 52, 18, 0.88)' : 'rgba(154, 52, 18, 0.45)';
@@ -873,7 +873,7 @@ function drawHealthBars() {
     drawHealthBar(50, 30, player1.health, player1.displayHealth, false, player1.accentColor);
     drawHealthBar(WIDTH - 354, 30, player2.health, player2.displayHealth, true, player2.accentColor);
 
-    ctx.font = 'bold 20px "Comic Sans MS"';
+    ctx.font = `bold 20px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#000';
     ctx.textAlign = 'left';
     ctx.fillText(`${t('human')}: ${player1.health}%`, 50, 23);
@@ -964,7 +964,7 @@ function drawEnergyBar(x, y, energy, alignRight, accentColor = '#000') {
     }
 
     if (full) {
-        ctx.font = 'bold 10px "Comic Sans MS"';
+        ctx.font = `bold 10px ${GAME_FONT_FAMILY}`;
         ctx.fillStyle = '#000';
         ctx.textAlign = 'center';
         ctx.fillText('SPECIAL', x + width / 2, y + 10);
@@ -1004,7 +1004,7 @@ function drawStatusMessage() {
     ctx.stroke();
 
     ctx.textAlign = 'center';
-    ctx.font = 'bold 58px "Comic Sans MS"';
+    ctx.font = `bold 58px ${GAME_FONT_FAMILY}`;
     ctx.lineWidth = 8;
     ctx.strokeStyle = '#000';
     ctx.strokeText(statusMessage, WIDTH / 2, y + 61);
@@ -1037,16 +1037,16 @@ function drawVsIntro() {
     ctx.strokeRect(190, 112, 620, 220);
 
     ctx.textAlign = 'center';
-    ctx.font = 'bold 34px "Comic Sans MS"';
+    ctx.font = `bold 34px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#111';
     ctx.fillText(`${t('round')} ${currentRound}`, WIDTH / 2, 155);
-    ctx.font = 'bold 58px "Comic Sans MS"';
+    ctx.font = `bold 58px ${GAME_FONT_FAMILY}`;
     ctx.lineWidth = 8;
     ctx.strokeStyle = '#000';
     ctx.strokeText('P1  VS  AI', WIDTH / 2, 235);
     ctx.fillStyle = '#ffcc00';
     ctx.fillText('P1  VS  AI', WIDTH / 2, 235);
-    ctx.font = 'bold 20px "Comic Sans MS"';
+    ctx.font = `bold 20px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#111';
     ctx.fillText(`${getDifficultyLabel()} | ${getArenaLabel()}`, WIDTH / 2, 285);
     ctx.restore();

@@ -165,7 +165,7 @@ function drawFighter(fighter) {
     }
 
     if (fighter.comboHintText) {
-        ctx.font = 'bold 18px "Comic Sans MS"';
+        ctx.font = `bold 18px ${GAME_FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.lineWidth = 3;
         ctx.strokeStyle = '#000';
@@ -209,7 +209,7 @@ function drawFighterIdentityMarker(fighter, baseX, baseY, accentColor) {
     ctx.lineWidth = 3;
     ctx.strokeRect(badgeX, badgeY, 56, 24);
 
-    ctx.font = 'bold 17px "Comic Sans MS"';
+    ctx.font = `bold 17px ${GAME_FONT_FAMILY}`;
     ctx.textAlign = 'center';
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#000';
@@ -217,7 +217,7 @@ function drawFighterIdentityMarker(fighter, baseX, baseY, accentColor) {
     ctx.fillStyle = '#fff';
     ctx.fillText(tag, baseX, baseY - 132);
 
-    ctx.font = 'bold 10px "Comic Sans MS"';
+    ctx.font = `bold 10px ${GAME_FONT_FAMILY}`;
     ctx.strokeText(label, baseX, baseY - 115);
     ctx.fillText(label, baseX, baseY - 115);
 }
@@ -237,7 +237,7 @@ function drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor) {
     ctx.lineWidth = 3;
     ctx.fillRect(baseX - 62, y - 18, 124, 24);
     ctx.strokeRect(baseX - 62, y - 18, 124, 24);
-    ctx.font = 'bold 12px "Comic Sans MS"';
+    ctx.font = `bold 12px ${GAME_FONT_FAMILY}`;
     ctx.textAlign = 'center';
     ctx.fillStyle = accentColor;
     ctx.fillText(t('specialReady'), baseX, y - 2);
@@ -282,7 +282,7 @@ function drawVictoryPose(fighter, baseX, baseY, accentColor) {
     ctx.fill();
     ctx.stroke();
 
-    ctx.font = 'bold 18px "Comic Sans MS"';
+    ctx.font = `bold 18px ${GAME_FONT_FAMILY}`;
     ctx.textAlign = 'center';
     ctx.lineWidth = 4;
     ctx.strokeStyle = '#000';
@@ -335,7 +335,7 @@ function drawDefeatPose(fighter, baseX, baseY, accentColor) {
     ctx.lineTo(baseX - 42, baseY + 4);
     ctx.stroke();
 
-    ctx.font = 'bold 16px "Comic Sans MS"';
+    ctx.font = `bold 16px ${GAME_FONT_FAMILY}`;
     ctx.textAlign = 'center';
     ctx.lineWidth = 4;
     ctx.strokeStyle = '#000';
@@ -384,7 +384,7 @@ function drawFighterFaceAndDetail(fighter, baseX, baseY, headY, accentColor) {
             ctx.fill();
         }
 
-        ctx.font = 'bold 12px "Comic Sans MS"';
+        ctx.font = `bold 12px ${GAME_FONT_FAMILY}`;
         ctx.textAlign = 'center';
         ctx.fillStyle = accentColor;
         if (cpuMode === 'easy') ctx.fillText('?', baseX, headY + 18);

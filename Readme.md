@@ -189,6 +189,7 @@ Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de
 - Barras de vida animadas de alto contraste con colores por umbral de dano.
 - Barras de energia de alto contraste con marca visual cuando el especial esta listo.
 - Indicador `ESPECIAL LISTO` sobre el personaje al llenar energia.
+- Tipografia monoespaciada basada en `JetBrains Mono`, con fallbacks locales sin dependencias externas.
 - HUD e impactos asociados al color del personaje para leer quien ataca.
 - Poses de victoria y derrota al cerrar rounds o partidas.
 - Medallas post-partida como `Bug Exterminator`, `Firewall Humano`, `Combo Goblin` y `404 Survivor`.
