@@ -158,6 +158,7 @@ function loadGame(options = {}) {
             getLanguage,
             chooseAIAction,
             drawFighter,
+            draw,
             resizeCanvas,
             initGame,
             startRound,
@@ -199,6 +200,8 @@ function loadGame(options = {}) {
                 stats,
                 screenShake,
                 hitStopFrames,
+                visualFrame,
+                impactFlash,
                 canvasWidth: canvas.width,
                 canvasHeight: canvas.height,
                 canvasStyle: { ...canvas.style },
@@ -536,6 +539,7 @@ test('normal impacts include attacker identity color', () => {
 
     const state = api.getState();
     assert(state.impactParticles.some((particle) => particle.color === attacker.accentColor));
+    assert.equal(state.impactFlash.color, attacker.accentColor);
 });
 
 test('reduced motion limits shake hit-stop and impact particles', () => {
@@ -551,6 +555,19 @@ test('reduced motion limits shake hit-stop and impact particles', () => {
     assert.equal(state.screenShake, 0);
     assert.equal(state.hitStopFrames, 0);
     assert.equal(state.impactParticles.length, 5);
+    assert.equal(state.impactFlash, null);
+});
+
+test('impact flash draws stylized hit-freeze overlay', () => {
+    const { api } = loadGame();
+
+    api.triggerImpactFeedback(150, 260, 1, false, '#1f6feb');
+    api.draw();
+
+    const state = api.getState();
+    assert.equal(state.impactFlash.color, '#1f6feb');
+    assert(state.ctxCalls.includes('arc'));
+    assert(state.ctxCalls.includes('lineTo'));
 });
 
 test('fighter draw delegates to extracted render helpers', () => {
@@ -585,6 +602,20 @@ test('fighters expose distinct visual identities and render labels', () => {
     assert(state.textCalls.includes('HUMANO'));
     assert(state.textCalls.includes('CPU'));
     assert(state.ctxCalls.includes('strokeRect'));
+});
+
+test('CPU visual personality changes by difficulty', () => {
+    const { api } = loadGame();
+    const cpu = new api.Fighter(240, false);
+
+    api.setDifficulty('easy');
+    cpu.draw();
+    api.setDifficulty('hard');
+    cpu.draw();
+
+    const state = api.getState();
+    assert(state.textCalls.includes('?'));
+    assert(state.textCalls.includes('!!'));
 });
 
 test('game state gates simulation until a match starts', () => {
@@ -772,6 +803,25 @@ test('new arena backgrounds render themed canvas primitives', () => {
     assert(state.textCalls.includes('f(punch) = pain'));
     assert(state.textCalls.includes('SERVER DOWN'));
     assert(state.textCalls.includes('BOOTH 404'));
+});
+
+test('arena animations advance through draw and respect reduced motion', () => {
+    const { api } = loadGame();
+
+    api.setArena('terminal');
+    api.draw();
+    api.draw();
+
+    let state = api.getState();
+    assert.equal(state.visualFrame, 2);
+    assert(state.textCalls.includes('_'));
+
+    api.setReducedMotion(true);
+    api.draw();
+
+    state = api.getState();
+    assert.equal(state.reducedMotionEnabled, true);
+    assert(state.visualFrame >= 3);
 });
 
 test('local stats track wins, losses, and best streak', () => {

@@ -19,6 +19,8 @@ let selectedArena = 'notebook';
 let stats = loadStats();
 let reducedMotionEnabled = loadReducedMotionPreference();
 let lastFrameTimestamp = null;
+let visualFrame = 0;
+let impactFlash = null;
 
 function getDifficultyConfig() {
     return DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.normal;
@@ -249,6 +251,7 @@ function startRound() {
     keys = {};
     screenShake = 0;
     hitStopFrames = 0;
+    impactFlash = null;
     roundTimerFrames = ROUND_TIMER_FRAMES;
     roundTimeMs = ROUND_TIME_MS;
     gameState = 'playing';
@@ -275,6 +278,7 @@ function showMainMenu() {
     keys = {};
     screenShake = 0;
     hitStopFrames = 0;
+    impactFlash = null;
     statusMessage = '';
     statusTimer = 0;
     currentRound = 1;
@@ -452,6 +456,11 @@ function updateEffects() {
         impactParticles[i].update();
         if (impactParticles[i].life <= 0) impactParticles.splice(i, 1);
     }
+
+    if (impactFlash) {
+        impactFlash.timer--;
+        if (impactFlash.timer <= 0) impactFlash = null;
+    }
 }
 
 function updateHealthAnimations() {
@@ -473,6 +482,10 @@ function triggerImpactFeedback(x, y, direction, blocked = false, accentColor = n
 
     const count = reducedMotionEnabled ? (blocked ? 3 : 5) : (blocked ? 7 : 14);
     const colors = blocked ? ['#33f', '#8af', '#fff'] : [accentColor || '#c00', '#f90', '#fff'];
+
+    if (!reducedMotionEnabled && !blocked) {
+        impactFlash = { x, y, direction, color: accentColor || '#c00', timer: 10, maxTimer: 10 };
+    }
 
     for (let i = 0; i < count; i++) {
         const spread = -1.2 + Math.random() * 2.4;
@@ -513,6 +526,10 @@ function drawBackground() {
     }
 
     ctx.stroke();
+}
+
+function getArenaMotionFrame() {
+    return reducedMotionEnabled ? 0 : visualFrame;
 }
 
 function drawArenaDetails(arenaKey, arena) {
@@ -560,6 +577,7 @@ function drawNotebookDetails(arena) {
 }
 
 function drawCafeteriaDetails(arena) {
+    const motionFrame = getArenaMotionFrame();
     ctx.fillStyle = 'rgba(124, 79, 44, 0.22)';
     ctx.fillRect(80, 250, 840, 70);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
@@ -585,15 +603,16 @@ function drawCafeteriaDetails(arena) {
         ctx.strokeStyle = 'rgba(124, 79, 44, 0.32)';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(x + 12, 205);
-        ctx.quadraticCurveTo(x + 4, 190, x + 18, 178);
-        ctx.moveTo(x + 25, 205);
-        ctx.quadraticCurveTo(x + 35, 190, x + 24, 178);
+        ctx.moveTo(x + 12, 205 - Math.sin((motionFrame + x) / 18) * 3);
+        ctx.quadraticCurveTo(x + 4, 190, x + 18, 178 - Math.sin((motionFrame + x) / 15) * 4);
+        ctx.moveTo(x + 25, 205 - Math.cos((motionFrame + x) / 20) * 3);
+        ctx.quadraticCurveTo(x + 35, 190, x + 24, 178 - Math.cos((motionFrame + x) / 16) * 4);
         ctx.stroke();
     }
 }
 
 function drawLabDetails(arena) {
+    const motionFrame = getArenaMotionFrame();
     ctx.strokeStyle = arena.accent;
     ctx.lineWidth = 1;
     for (let y = 60; y < GROUND_Y; y += 45) {
@@ -620,6 +639,8 @@ function drawLabDetails(arena) {
     ctx.lineTo(390, 220);
     ctx.closePath();
     ctx.stroke();
+    ctx.fillStyle = motionFrame % 40 < 20 ? 'rgba(42, 157, 143, 0.45)' : 'rgba(42, 157, 143, 0.18)';
+    ctx.fillRect(420, 185, 20, 20);
 }
 
 function drawMeetingDetails(arena) {
@@ -648,6 +669,7 @@ function drawMeetingDetails(arena) {
 }
 
 function drawRemoteMeetingDetails(arena) {
+    const motionFrame = getArenaMotionFrame();
     const windows = [[95, 86, 'HUMANO'], [315, 86, 'CPU'], [535, 86, 'LAG...'], [755, 86, 'MUTED']];
 
     windows.forEach(([x, y, label], i) => {
@@ -671,9 +693,12 @@ function drawRemoteMeetingDetails(arena) {
     ctx.fillText("YOU'RE MUTED", 730, 238);
     ctx.fillText('CAN YOU SEE IT?', 730, 270);
     ctx.fillText('RECONNECTING', 730, 292);
+    ctx.fillStyle = motionFrame % 48 < 24 ? '#dc2626' : 'rgba(220, 38, 38, 0.32)';
+    ctx.fillText('REC', 860, 238);
 }
 
 function drawTerminalDetails(arena) {
+    const motionFrame = getArenaMotionFrame();
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.fillRect(86, 72, 828, 230);
     ctx.strokeStyle = arena.ground;
@@ -686,6 +711,7 @@ function drawTerminalDetails(arena) {
     ctx.fillText('> cpu_process: RUNNING', 120, 152);
     ctx.fillText('> human_input: mashing J,K,L', 120, 192);
     ctx.fillText('SEGFAULT? not today.', 590, 252);
+    if (motionFrame % 42 < 24) ctx.fillText('_', 338, 112);
 }
 
 function drawMathClassDetails(arena) {
@@ -705,6 +731,7 @@ function drawMathClassDetails(arena) {
 }
 
 function drawServerDownDetails(arena) {
+    const motionFrame = getArenaMotionFrame();
     ctx.fillStyle = 'rgba(17, 24, 39, 0.82)';
     ctx.fillRect(90, 76, 240, 210);
     ctx.fillRect(670, 76, 240, 210);
@@ -722,9 +749,12 @@ function drawServerDownDetails(arena) {
     ctx.fillText('coffee required', 718, 172);
     ctx.fillStyle = 'rgba(239, 68, 68, 0.42)';
     ctx.fillRect(420, 98, 160, 120);
+    ctx.fillStyle = motionFrame % 36 < 18 ? '#ef4444' : '#7f1d1d';
+    ctx.fillRect(474, 132, 52, 52);
 }
 
 function drawGeekConventionDetails(arena) {
+    const motionFrame = getArenaMotionFrame();
     ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
     ctx.fillRect(135, 92, 250, 126);
     ctx.fillRect(620, 92, 245, 126);
@@ -740,6 +770,8 @@ function drawGeekConventionDetails(arena) {
     ctx.font = '15px "Comic Sans MS"';
     ctx.fillText('free stickers', 174, 172);
     ctx.fillText('queue overflow', 650, 172);
+    ctx.fillStyle = motionFrame % 50 < 25 ? 'rgba(154, 52, 18, 0.88)' : 'rgba(154, 52, 18, 0.45)';
+    ctx.fillText('DAY PASS', 438, 126);
 
     for (let x = 240; x <= 760; x += 130) {
         ctx.fillStyle = 'rgba(154, 52, 18, 0.26)';
@@ -870,7 +902,36 @@ function drawStatusMessage() {
     ctx.restore();
 }
 
+function drawImpactFlash() {
+    if (!impactFlash) return;
+
+    const progress = impactFlash.timer / impactFlash.maxTimer;
+    const radius = 34 + (1 - progress) * 28;
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, progress * 0.85);
+    ctx.strokeStyle = impactFlash.color;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(impactFlash.x, impactFlash.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 8; i++) {
+        const angle = (Math.PI * 2 / 8) * i;
+        const inner = radius * 0.45;
+        const outer = radius + 22;
+        ctx.beginPath();
+        ctx.moveTo(impactFlash.x + Math.cos(angle) * inner, impactFlash.y + Math.sin(angle) * inner);
+        ctx.lineTo(impactFlash.x + Math.cos(angle) * outer, impactFlash.y + Math.sin(angle) * outer);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
 function draw() {
+    visualFrame++;
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
     ctx.save();
@@ -889,6 +950,7 @@ function draw() {
         player2.draw();
     }
     impactParticles.forEach((p) => p.draw());
+    drawImpactFlash();
     floatingTexts.forEach((t) => t.draw());
     drawHealthBars();
     drawStatusMessage();

@@ -323,23 +323,50 @@ function drawDefeatPose(fighter, baseX, baseY, accentColor) {
 
 function drawFighterFaceAndDetail(fighter, baseX, baseY, headY, accentColor) {
     if (fighter.visualRole === 'cpu') {
+        const cpuMode = getCpuVisualMode();
+
+        if (cpuMode === 'hard') {
+            ctx.strokeStyle = 'rgba(210, 34, 34, 0.45)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(baseX, headY, 28, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
         ctx.fillStyle = accentColor;
-        ctx.fillRect(baseX - 12, headY - 8, 24, 9);
+        ctx.fillRect(baseX - (cpuMode === 'easy' ? 9 : 12), headY - 8, cpuMode === 'easy' ? 18 : 24, 9);
         ctx.strokeStyle = '#111';
         ctx.lineWidth = 2;
-        ctx.strokeRect(baseX - 12, headY - 8, 24, 9);
+        ctx.strokeRect(baseX - (cpuMode === 'easy' ? 9 : 12), headY - 8, cpuMode === 'easy' ? 18 : 24, 9);
 
         ctx.strokeStyle = '#111';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(baseX, headY - 20);
         ctx.lineTo(baseX + 10, headY - 34);
+        if (cpuMode === 'hard') {
+            ctx.moveTo(baseX, headY - 20);
+            ctx.lineTo(baseX - 10, headY - 34);
+        }
         ctx.stroke();
 
         ctx.fillStyle = accentColor;
         ctx.beginPath();
         ctx.arc(baseX + 11, headY - 35, 4, 0, Math.PI * 2);
         ctx.fill();
+
+        if (cpuMode === 'hard') {
+            ctx.beginPath();
+            ctx.arc(baseX - 11, headY - 35, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.font = 'bold 12px "Comic Sans MS"';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = accentColor;
+        if (cpuMode === 'easy') ctx.fillText('?', baseX, headY + 18);
+        else if (cpuMode === 'hard') ctx.fillText('!!', baseX, headY + 18);
+        else ctx.fillText('CPU', baseX, headY + 18);
         return;
     }
 
@@ -358,4 +385,8 @@ function drawFighterFaceAndDetail(fighter, baseX, baseY, headY, accentColor) {
     ctx.beginPath();
     ctx.arc(baseX + 6, headY - 3, 3, 0, Math.PI * 2);
     ctx.fill();
+}
+
+function getCpuVisualMode() {
+    return typeof selectedDifficulty === 'string' ? selectedDifficulty : 'normal';
 }

@@ -126,13 +126,14 @@ Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de
 ### Visual Y Audio
 
 - Personajes diferenciados: humano con placa azul `P1` y banda; CPU con placa roja `AI`, visor y antena.
+- CPU con detalles visuales distintos segun dificultad.
 - Barras de vida animadas de alto contraste con colores por umbral de dano.
 - Barras de energia de alto contraste con marca visual cuando el especial esta listo.
 - HUD e impactos asociados al color del personaje para leer quien ataca.
 - Poses de victoria y derrota al cerrar rounds o partidas.
 - Feedback de combos con texto, halo/trail y pista de ventana.
-- Sacudida, hit-stop y particulas en impactos.
-- Fondos tematicos por arena.
+- Sacudida, hit-stop estilizado y particulas en impactos.
+- Fondos tematicos por arena con animaciones ligeras que respetan `Reducir movimiento`.
 - Audio generado con Web Audio API, con sonidos diferenciados por ataque, impacto, bloqueo, combo y especial.
 
 ### Tecnico
