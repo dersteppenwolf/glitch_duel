@@ -27,6 +27,7 @@ Estado actual:
 - Pantalla de ayuda accesible desde el menu principal.
 - Seleccion de dificultad `FACIL`, `NORMAL` y `DIFICIL` desde el menu principal.
 - Combate humano contra CPU implementado.
+- Sistema de rondas al mejor de 3 implementado.
 - Pantalla de fin de juego con opciones `REINICIAR` y `MENU`.
 - Controles de teclado y controles tactiles durante la partida.
 - Pausa con `P`, `Esc` o boton `PAUSA` durante la partida.
@@ -43,6 +44,10 @@ Desde `C:\tmp\game`:
 
 ```powershell
 python -m http.server 8000
+node --check src\config.js
+node --check src\audio.js
+node --check src\effects.js
+node --check src\fighter.js
 node --check src\game.js
 node --test tests\game.test.js
 ```
@@ -114,9 +119,13 @@ http://localhost:8000/src/
 
 ### Validacion Automatica
 
-Para validar la sintaxis del JavaScript:
+Para validar la sintaxis de los archivos JavaScript principales:
 
 ```powershell
+node --check src\config.js
+node --check src\audio.js
+node --check src\effects.js
+node --check src\fighter.js
 node --check src\game.js
 ```
 
@@ -129,6 +138,10 @@ node --test tests\game.test.js
 Flujo recomendado antes de cerrar cambios de codigo:
 
 ```powershell
+node --check src\config.js
+node --check src\audio.js
+node --check src\effects.js
+node --check src\fighter.js
 node --check src\game.js
 node --test tests\game.test.js
 ```
@@ -148,7 +161,8 @@ Validar en navegador antes de considerar listo un cambio visual o de jugabilidad
 - Los controles de teclado deben responder: `A`, `D`, `W`, `S`, `J`, `K`, `P` y `Esc`.
 - `P`, `Esc` o `PAUSA` deben pausar la partida; `RESUMIR` debe continuar.
 - Los golpes deben reducir la barra de vida del rival.
-- Al llegar una vida a cero debe aparecer la pantalla de fin de juego.
+- Al llegar una vida a cero debe avanzar el marcador de rounds.
+- Al ganar 2 rounds debe aparecer la pantalla de fin de juego.
 - El boton `REINICIAR` debe iniciar una nueva partida.
 - El boton `MENU` debe volver al menu principal.
 - En dispositivos tactiles o emulacion movil deben mostrarse los controles en pantalla durante la partida.
@@ -193,6 +207,10 @@ En dispositivos tactiles se muestran botones en pantalla durante la partida para
 ├── tests/
 │   └── game.test.js
 └── src/
+    ├── config.js
+    ├── audio.js
+    ├── effects.js
+    ├── fighter.js
     ├── index.html
     ├── styles.css
     └── game.js
@@ -202,7 +220,11 @@ En dispositivos tactiles se muestran botones en pantalla durante la partida para
 
 - `src/index.html`: estructura de la pagina, menu principal, canvas, controles y pantalla de fin de juego.
 - `src/styles.css`: layout, estilos del canvas, controles tactiles y modales.
-- `src/game.js`: logica del juego, fisica, IA, audio, controles, renderizado y escalado responsive.
+- `src/config.js`: constantes globales, canvas, dimensiones logicas, ataques y dificultad.
+- `src/audio.js`: inicializacion de Web Audio y sonidos generados por codigo.
+- `src/effects.js`: textos flotantes y particulas de impacto.
+- `src/fighter.js`: clase `Fighter`, fisica individual, IA, ataques, hitboxes y dibujo del luchador.
+- `src/game.js`: estado global, rondas, pausa, render principal, eventos de UI y loop del juego.
 - `tests/game.test.js`: pruebas unitarias con mocks de DOM/canvas/audio.
 - `AGENTS.md`: instrucciones compactas para futuras sesiones de OpenCode.
 
@@ -217,9 +239,11 @@ En dispositivos tactiles se muestran botones en pantalla durante la partida para
 7. Durante la partida, el jugador controla al luchador humano y la CPU controla al rival.
 8. Durante la partida, `P`, `Esc` o `PAUSA` detienen la simulacion y muestran la pantalla de pausa.
 9. El boton `RESUMIR` continua la partida desde pausa.
-10. Cuando un luchador llega a `0%` de vida, aparece la pantalla de fin de juego.
-11. El boton `REINICIAR` empieza una partida nueva inmediatamente.
-12. El boton `MENU` vuelve al menu principal.
+10. Cuando un luchador llega a `0%` de vida, gana el round.
+11. Si nadie llega a 2 rounds ganados, inicia el siguiente round.
+12. Al ganar 2 rounds, aparece la pantalla de fin de juego.
+13. El boton `REINICIAR` empieza una nueva partida desde round 1.
+14. El boton `MENU` vuelve al menu principal.
 
 ### Estados Del Juego
 
@@ -228,6 +252,7 @@ En dispositivos tactiles se muestran botones en pantalla durante la partida para
 | `menu` | Muestra el menu principal y detiene la simulacion. |
 | `playing` | Actualiza fisica, controles, IA, golpes, efectos y render. |
 | `paused` | Detiene fisica, IA, golpes y controles de juego hasta reanudar. |
+| `roundOver` | Detiene brevemente la simulacion entre rounds y prepara el siguiente. |
 | `gameOver` | Detiene la simulacion y muestra opciones de reinicio o regreso al menu. |
 
 ### Logica Principal
@@ -249,7 +274,7 @@ El canvas usa coordenadas logicas fijas de `1000x500`. La funcion `resizeCanvas(
 
 ## Pruebas
 
-Las pruebas no requieren `npm install`, `package.json` ni dependencias externas. El archivo `tests/game.test.js` usa `node:test`, `node:assert` y mocks minimos de DOM, canvas y audio para cargar `src/game.js` en Node.
+Las pruebas no requieren `npm install`, `package.json` ni dependencias externas. El archivo `tests/game.test.js` usa `node:test`, `node:assert` y mocks minimos de DOM, canvas y audio para cargar los scripts de `src/` en Node.
 
 Actualmente cubren:
 
@@ -263,6 +288,7 @@ Actualmente cubren:
 - Apertura y cierre de la pantalla de ayuda desde el menu.
 - Pausa, detencion de simulacion y reanudacion de partida.
 - Seleccion de dificultad y cambio de parametros de movimiento de la CPU.
+- Avance de rounds y finalizacion de partida al ganar 2 rounds.
 
 Limitaciones de las pruebas:
 
@@ -287,6 +313,7 @@ Limitaciones de las pruebas:
 - Seleccion de dificultad para la CPU.
 - Inicio de partida desde boton.
 - Pausa con `P`, `Esc`, boton `PAUSA` y boton `RESUMIR`.
+- Sistema de rondas al mejor de 3.
 - Hitboxes logicas para cuerpo, punetazo y patada.
 - Indicador central de estado para `FIGHT!`, `BLOCK` y `K.O.`.
 - Balance de combate con punetazo rapido, patada de mayor recuperacion y daño residual al bloquear.
@@ -330,6 +357,7 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Ajuste de balance | Implementado con valores centralizados de daño, rango, cooldown y bloqueo. |
 | Hitboxes reales | Implementadas para cuerpo, punetazo y patada en coordenadas logicas. |
 | Indicador de estado | Implementado con mensajes centrales `FIGHT!`, `BLOCK` y `K.O.`. |
+| Sistema de rondas | Implementado al mejor de 3 con marcador e inicio automatico del siguiente round. |
 | Navegacion post-partida | Implementados botones `REINICIAR` y `MENU` en la pantalla de fin de juego. |
 | Feedback de golpes | Implementado con shake del canvas, hit-stop breve y particulas/lineas de impacto. |
 | Mejor escalado del canvas | Implementado con resize responsive y backing store ajustado por `devicePixelRatio`. |
@@ -338,13 +366,12 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 
 | Mejora | Objetivo | Beneficio |
 | --- | --- | --- |
-| Sistema de rondas | Implementar mejor de 3, marcador y reinicio entre rondas. | Da estructura arcade al combate. |
+| Temporizador | Agregar limite de tiempo por round. | Evita partidas demasiado largas y permite ganar por vida restante. |
 
 ### Prioridad Media
 
 | Mejora | Objetivo | Beneficio |
 | --- | --- | --- |
-| Temporizador | Agregar limite de tiempo por round. | Evita partidas demasiado largas y permite ganar por vida restante. |
 | IA mejorada | Hacer que la CPU ataque solo en rango, bloquee ataques y retroceda con baja vida. | Rival mas creible y menos aleatorio. |
 | Controles moviles responsivos | Ajustar tamanos y posicion de botones segun orientacion y pantalla. | Mejor jugabilidad tactil. |
 | Animacion de vida | Hacer que las barras de vida bajen con una transicion breve. | Da mejor feedback visual al recibir golpes. |
@@ -364,7 +391,6 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 
 ### Orden Recomendado De Implementacion
 
-1. Sistema de rondas.
-2. Temporizador.
+1. Temporizador.
 
 Este orden prioriza mejoras visibles para el jugador sin reescribir completamente la arquitectura actual.

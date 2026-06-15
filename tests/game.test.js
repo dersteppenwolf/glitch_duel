@@ -113,7 +113,10 @@ function loadGame() {
 
     context.globalThis = context;
 
-    const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'game.js'), 'utf8');
+    const sourceFiles = ['config.js', 'audio.js', 'effects.js', 'fighter.js', 'game.js'];
+    const source = sourceFiles
+        .map((file) => fs.readFileSync(path.join(__dirname, '..', 'src', file), 'utf8'))
+        .join('\n');
     const exposeTestApi = `
         globalThis.__gameTest = {
             Fighter,
@@ -121,6 +124,7 @@ function loadGame() {
             ImpactParticle,
             resizeCanvas,
             initGame,
+            startRound,
             showMainMenu,
             showHelpScreen,
             hideHelpScreen,
@@ -139,6 +143,9 @@ function loadGame() {
                 selectedDifficulty,
                 statusMessage,
                 statusTimer,
+                currentRound,
+                playerRounds,
+                cpuRounds,
                 screenShake,
                 hitStopFrames,
                 canvasWidth: canvas.width,
@@ -313,7 +320,7 @@ test('status indicator announces fight and block states', () => {
 
     api.initGame();
 
-    assert.equal(api.getState().statusMessage, 'FIGHT!');
+    assert.equal(api.getState().statusMessage, 'ROUND 1');
 
     defender.state = 'block';
     defender.takeHit(14, attacker);
@@ -321,4 +328,25 @@ test('status indicator announces fight and block states', () => {
     const state = api.getState();
     assert.equal(state.statusMessage, 'BLOCK');
     assert.equal(state.statusTimer, 28);
+});
+
+test('round system advances rounds and ends match at two wins', () => {
+    const { api } = loadGame();
+
+    api.initGame();
+    api.getState().player2.health = 0;
+    api.update();
+
+    let state = api.getState();
+    assert.equal(state.playerRounds, 1);
+    assert.equal(state.cpuRounds, 0);
+    assert.equal(state.currentRound, 2);
+    assert.equal(state.gameState, 'playing');
+
+    state.player2.health = 0;
+    api.update();
+
+    state = api.getState();
+    assert.equal(state.playerRounds, 2);
+    assert.equal(state.gameState, 'gameOver');
 });
