@@ -90,6 +90,12 @@ Para validar la sintaxis del JavaScript con Node.js:
 node --check src\game.js
 ```
 
+Para ejecutar las pruebas unitarias con el runner nativo de Node.js:
+
+```powershell
+node --test tests\game.test.js
+```
+
 Para validar el comportamiento en navegador:
 
 - Debe aparecer el menu principal al cargar.
@@ -135,6 +141,8 @@ En dispositivos tactiles se muestran botones en pantalla durante la partida para
 ```text
 .
 ├── Readme.md
+├── tests/
+│   └── game.test.js
 └── src/
     ├── index.html
     ├── styles.css
@@ -183,12 +191,14 @@ El estado general del juego se controla con `gameState`:
 - Escalado responsive del canvas con soporte para `devicePixelRatio`.
 - Sacudida de pantalla, hit-stop y particulas al impactar o bloquear golpes.
 - Audio basico generado por Web Audio API.
+- Pruebas unitarias con `node:test` y mocks de DOM/canvas/audio.
 
 ## Tecnologias
 
 - HTML5
 - CSS3
 - JavaScript puro
+- Node.js `node:test`
 - Canvas API
 - Web Audio API
 
