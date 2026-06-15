@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>xkcd KOMBAT - Arcade VS AI</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="instructions">xkcd KOMBAT - Modo Solo (Humano vs Máquina)</div>
+
+        <canvas id="game" width="1000" height="500"></canvas>
+
+        <div id="main-menu" class="panel-overlay">
+            <div class="menu-card">
+                <div class="menu-kicker">Arcade VS AI</div>
+                <h1>xkcd KOMBAT</h1>
+                <p>Derrota a la maquina en un duelo stickman de punetazos, patadas y bugs.</p>
+
+                <div class="menu-actions">
+                    <button id="start-button" type="button">INICIAR JUEGO</button>
+                </div>
+
+                <div class="menu-controls">
+                    <h2>Controles</h2>
+                    <div class="control-grid">
+                        <span>A / D</span><span>Mover</span>
+                        <span>W</span><span>Saltar</span>
+                        <span>S</span><span>Bloquear</span>
+                        <span>F</span><span>Punetazo</span>
+                        <span>G</span><span>Patada</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="controls">
+            <div id="left-side" class="control-zone">
+                <div class="btn" id="btn-left">←</div>
+                <div class="btn" id="btn-right">→</div>
+                <div class="btn" id="btn-jump">↑<br>JUMP</div>
+                <div class="btn" id="btn-block">BLOCK</div>
+            </div>
+            <div id="right-side" class="control-zone">
+                <div class="btn" id="btn-punch">PUNCH<br>(F)</div>
+                <div class="btn" id="btn-kick">KICK<br>(G)</div>
+            </div>
+        </div>
+
+        <div id="game-over">
+            <div id="winner-text"></div>
+            <button id="restart-button" type="button">REINICIAR</button>
+            <button id="menu-button" type="button">MENU</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
