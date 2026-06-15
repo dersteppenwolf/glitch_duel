@@ -322,17 +322,37 @@ Limitaciones de las pruebas:
 
 ## Sugerencias De Mejora
 
+### Atractivo Visual Y Arcade
+
+Estas ideas buscan que el juego se sienta mas pulido y llamativo sin cambiar necesariamente el balance:
+
+- Intro `VS` antes de cada partida con `P1`, `AI`, dificultad y arena seleccionada.
+- Preview de arena en el menu con miniatura, descripcion corta y chiste tecnico por arena.
+- Indicador de especial listo sobre el personaje, ademas de la barra de energia.
+- Ataque especial mas espectacular con flash, rastro grande, texto `SPECIAL!` y particulas unicas.
+- Pantalla final enriquecida con marcador, dificultad, arena, racha y causa humoristica de victoria/derrota.
+- Medallas post-partida como `Bug Exterminator`, `Firewall Humano`, `Combo Goblin` o `404 Survivor`.
+- Mensajes de round con estilo comic para `ROUND`, `FIGHT!`, `TIME!` y `K.O.`.
+- Sonidos de UI para selector, inicio de partida, pausa, reanudar y volver al menu.
+- Ayuda mas visual con diagrama de teclado, botones moviles y combos con flechas.
+- Animaciones de HUD: vida baja parpadeante, marcador de rounds iluminado y energia llena pulsante.
+
+### Backlog General
+
 | Prioridad | Mejora | Motivo |
 | --- | --- | --- |
 | Alta | Depuracion visual opcional | Acelera ajuste de hitboxes, combos y agacharse. |
 | Alta | Feedback visual del especial | Hace que gastar energia llena se sienta importante. |
 | Alta | Preview de arena | Permite ver la seleccion antes de iniciar partida. |
+| Alta | Intro VS arcade | Da contexto y anticipacion antes de cada combate. |
 | Alta | Modo entrenamiento | Facilita practicar rangos, combos y especial. |
 | Media | Reset de estadisticas | Da control sobre datos locales. |
 | Media | Persistir dificultad/arena | Reduce friccion al volver al juego. |
 | Media | Resultado detallado | Da mejor cierre arcade y muestra progreso. |
 | Media | Telemetria local de combate | Ayuda a balancear y alimentar resultados. |
 | Media | Personalidades de IA | Aumenta variedad sin cambiar controles. |
+| Media | Sonidos de UI | Hace que menu y pausa se sientan mas arcade. |
+| Media | Medallas post-partida | Da recompensas rapidas y memorables. |
 | Baja | Combos adicionales | Amplia profundidad sin rehacer el sistema. |
 | Baja | Balance avanzado | Ajustes finos por dificultad o arena. |
 | Baja | Organizacion de fondos | Separar detalles si `drawBackground()` sigue creciendo. |
@@ -346,6 +366,6 @@ Limitaciones de las pruebas:
 | Combos y especial | `J,J`, `J,K`, `K,K` y `L` con energia llena. |
 | Accesibilidad inicial | Foco visible, ARIA y reducir movimiento. |
 | Mobile | Controles tactiles, safe areas y aviso de orientacion. |
-| Arenas | Cinco fondos tematicos sin efectos jugables. |
+| Arenas | Nueve fondos tematicos sin efectos jugables. |
 | i18n | Espanol/ingles con autodeteccion y persistencia. |
 | Arquitectura tecnica | IA/render/i18n separados y tests con `node:test`. |
