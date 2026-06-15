@@ -218,6 +218,8 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | --- | --- | --- |
 | Pausa | Permitir pausar con `P`, `Esc` o un boton tactil. | Mejora la experiencia en sesiones largas y en movil. |
 | Seleccion de dificultad | Configurar niveles facil, normal y dificil para la CPU. | Permite adaptar el reto a distintos jugadores. |
+| Pantalla de ayuda | Mostrar controles y reglas desde el menu sin iniciar partida. | Reduce friccion para nuevos jugadores. |
+| Ajuste de balance | Revisar daño, rango, cooldown y bloqueo para punetazo y patada. | Hace que el combate se sienta mas justo y expresivo. |
 
 ### Prioridad Media
 
@@ -228,6 +230,9 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Temporizador | Agregar limite de tiempo por round. | Evita partidas demasiado largas y permite ganar por vida restante. |
 | IA mejorada | Hacer que la CPU ataque solo en rango, bloquee ataques y retroceda con baja vida. | Rival mas creible y menos aleatorio. |
 | Controles moviles responsivos | Ajustar tamanos y posicion de botones segun orientacion y pantalla. | Mejor jugabilidad tactil. |
+| Indicador de estado | Mostrar mensajes como `FIGHT!`, `K.O.`, `BLOCK` o `ROUND`. | Mejora claridad durante transiciones y momentos importantes. |
+| Animacion de vida | Hacer que las barras de vida bajen con una transicion breve. | Da mejor feedback visual al recibir golpes. |
+| Orientacion movil | Detectar pantalla vertical y sugerir girar el dispositivo. | Mejora la experiencia tactil en telefonos. |
 
 ### Prioridad Baja
 
@@ -238,12 +243,17 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Arenas diferentes | Crear fondos alternativos como cuaderno, laboratorio o terminal. | Mejora identidad visual y rejugabilidad. |
 | Estadisticas locales | Guardar victorias, derrotas y mejor racha con `localStorage`. | Da progreso persistente sin backend. |
 | Sonidos diferenciados | Usar sonidos distintos para punetazo, patada, bloqueo y victoria. | Mejora claridad audiovisual. |
+| Modo entrenamiento | Permitir probar golpes contra una CPU inmovil o con vida infinita. | Facilita ajustar controles, rangos y balance. |
+| Depuracion visual opcional | Agregar un modo para dibujar hitboxes y puntos de impacto. | Acelera el desarrollo de combate sin afectar el modo normal. |
 
 ### Orden Recomendado De Implementacion
 
 1. Pausa.
 2. Seleccion de dificultad.
-3. Hitboxes reales.
-4. Sistema de rondas.
+3. Ajuste de balance.
+4. Hitboxes reales.
+5. Indicador de estado.
+6. Sistema de rondas.
+7. Temporizador.
 
 Este orden prioriza mejoras visibles para el jugador sin reescribir completamente la arquitectura actual.
