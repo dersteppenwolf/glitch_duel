@@ -1,299 +1,299 @@
 # GLITCH DUEL
 
-Juego web arcade de pelea line-art, hecho con HTML, CSS y JavaScript puro sobre Canvas. El jugador humano pelea contra una CPU en rondas al mejor de 3, con combos, bloqueo, ataque especial, arenas tematicas, controles tactiles e interfaz en espanol/ingles.
+Line-art arcade fighting web game built with plain HTML, CSS, and JavaScript on Canvas. The human player fights a CPU in best-of-3 rounds with combos, blocking, a special attack, themed arenas, touch controls, and a Spanish/English interface.
 
-Jugar en linea: [https://dersteppenwolf.github.io/glitch_duel/](https://dersteppenwolf.github.io/glitch_duel/)
+Play online: [https://dersteppenwolf.github.io/glitch_duel/](https://dersteppenwolf.github.io/glitch_duel/)
 
-Codigo fuente: [https://github.com/dersteppenwolf/glitch_duel](https://github.com/dersteppenwolf/glitch_duel)
+Source code: [https://github.com/dersteppenwolf/glitch_duel](https://github.com/dersteppenwolf/glitch_duel)
 
-Nota: esta aplicacion ha sido generada y evolucionada utilizando asistencia de OpenCode y GPT-5.5.
+Note: this application has been generated and evolved with assistance from OpenCode and GPT-5.5.
 
-## Resumen
+## Summary
 
-| Tema | Detalle |
+| Topic | Detail |
 | --- | --- |
-| Tipo | Juego web estatico de navegador. |
-| Stack | HTML, CSS, JavaScript puro y Canvas. |
-| Dependencias | Ninguna para jugar, validar o desplegar. |
-| Entrada local | `src/index.html`. |
-| URL publica | `https://dersteppenwolf.github.io/glitch_duel/`. |
-| Deploy | GitHub Pages con Actions publicando `src/`. |
+| Type | Static browser web game. |
+| Stack | Plain HTML, CSS, JavaScript, and Canvas. |
+| Dependencies | None to play, validate, or deploy. |
+| Local entrypoint | `src/index.html`. |
+| Public URL | `https://dersteppenwolf.github.io/glitch_duel/`. |
+| Deploy | GitHub Pages with Actions publishing `src/`. |
 | Tests | `node --test tests\game.test.js`. |
-| Estado | Jugable, publicado y con backlog priorizado. |
-| Asistencia | OpenCode y GPT-5.5. |
+| Status | Playable, published, and backed by a prioritized backlog. |
+| Assistance | OpenCode and GPT-5.5. |
 
-## Tabla De Contenido
+## Table Of Contents
 
-- [Resumen](#resumen)
-- [Inicio Rapido](#inicio-rapido)
-- [Como Jugar](#como-jugar)
-- [Controles](#controles)
-- [Idiomas](#idiomas)
+- [Summary](#summary)
+- [Quick Start](#quick-start)
+- [How To Play](#how-to-play)
+- [Controls](#controls)
+- [Languages](#languages)
 - [Arenas](#arenas)
-- [Funcionalidades](#funcionalidades)
-- [Funcionalidades: Combate](#combate)
-- [Funcionalidades: UI/UX](#uiux)
-- [Funcionalidades: Visual Y Audio](#visual-y-audio)
-- [Funcionalidades: Tecnico](#tecnico)
-- [Ejecutar](#ejecutar)
-- [Ejecutar: Requisitos](#requisitos)
-- [Ejecutar: Opcion Directa](#opcion-directa)
-- [Ejecutar: Opcion Recomendada](#opcion-recomendada)
-- [Publicacion En Linea](#publicacion-en-linea)
-- [Validacion](#validacion)
-- [Validacion: Validacion Automatica](#validacion-automatica)
-- [Validacion: Smoke Basico](#smoke-basico)
-- [Validacion: Smoke Combate](#smoke-combate)
-- [Validacion: Smoke Visual Y Accesibilidad](#smoke-visual-y-accesibilidad)
-- [Arquitectura](#arquitectura)
-- [Arquitectura: Archivos Principales](#archivos-principales)
-- [Arquitectura: Orden De Scripts](#orden-de-scripts)
-- [Arquitectura: Estados Del Juego](#estados-del-juego)
-- [Pruebas](#pruebas)
-- [Solucion De Problemas](#solucion-de-problemas)
-- [Decisiones Tecnicas](#decisiones-tecnicas)
-- [Backlog Priorizado](#backlog-priorizado)
-- [Backlog Completado](#backlog-completado)
+- [Features](#features)
+- [Features: Combat](#combat)
+- [Features: UI/UX](#uiux)
+- [Features: Visual And Audio](#visual-and-audio)
+- [Features: Technical](#technical)
+- [Run](#run)
+- [Run: Requirements](#requirements)
+- [Run: Direct Option](#direct-option)
+- [Run: Recommended Option](#recommended-option)
+- [Online Publishing](#online-publishing)
+- [Validation](#validation)
+- [Validation: Automated Validation](#automated-validation)
+- [Validation: Basic Smoke](#basic-smoke)
+- [Validation: Combat Smoke](#combat-smoke)
+- [Validation: Visual And Accessibility Smoke](#visual-and-accessibility-smoke)
+- [Architecture](#architecture)
+- [Architecture: Main Files](#main-files)
+- [Architecture: Script Order](#script-order)
+- [Architecture: Game States](#game-states)
+- [Tests](#tests)
+- [Troubleshooting](#troubleshooting)
+- [Technical Decisions](#technical-decisions)
+- [Prioritized Backlog](#prioritized-backlog)
+- [Completed Backlog](#completed-backlog)
 
-## Inicio Rapido
+## Quick Start
 
-Para jugar sin instalar nada, abrir la version publicada:
+To play without installing anything, open the published version:
 
 [https://dersteppenwolf.github.io/glitch_duel/](https://dersteppenwolf.github.io/glitch_duel/)
 
-Para ejecutar localmente, usar servidor estatico desde la raiz del proyecto.
+To run locally, use a static server from the project root.
 
-Desde `C:\tmp\game`:
+From `C:\tmp\game`:
 
 ```powershell
 python -m http.server 8000
 ```
 
-Abrir:
+Open:
 
 ```text
 http://localhost:8000/src/
 ```
 
-Validar rapido:
+Quick validation:
 
 ```powershell
 node --test tests\game.test.js
 ```
 
-No se requiere `npm install`, `package.json`, bundler ni servidor backend.
+No `npm install`, `package.json`, bundler, or backend server is required.
 
-## Como Jugar
+## How To Play
 
-1. Abrir `src/index.html` directamente o servir el proyecto desde `http://localhost:8000/src/`.
-2. Elegir idioma, dificultad y arena desde el menu.
-3. Presionar `INICIAR JUEGO` / `START GAME`.
-4. Ganar rounds reduciendo la vida de la CPU a `0%` o teniendo mas vida cuando termina el tiempo.
-5. Ganar 2 rounds para terminar la partida.
+1. Open `src/index.html` directly or serve the project from `http://localhost:8000/src/`.
+2. Choose language, difficulty, and arena from the menu.
+3. Press `INICIAR JUEGO` / `START GAME`.
+4. Win rounds by reducing the CPU health to `0%` or having more health when time runs out.
+5. Win 2 rounds to finish the match.
 
-## Controles
+## Controls
 
-| Accion | Teclado | Tactil | Nota |
+| Action | Keyboard | Touch | Note |
 | --- | --- | --- | --- |
-| Mover izquierda | A / flecha izquierda | Izquierda | Movimiento horizontal. |
-| Mover derecha | D / flecha derecha | Derecha | Movimiento horizontal. |
-| Saltar | W / flecha arriba | JUMP | Solo desde el suelo. |
-| Agacharse | C / flecha abajo | CROUCH | Baja la hitbox y evita algunos golpes altos. |
-| Bloquear | S / I | BLOCK | Reduce dano, no lo elimina por completo. |
-| Punetazo | J | PUNCH | Rapido, menor alcance. |
-| Patada | K | KICK | Mas alcance, mas recuperacion. |
-| Especial | L | SPECIAL | Requiere energia llena y consume la barra completa. |
-| Pausar / reanudar | P / Esc | PAUSA | Muestra resumen de partida. |
+| Move left | A / left arrow | Left | Horizontal movement. |
+| Move right | D / right arrow | Right | Horizontal movement. |
+| Jump | W / up arrow | JUMP | Ground only. |
+| Crouch | C / down arrow | CROUCH | Lowers the hitbox and avoids some high hits. |
+| Block | S / I | BLOCK | Reduces damage, but does not remove it completely. |
+| Punch | J | PUNCH | Fast, shorter range. |
+| Kick | K | KICK | Longer range, longer recovery. |
+| Special | L | SPECIAL | Requires full energy and consumes the full bar. |
+| Pause / resume | P / Esc | PAUSA | Shows the match summary. |
 
-Combos disponibles:
+Available combos:
 
-| Combo | Resultado |
+| Combo | Result |
 | --- | --- |
-| J, J | Combo rapido de punetazos. |
-| J, K | Punetazo encadenado con patada, mas alcance y dano. |
-| K, K | Back kick pesado, mas dano y recuperacion lenta. |
+| J, J | Fast punch combo. |
+| J, K | Punch chained into kick, with more range and damage. |
+| K, K | Heavy back kick, with more damage and slow recovery. |
 
-La segunda tecla del combo debe pulsarse dentro de la ventana de combo. Si se espera demasiado, sale el ataque normal de la tecla presionada.
+The second combo key must be pressed within the combo window. If you wait too long, the normal attack for the pressed key comes out instead.
 
-La energia se carga al golpear, recibir dano o bloquear. `L` no es un golpe normal: solo activa el especial cuando la barra esta llena.
+Energy charges when hitting, taking damage, or blocking. `L` is not a normal strike: it only activates the special when the bar is full.
 
-## Idiomas
+## Languages
 
-La interfaz soporta:
+The interface supports:
 
-| Codigo | Idioma |
+| Code | Language |
 | --- | --- |
-| `es` | Espanol |
+| `es` | Spanish |
 | `en` | English |
 
-Comportamiento:
+Behavior:
 
-- Espanol es el idioma por defecto y fallback.
-- Si no hay preferencia guardada, el juego detecta `navigator.languages` / `navigator.language`.
-- Si el navegador empieza por `es`, usa espanol.
-- Si empieza por `en`, usa ingles.
-- Otros idiomas caen a espanol.
-- El selector `Idioma / Language` guarda la preferencia en `localStorage` con la clave `glitchDuelLanguage`.
-- Si existe una preferencia anterior en `xkcdKombatLanguage`, se lee como fallback y las nuevas escrituras usan `glitchDuelLanguage`.
+- Spanish is the default and fallback language.
+- If there is no saved preference, the game detects `navigator.languages` / `navigator.language`.
+- If the browser language starts with `es`, it uses Spanish.
+- If it starts with `en`, it uses English.
+- Other languages fall back to Spanish.
+- The `Idioma / Language` selector stores the preference in `localStorage` with the `glitchDuelLanguage` key.
+- If an older preference exists in `xkcdKombatLanguage`, it is read as a fallback and new writes use `glitchDuelLanguage`.
 
-No todos los textos decorativos de arenas o chistes tecnicos se traducen; algunos se conservan como parte del estilo visual.
+Not all decorative arena text or technical jokes are translated; some remain as part of the visual style.
 
 ## Arenas
 
-| Arena | Tema |
+| Arena | Theme |
 | --- | --- |
-| CUADERNO / NOTEBOOK | Bocetos, notas y garabatos. |
-| CAFETERIA / CAFETERIA | Cafe, mesa, menu y vapor. |
-| LABORATORIO / LAB | Ciencia, formulas y paneles. |
-| REUNION PRESENCIAL / IN-PERSON MEETING | Oficina, proyector y post-its. |
-| REUNION REMOTA / REMOTE MEETING | Videollamada, chat, mute y lag. |
-| CLASE DE MATEMATICAS / MATH CLASS | Pizarra, formulas y teoremas absurdos. |
-| SERVIDOR CAIDO / SERVER DOWN | Rack roto, errores 500 y reintentos. |
-| CONVENCION GEEK / GEEK CONVENTION | Stands, stickers y cola infinita. |
+| CUADERNO / NOTEBOOK | Sketches, notes, and doodles. |
+| CAFETERIA / CAFETERIA | Coffee, table, menu, and steam. |
+| LABORATORIO / LAB | Science, formulas, and panels. |
+| REUNION PRESENCIAL / IN-PERSON MEETING | Office, projector, and sticky notes. |
+| REUNION REMOTA / REMOTE MEETING | Video call, chat, mute, and lag. |
+| CLASE DE MATEMATICAS / MATH CLASS | Blackboard, formulas, and absurd theorems. |
+| SERVIDOR CAIDO / SERVER DOWN | Broken rack, 500 errors, and retries. |
+| CONVENCION GEEK / GEEK CONVENTION | Booths, stickers, and infinite queue. |
 
-Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de victoria.
+Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victory rules.
 
-## Funcionalidades
+## Features
 
-### Combate
+### Combat
 
-- Combate humano contra CPU.
-- Rondas al mejor de 3.
-- Timer de 60 segundos por round.
-- Dificultad `FACIL`, `NORMAL` y `DIFICIL`.
-- Hitboxes logicas para cuerpo, punetazo, patada, combos y especial.
-- Bloqueo con dano residual.
-- Agacharse con hitbox baja.
-- Combos `J,J`, `J,K` y `K,K`.
-- Ataque especial con energia llena en `L` y feedback visual reforzado.
-- IA con bloqueo ante ataques cercanos, retirada con baja vida y ataques condicionados por rango.
+- Human vs CPU combat.
+- Best-of-3 rounds.
+- 60-second timer per round.
+- `FACIL`, `NORMAL`, and `DIFICIL` difficulty.
+- Logical hitboxes for body, punch, kick, combos, and special.
+- Blocking with chip damage.
+- Crouch with low hitbox.
+- `J,J`, `J,K`, and `K,K` combos.
+- Special attack on `L` with full energy and stronger visual feedback.
+- AI that blocks close attacks, retreats at low health, and attacks based on range.
 
 ### UI/UX
 
-- Menu principal.
-- Pantalla de ayuda.
-- Selector de idioma con persistencia.
-- Selector de dificultad.
-- Selector de arena con preview visual y descripcion.
-- Intro `VS` arcade con dificultad y arena antes de cada round.
-- Opcion `Reducir movimiento` persistida en `glitchDuelReducedMotion`, con lectura fallback desde `xkcdKombatReducedMotion`.
-- Pausa con resumen de round, marcador, tiempo, dificultad, arena y controles.
-- Pantalla de fin de juego con resumen final, medalla post-partida, `REINICIAR` / `RESTART` y `MENU`.
-- Estadisticas locales con victorias, derrotas, racha actual y mejor racha, persistidas en `glitchDuelStats` con lectura fallback desde `xkcdKombatStats`.
-- Foco visible y etiquetas ARIA en controles principales.
-- Controles tactiles responsivos con safe areas, vista horizontal priorizada y portrait degradado con aviso de orientacion.
+- Main menu.
+- Help screen.
+- Persistent language selector.
+- Difficulty selector.
+- Arena selector with visual preview and description.
+- Arcade `VS` intro with difficulty and arena before each round.
+- `Reducir movimiento` option persisted in `glitchDuelReducedMotion`, with fallback reads from `xkcdKombatReducedMotion`.
+- Pause screen with round, score, time, difficulty, arena, and controls summary.
+- Game over screen with final summary, post-match medal, `REINICIAR` / `RESTART`, and `MENU`.
+- Local stats with wins, losses, current streak, and best streak, persisted in `glitchDuelStats` with fallback reads from `xkcdKombatStats`.
+- Visible focus and ARIA labels on main controls.
+- Responsive touch controls with safe areas, prioritized landscape view, and degraded portrait layout with orientation warning.
 
-### Visual Y Audio
+### Visual And Audio
 
-- Personajes diferenciados: humano con placa azul `P1` y banda; CPU con placa roja `AI`, visor y antena.
-- CPU con detalles visuales distintos segun dificultad.
-- Barras de vida animadas de alto contraste con colores por umbral de dano.
-- Barras de energia de alto contraste con marca visual cuando el especial esta listo.
-- Indicador `ESPECIAL LISTO` sobre el personaje al llenar energia.
-- Tipografia monoespaciada basada en `JetBrains Mono`, con fallbacks locales sin dependencias externas.
-- HUD e impactos asociados al color del personaje para leer quien ataca.
-- Poses de victoria y derrota al cerrar rounds o partidas.
-- Medallas post-partida como `Bug Exterminator`, `Firewall Humano`, `Combo Goblin` y `404 Survivor`.
-- Mensajes `ROUND`, `FIGHT!`, `TIME!`, `K.O.` y bloqueo con panel arcade.
-- Flash, rastro y texto `SPECIAL!` al gastar la barra de energia.
-- Feedback de combos con texto, halo/trail y pista de ventana.
-- Sacudida, hit-stop estilizado y particulas en impactos.
-- Fondos tematicos por arena con animaciones ligeras que respetan `Reducir movimiento`.
-- Audio generado con Web Audio API, con sonidos diferenciados por ataque, impacto, bloqueo, combo, especial y UI.
+- Differentiated characters: human with blue `P1` badge and band; CPU with red `AI` badge, visor, and antenna.
+- CPU visual details vary by difficulty.
+- Animated high-contrast health bars with threshold colors.
+- High-contrast energy bars with a visual marker when the special is ready.
+- `ESPECIAL LISTO` indicator above the character when energy is full.
+- Monospace typography based on `JetBrains Mono`, with local fallbacks and no external dependencies.
+- HUD and impact feedback tied to character color so attacks are easier to read.
+- Victory and defeat poses when rounds or matches end.
+- Post-match medals such as `Bug Exterminator`, `Firewall Humano`, `Combo Goblin`, and `404 Survivor`.
+- `ROUND`, `FIGHT!`, `TIME!`, `K.O.`, and block messages in arcade panels.
+- Flash, trail, and `SPECIAL!` text when spending the energy bar.
+- Combo feedback with text, halo/trail, and combo-window hint.
+- Stylized shake, hit-stop, and impact particles.
+- Themed arena backgrounds with light animations that respect `Reducir movimiento`.
+- Audio generated with the Web Audio API, with distinct sounds for attacks, impact, block, combo, special, and UI.
 
-### Tecnico
+### Technical
 
-- Proyecto estatico sin dependencias externas.
-- Scripts clasicos, sin modulos ES ni build step.
-- Canvas en espacio logico fijo `1000x500`.
-- Timer de round basado en delta time de `requestAnimationFrame(timestamp)`.
-- Cooldowns, combo window, hit-stun, hit-stop y timers visuales siguen por frames.
-- IA separada en `src/ai.js`.
-- Render de luchador separado en `src/fighter_render.js`.
-- i18n separado en `src/i18n.js`.
-- Pruebas unitarias con `node:test` y mocks de DOM/canvas/audio.
+- Static project with no external dependencies.
+- Classic scripts, no ES modules and no build step.
+- Canvas uses a fixed logical space of `1000x500`.
+- Round timer is based on delta time from `requestAnimationFrame(timestamp)`.
+- Cooldowns, combo window, hit-stun, hit-stop, and visual timers remain frame-based.
+- AI is separated in `src/ai.js`.
+- Fighter rendering is separated in `src/fighter_render.js`.
+- i18n is separated in `src/i18n.js`.
+- Unit tests use `node:test` with DOM/canvas/audio mocks.
 
-## Ejecutar
+## Run
 
-### Requisitos
+### Requirements
 
-| Necesidad | Opcion |
+| Need | Option |
 | --- | --- |
-| Navegador | Cualquier navegador moderno con Canvas y Web Audio. |
-| Servidor local recomendado | Python incluido en muchas instalaciones de Windows/macOS/Linux. |
-| Alternativa local | `npx http-server` si Node esta disponible. |
-| Tests | Node.js con `node:test` nativo. |
+| Browser | Any modern browser with Canvas and Web Audio. |
+| Recommended local server | Python, included in many Windows/macOS/Linux installations. |
+| Local alternative | `npx http-server` if Node is available. |
+| Tests | Node.js with native `node:test`. |
 
-No se instala nada dentro del proyecto.
+Nothing is installed inside the project.
 
-### Opcion Directa
+### Direct Option
 
-Abrir en navegador:
+Open in a browser:
 
 ```text
 C:\tmp\game\src\index.html
 ```
 
-### Opcion Recomendada
+### Recommended Option
 
-Desde `C:\tmp\game`:
+From `C:\tmp\game`:
 
 ```powershell
 python -m http.server 8000
 ```
 
-Abrir:
+Open:
 
 ```text
 http://localhost:8000/src/
 ```
 
-Alternativa con Node:
+Node alternative:
 
 ```powershell
 npx http-server . -p 8000
 ```
 
-## Publicacion En Linea
+## Online Publishing
 
-El repo incluye GitHub Pages con Actions en `.github/workflows/pages.yml`.
+The repo includes GitHub Pages with Actions in `.github/workflows/pages.yml`.
 
-El workflow publica la carpeta `src/` como raiz del sitio, por lo que la URL esperada es:
+The workflow publishes the `src/` folder as the site root, so the expected URL is:
 
 ```text
 https://dersteppenwolf.github.io/glitch_duel/
 ```
 
-Configuracion requerida en GitHub:
+Required GitHub configuration:
 
-- Ir al repositorio en GitHub.
-- Abrir `Settings > Pages`.
-- En `Build and deployment`, configurar `Source: GitHub Actions`.
-- No seleccionar `Deploy from a branch`; el sitio se publica con el workflow `.github/workflows/pages.yml`.
-- Confirmar que el repositorio tiene habilitadas las Actions en `Settings > Actions > General`.
-- Hacer push a `main` o ejecutar manualmente `Deploy GitHub Pages` desde la pestaña `Actions`.
-- Esperar a que el workflow termine en verde.
-- Abrir la URL publicada por el workflow o la URL esperada indicada arriba.
+- Go to the repository on GitHub.
+- Open `Settings > Pages`.
+- Under `Build and deployment`, set `Source: GitHub Actions`.
+- Do not select `Deploy from a branch`; the site is published with the `.github/workflows/pages.yml` workflow.
+- Confirm the repository has Actions enabled in `Settings > Actions > General`.
+- Push to `main` or manually run `Deploy GitHub Pages` from the `Actions` tab.
+- Wait for the workflow to finish green.
+- Open the URL published by the workflow or the expected URL listed above.
 
-Permisos usados por el workflow:
+Permissions used by the workflow:
 
-- `contents: read` para leer el repositorio.
-- `pages: write` para publicar en GitHub Pages.
-- `id-token: write` para autenticar el despliegue oficial de Pages.
+- `contents: read` to read the repository.
+- `pages: write` to publish to GitHub Pages.
+- `id-token: write` to authenticate the official Pages deployment.
 
-Verificacion despues del despliegue:
+Post-deploy verification:
 
-- La URL debe cargar el menu principal sin `/src/` en la ruta.
-- Los estilos deben verse aplicados.
-- Los selectores de idioma, dificultad y arena deben funcionar.
-- Al iniciar partida, el canvas debe cargar y responder a teclado.
-- Si la pagina muestra 404, revisar que `Source` sea `GitHub Actions` y que el ultimo workflow haya terminado correctamente.
+- The URL should load the main menu without `/src/` in the path.
+- Styles should be applied.
+- The language, difficulty, and arena selectors should work.
+- Starting a match should load the canvas and respond to keyboard input.
+- If the page shows 404, check that `Source` is `GitHub Actions` and that the latest workflow completed successfully.
 
-No hay build step: se suben directamente `src/index.html`, `src/styles.css` y los scripts de `src/`.
+There is no build step: `src/index.html`, `src/styles.css`, and the scripts in `src/` are uploaded directly.
 
-## Validacion
+## Validation
 
-### Validacion Automatica
+### Automated Validation
 
 ```powershell
 node --check src\i18n.js
@@ -307,60 +307,60 @@ node --check src\game.js
 node --test tests\game.test.js
 ```
 
-### Smoke Basico
+### Basic Smoke
 
-- Carga el menu principal.
-- `INICIAR JUEGO` / `START GAME` inicia partida.
-- `AYUDA` / `HELP` abre ayuda.
-- `VOLVER` / `BACK` regresa al menu.
-- `P` / `Esc` pausa y reanuda.
-- `REINICIAR` / `RESTART` reinicia tras game over.
-- `MENU` vuelve al menu principal.
+- The main menu loads.
+- `INICIAR JUEGO` / `START GAME` starts a match.
+- `AYUDA` / `HELP` opens help.
+- `VOLVER` / `BACK` returns to the menu.
+- `P` / `Esc` pauses and resumes.
+- `REINICIAR` / `RESTART` restarts after game over.
+- `MENU` returns to the main menu.
 
-### Smoke Combate
+### Combat Smoke
 
-- `A/D/W` y flechas mueven/saltan.
-- `C` y flecha abajo agachan.
-- `S` e `I` bloquean.
-- `J`, `K` y `L` funcionan segun energia/cooldown.
-- Combos `J,J`, `J,K` y `K,K` muestran feedback distintivo.
-- El timer baja en segundos reales durante `playing` y se detiene en pausa.
-- Al llegar a `0%`, avanza round o termina la partida.
+- `A/D/W` and arrow keys move/jump.
+- `C` and down arrow crouch.
+- `S` and `I` block.
+- `J`, `K`, and `L` work according to energy/cooldown.
+- `J,J`, `J,K`, and `K,K` combos show distinct feedback.
+- The timer counts down in real seconds during `playing` and stops while paused.
+- Reaching `0%` advances the round or ends the match.
 
-### Smoke Visual Y Accesibilidad
+### Visual And Accessibility Smoke
 
-- `Tab` muestra foco visible.
-- El selector de idioma cambia espanol/ingles y persiste al recargar.
-- El selector de arena cambia el fondo.
-- `Reducir movimiento` persiste y reduce shake/hit-stop/particulas.
-- Humano y CPU se distinguen visualmente.
-- Las nueve arenas se ven diferentes.
-- En movil horizontal, HUD, pausa, arena y controles tactiles son visibles sin solapamientos criticos.
-- En telefono vertical aparece la sugerencia de orientacion y la arena queda usable sobre los controles.
-- En pantallas bajas, menu, ayuda, pausa y game over permiten ver todos los botones con scroll interno si hace falta.
-- El canvas mantiene proporcion al redimensionar.
+- `Tab` shows visible focus.
+- The language selector switches Spanish/English and persists after reload.
+- The arena selector changes the background.
+- `Reducir movimiento` persists and reduces shake/hit-stop/particles.
+- Human and CPU are visually distinct.
+- The nine arenas look different.
+- On mobile landscape, HUD, pause, arena, and touch controls are visible without critical overlaps.
+- On portrait phones, the orientation hint appears and the arena remains usable above the controls.
+- On low-height screens, menu, help, pause, and game over can show all buttons with internal scroll when needed.
+- The canvas keeps its proportion after resize.
 
-## Arquitectura
+## Architecture
 
-### Archivos Principales
+### Main Files
 
-| Archivo | Responsabilidad |
+| File | Responsibility |
 | --- | --- |
-| `src/index.html` | Estructura HTML, menus, overlays, controles y carga de scripts. |
-| `src/styles.css` | Layout, responsive, foco visible, overlays y controles tactiles. |
-| `src/i18n.js` | Diccionario `es`/`en`, deteccion de idioma, persistencia y `t(...)`. |
-| `src/config.js` | Canvas, dimensiones logicas, ataques, dificultad y arenas. |
-| `src/audio.js` | Inicializacion Web Audio y sonidos generados por codigo. |
-| `src/effects.js` | Textos flotantes y particulas de impacto. |
-| `src/ai.js` | Decision testeable de la CPU. |
-| `src/fighter_render.js` | Dibujo del luchador y feedback visual asociado. |
-| `src/fighter.js` | Fisica individual, controles, ataques, combos, hitboxes, dano y energia. |
-| `src/game.js` | Estado global, flujo de pantallas, rondas, timer, fondos, HUD y eventos. |
-| `tests/game.test.js` | Pruebas con mocks de DOM/canvas/audio. |
+| `src/index.html` | HTML structure, menus, overlays, controls, and script loading. |
+| `src/styles.css` | Layout, responsive behavior, visible focus, overlays, and touch controls. |
+| `src/i18n.js` | `es`/`en` dictionary, language detection, persistence, and `t(...)`. |
+| `src/config.js` | Canvas, logical dimensions, attacks, difficulty, and arenas. |
+| `src/audio.js` | Web Audio initialization and code-generated sounds. |
+| `src/effects.js` | Floating text and impact particles. |
+| `src/ai.js` | Testable CPU decision logic. |
+| `src/fighter_render.js` | Fighter drawing and related visual feedback. |
+| `src/fighter.js` | Individual physics, controls, attacks, combos, hitboxes, damage, and energy. |
+| `src/game.js` | Global state, screen flow, rounds, timer, backgrounds, HUD, and events. |
+| `tests/game.test.js` | Tests with DOM/canvas/audio mocks. |
 
-### Orden De Scripts
+### Script Order
 
-`src/index.html` carga scripts clasicos en este orden:
+`src/index.html` loads classic scripts in this order:
 
 ```html
 <script src="i18n.js"></script>
@@ -373,17 +373,17 @@ node --test tests\game.test.js
 <script src="game.js"></script>
 ```
 
-### Estados Del Juego
+### Game States
 
-| Estado | Comportamiento |
+| State | Behavior |
 | --- | --- |
-| `menu` | Muestra menu principal o ayuda y detiene simulacion. |
-| `playing` | Actualiza fisica, controles, IA, golpes, efectos y render. |
-| `paused` | Congela simulacion hasta reanudar. |
-| `roundOver` | Pausa breve entre rounds. |
-| `gameOver` | Detiene simulacion y muestra reinicio/menu. |
+| `menu` | Shows main menu or help and stops simulation. |
+| `playing` | Updates physics, controls, AI, hits, effects, and render. |
+| `paused` | Freezes simulation until resumed. |
+| `roundOver` | Brief pause between rounds. |
+| `gameOver` | Stops simulation and shows restart/menu. |
 
-Flujo mental:
+Mental flow:
 
 ```text
 menu -> playing -> paused -> playing
@@ -391,91 +391,91 @@ menu -> playing -> roundOver -> playing
 menu -> playing -> gameOver -> menu/restart
 ```
 
-## Pruebas
+## Tests
 
-Las pruebas cubren, entre otros puntos:
+The tests cover, among other points:
 
-- Resize responsive y backing store DPR.
-- Controles de teclado, tactiles y flechas.
-- Bloqueo con `S` e `I`.
-- Agacharse y precedencia de bloqueo.
-- Golpes, combos, especial, energia y cooldowns.
-- Hitboxes y dano bloqueado.
-- Reduccion de movimiento.
-- IA separada y decisiones deterministas.
-- Arenas, fallback y render de fondos.
-- Idioma detectado, cambio manual y persistencia.
-- Pausa, ayuda, stats, rounds, timer y game over.
-- Identidad visual de humano/CPU.
-- Resumen final enriquecido, medallas post-partida, sonidos UI y mensajes estilo arcade.
+- Responsive resize and DPR backing store.
+- Keyboard, touch, and arrow controls.
+- Blocking with `S` and `I`.
+- Crouch and block precedence.
+- Strikes, combos, special, energy, and cooldowns.
+- Hitboxes and blocked damage.
+- Reduced motion.
+- Separated AI and deterministic decisions.
+- Arenas, fallback, and background rendering.
+- Detected language, manual change, and persistence.
+- Pause, help, stats, rounds, timer, and game over.
+- Visual identity for human/CPU.
+- Enriched final summary, post-match medals, UI sounds, and arcade-style messages.
 
-Limitaciones de las pruebas:
+Test limitations:
 
-- No reemplazan validacion visual real en navegador.
-- No verifican pixeles del Canvas.
-- No prueban audio real del navegador.
+- They do not replace real visual validation in a browser.
+- They do not verify Canvas pixels.
+- They do not test real browser audio.
 
-## Solucion De Problemas
+## Troubleshooting
 
-| Problema | Revision recomendada |
+| Problem | Recommended check |
 | --- | --- |
-| La pagina publicada muestra 404 | Confirmar `Settings > Pages > Source: GitHub Actions` y que el ultimo workflow este en verde. |
-| La URL publica carga sin estilos | Confirmar que el workflow publica `src/` y no la raiz del repo. |
-| Localmente no cargan scripts | Servir desde la raiz con `python -m http.server 8000` y abrir `http://localhost:8000/src/`. |
-| No suena el audio | Hacer clic o presionar una tecla primero; Web Audio se inicializa tras interaccion del usuario. |
-| Controles tactiles no aparecen | Solo se muestran durante `playing` y en dispositivos tactiles o navegadores que expongan touch. |
-| Tests fallan por sintaxis | Ejecutar `node --check` sobre los archivos de `src/` para ubicar el archivo exacto. |
+| Published page shows 404 | Confirm `Settings > Pages > Source: GitHub Actions` and that the latest workflow is green. |
+| Public URL loads without styles | Confirm the workflow publishes `src/` and not the repository root. |
+| Scripts do not load locally | Serve from the root with `python -m http.server 8000` and open `http://localhost:8000/src/`. |
+| Audio does not play | Click or press a key first; Web Audio initializes after user interaction. |
+| Touch controls do not appear | They only show during `playing` and on touch devices or browsers that expose touch. |
+| Tests fail because of syntax | Run `node --check` on the files in `src/` to find the exact file. |
 
-## Decisiones Tecnicas
+## Technical Decisions
 
-- Mantener el proyecto como app estatica sin dependencias.
-- Usar APIs nativas del navegador y Node.js.
-- Mantener coordenadas logicas en `1000x500`.
-- Evitar build tooling mientras no haga falta.
-- Mantener espanol como idioma fallback.
-- Actualizar `Readme.md` cuando cambien comandos, controles, estados, pruebas o funcionalidades.
-- Usar ExecPlans en `plans/` para cambios sustanciales.
+- Keep the project as a static app with no dependencies.
+- Use native browser and Node.js APIs.
+- Keep logical coordinates at `1000x500`.
+- Avoid build tooling until needed.
+- Keep Spanish as the fallback language.
+- Update `Readme.md` when commands, controls, states, tests, or features change.
+- Use ExecPlans in `plans/` for substantial changes.
 
-## Backlog Priorizado
+## Prioritized Backlog
 
-Priorizacion orientada a atraer y retener usuarios: primero mejoras visibles en los primeros segundos, luego motivacion para rejugar y finalmente profundidad o mantenimiento.
+Prioritization aims to attract and retain users: first visible improvements in the opening seconds, then replay motivation, and finally depth or maintenance.
 
-Siguiente mejora recomendada: `Trailer GIF o captura animada en README`, porque comunica el atractivo del juego antes de abrirlo.
+Next recommended improvement: `Trailer GIF or animated screenshot in README`, because it communicates the game's appeal before opening it.
 
-| Prioridad | Mejora | Motivo | Tipo |
+| Priority | Improvement | Reason | Type |
 | --- | --- | --- | --- |
-| Alta | Trailer GIF o captura animada en README | Comunica el atractivo del juego antes de abrirlo y mejora la pagina del repositorio. | Documentacion / marketing |
-| Alta | Modo entrenamiento | Facilita practicar rangos, combos, bloqueo y especial sin presion del timer. | Gameplay |
-| Alta | Depuracion visual opcional | Acelera ajuste de hitboxes, estados, cooldowns y decisiones de IA. | Herramienta dev |
-| Media | Misiones rapidas diarias/locales | Propone retos como ganar sin especial, conectar 3 combos o bloquear 5 golpes. | Retencion |
-| Media | Logros locales | Da objetivos persistentes sin servidor: primera victoria, rey del bloqueo, exterminador de bugs. | Progresion |
-| Media | Selector de tema visual del HUD | Permite elegir estilo arcade, consola o cuaderno sin alterar gameplay. | Personalizacion |
-| Media | Persistir dificultad y arena | Reduce friccion al volver al juego y conserva preferencias habituales. | Persistencia |
-| Media | Reset visible de estadisticas | Da control sobre datos locales sin depender de limpiar `localStorage`. | UX / datos |
-| Media | Personalidades de IA | Aumenta variedad sin cambiar controles: agresiva, defensiva, saltarina o aleatoria. | Gameplay / IA |
-| Media | Ayuda mas visual | Explica teclado, tactil y combos con diagramas en vez de solo texto. | Accesibilidad |
-| Media | Animaciones de HUD | Refuerza estados importantes: vida baja, round ganado y energia llena. | Visual |
-| Media | Telemetria local de combate | Ayuda a balancear con datos de combos, bloqueos, especiales y tiempos. | Balance |
-| Baja | Nuevas frases de impacto y medallas | Amplia humor y personalidad con bajo riesgo tecnico. | Contenido |
-| Baja | Mas arenas visuales | Aumenta variedad cosmetica sin tocar balance ni hitboxes. | Contenido / visual |
-| Baja | Combos adicionales | Amplia profundidad sin rehacer el sistema base de combate. | Gameplay |
-| Baja | Balance avanzado | Ajustes finos por dificultad, ataque o estilo de CPU. | Balance |
-| Baja | Organizacion de fondos | Separar detalles de arenas si `drawBackground()` sigue creciendo. | Mantenimiento |
+| High | Trailer GIF or animated screenshot in README | Communicates the game's appeal before opening it and improves the repository page. | Documentation / marketing |
+| High | Training mode | Makes it easier to practice ranges, combos, blocking, and special without timer pressure. | Gameplay |
+| High | Optional visual debug | Speeds up tuning for hitboxes, states, cooldowns, and AI decisions. | Dev tool |
+| Medium | Daily/local quick missions | Offers challenges like winning without special, landing 3 combos, or blocking 5 hits. | Retention |
+| Medium | Local achievements | Adds persistent goals without a server: first win, block king, bug exterminator. | Progression |
+| Medium | HUD theme selector | Allows choosing arcade, console, or notebook style without changing gameplay. | Customization |
+| Medium | Persist difficulty and arena | Reduces friction when returning to the game and keeps common preferences. | Persistence |
+| Medium | Visible stats reset | Gives control over local data without clearing `localStorage`. | UX / data |
+| Medium | AI personalities | Adds variety without changing controls: aggressive, defensive, jumpy, or random. | Gameplay / AI |
+| Medium | More visual help | Explains keyboard, touch, and combos with diagrams instead of text only. | Accessibility |
+| Medium | HUD animations | Reinforces important states: low health, round won, and full energy. | Visual |
+| Medium | Local combat telemetry | Helps balance with data about combos, blocks, specials, and times. | Balance |
+| Low | New impact phrases and medals | Expands humor and personality with low technical risk. | Content |
+| Low | More visual arenas | Adds cosmetic variety without touching balance or hitboxes. | Content / visual |
+| Low | Additional combos | Adds depth without rebuilding the base combat system. | Gameplay |
+| Low | Advanced balance | Fine tuning by difficulty, attack, or CPU style. | Balance |
+| Low | Background organization | Split arena details if `drawBackground()` keeps growing. | Maintenance |
 
-## Backlog Completado
+## Completed Backlog
 
-| Hito | Resultado |
+| Milestone | Result |
 | --- | --- |
-| Menu, ayuda y pausa | Flujo completo con overlays y resumen. |
-| Combate base | Movimiento, ataques, bloqueo, hitboxes y rondas. |
-| Combos y especial | `J,J`, `J,K`, `K,K` y `L` con energia llena. |
-| Feedback del especial | Flash, rastro y texto `SPECIAL!` al usar la barra completa. |
-| Indicador de especial listo | Texto y aura sobre el personaje al llenar energia. |
-| Pantalla final enriquecida | Marcador, dificultad, arena, racha, medalla y frase humoristica al terminar partida. |
-| Accesibilidad inicial | Foco visible, ARIA y reducir movimiento. |
-| Mobile | Controles tactiles, safe areas, landscape optimizado y portrait degradado con aviso de orientacion. |
-| Arenas | Nueve fondos tematicos sin efectos jugables. |
-| Preview de arena | Menu inicial con mini-preview, nombre y descripcion por arena. |
-| Intro VS arcade | Overlay `P1 VS AI` con round, dificultad y arena antes de cada round. |
-| i18n | Espanol/ingles con autodeteccion y persistencia. |
-| Arquitectura tecnica | IA/render/i18n separados y tests con `node:test`. |
+| Menu, help, and pause | Complete flow with overlays and summary. |
+| Base combat | Movement, attacks, blocking, hitboxes, and rounds. |
+| Combos and special | `J,J`, `J,K`, `K,K`, and `L` with full energy. |
+| Special feedback | Flash, trail, and `SPECIAL!` text when using the full bar. |
+| Special ready indicator | Text and aura above the character when energy is full. |
+| Enriched final screen | Score, difficulty, arena, streak, medal, and humorous phrase at match end. |
+| Initial accessibility | Visible focus, ARIA, and reduced motion. |
+| Mobile | Touch controls, safe areas, optimized landscape, and degraded portrait with orientation warning. |
+| Arenas | Nine themed backgrounds with no gameplay effects. |
+| Arena preview | Initial menu with mini-preview, name, and description per arena. |
+| Arcade VS intro | `P1 VS AI` overlay with round, difficulty, and arena before each round. |
+| i18n | Spanish/English with autodetection and persistence. |
+| Technical architecture | AI/render/i18n split and tests with `node:test`. |
