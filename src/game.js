@@ -403,6 +403,8 @@ function drawBackground() {
         ctx.stroke();
     }
 
+    drawArenaDetails(selectedArena, arena);
+
     ctx.strokeStyle = arena.ground;
     ctx.lineWidth = 6;
     ctx.beginPath();
@@ -413,6 +415,159 @@ function drawBackground() {
     }
 
     ctx.stroke();
+}
+
+function drawArenaDetails(arenaKey, arena) {
+    ctx.save();
+    ctx.globalAlpha = 0.82;
+
+    if (arenaKey === 'cafeteria') drawCafeteriaDetails(arena);
+    else if (arenaKey === 'lab') drawLabDetails(arena);
+    else if (arenaKey === 'meeting') drawMeetingDetails(arena);
+    else if (arenaKey === 'remoteMeeting') drawRemoteMeetingDetails(arena);
+    else drawNotebookDetails(arena);
+
+    ctx.restore();
+}
+
+function drawNotebookDetails(arena) {
+    ctx.strokeStyle = 'rgba(200, 40, 40, 0.35)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(95, 0);
+    ctx.lineTo(95, GROUND_Y + 20);
+    ctx.stroke();
+
+    ctx.strokeStyle = arena.accent;
+    ctx.lineWidth = 1;
+    for (let y = 80; y < GROUND_Y; y += 34) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(WIDTH, y);
+        ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+    ctx.font = '20px "Comic Sans MS"';
+    ctx.fillText('TODO: esquivar', 130, 120);
+    ctx.fillText('combo = J + K', 710, 170);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
+    ctx.beginPath();
+    ctx.arc(785, 230, 34, 0.2, Math.PI * 1.7);
+    ctx.stroke();
+}
+
+function drawCafeteriaDetails(arena) {
+    ctx.fillStyle = 'rgba(124, 79, 44, 0.22)';
+    ctx.fillRect(80, 250, 840, 70);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.fillRect(110, 90, 230, 115);
+    ctx.strokeStyle = arena.ground;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(110, 90, 230, 115);
+
+    ctx.fillStyle = arena.ground;
+    ctx.font = 'bold 20px "Comic Sans MS"';
+    ctx.fillText('COFFEE', 135, 125);
+    ctx.font = '16px "Comic Sans MS"';
+    ctx.fillText('404 CAFFEINE', 135, 155);
+    ctx.fillText('MEETING FUEL', 135, 180);
+
+    for (let x = 620; x <= 760; x += 70) {
+        ctx.strokeStyle = arena.ground;
+        ctx.lineWidth = 4;
+        ctx.strokeRect(x, 215, 38, 28);
+        ctx.beginPath();
+        ctx.arc(x + 39, 228, 8, -Math.PI / 2, Math.PI / 2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(124, 79, 44, 0.32)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x + 12, 205);
+        ctx.quadraticCurveTo(x + 4, 190, x + 18, 178);
+        ctx.moveTo(x + 25, 205);
+        ctx.quadraticCurveTo(x + 35, 190, x + 24, 178);
+        ctx.stroke();
+    }
+}
+
+function drawLabDetails(arena) {
+    ctx.strokeStyle = arena.accent;
+    ctx.lineWidth = 1;
+    for (let y = 60; y < GROUND_Y; y += 45) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(WIDTH, y);
+        ctx.stroke();
+    }
+
+    ctx.strokeStyle = arena.ground;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(92, 105, 190, 95);
+    ctx.strokeRect(720, 85, 170, 130);
+    ctx.fillStyle = 'rgba(36, 83, 122, 0.55)';
+    ctx.font = '18px "Comic Sans MS"';
+    ctx.fillText('E = mc^2?', 120, 145);
+    ctx.fillText('NaN sample', 745, 125);
+    ctx.fillText('DO NOT LICK', 742, 165);
+
+    ctx.strokeStyle = 'rgba(42, 157, 143, 0.55)';
+    ctx.beginPath();
+    ctx.moveTo(430, 105);
+    ctx.lineTo(470, 220);
+    ctx.lineTo(390, 220);
+    ctx.closePath();
+    ctx.stroke();
+}
+
+function drawMeetingDetails(arena) {
+    ctx.fillStyle = 'rgba(91, 70, 54, 0.20)';
+    ctx.fillRect(120, 238, 760, 72);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+    ctx.fillRect(340, 72, 320, 150);
+    ctx.strokeStyle = arena.ground;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(340, 72, 320, 150);
+
+    ctx.fillStyle = arena.ground;
+    ctx.font = 'bold 18px "Comic Sans MS"';
+    ctx.fillText('THIS COULD BE AN EMAIL', 372, 118);
+    ctx.font = '16px "Comic Sans MS"';
+    ctx.fillText('ACTION ITEMS?', 420, 165);
+
+    const notes = [[185, 105], [715, 120], [760, 175]];
+    notes.forEach(([x, y], i) => {
+        ctx.fillStyle = i === 1 ? 'rgba(255, 210, 80, 0.7)' : 'rgba(255, 245, 130, 0.7)';
+        ctx.fillRect(x, y, 60, 45);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.font = '13px "Comic Sans MS"';
+        ctx.fillText(i === 2 ? '???' : 'TODO', x + 10, y + 27);
+    });
+}
+
+function drawRemoteMeetingDetails(arena) {
+    const windows = [[95, 86, 'HUMANO'], [315, 86, 'CPU'], [535, 86, 'LAG...'], [755, 86, 'MUTED']];
+
+    windows.forEach(([x, y, label], i) => {
+        ctx.fillStyle = i === 1 ? 'rgba(210, 34, 34, 0.24)' : 'rgba(125, 211, 252, 0.18)';
+        ctx.fillRect(x, y, 150, 92);
+        ctx.strokeStyle = arena.ground;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, 150, 92);
+        ctx.fillStyle = '#dff7ff';
+        ctx.font = '14px "Comic Sans MS"';
+        ctx.fillText(label, x + 18, y + 72);
+    });
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.10)';
+    ctx.fillRect(705, 210, 210, 96);
+    ctx.strokeStyle = arena.ground;
+    ctx.strokeRect(705, 210, 210, 96);
+    ctx.fillStyle = '#dff7ff';
+    ctx.font = '15px "Comic Sans MS"';
+    ctx.fillText("YOU'RE MUTED", 730, 238);
+    ctx.fillText('CAN YOU SEE IT?', 730, 270);
+    ctx.fillText('RECONNECTING', 730, 292);
 }
 
 function drawHealthBars() {

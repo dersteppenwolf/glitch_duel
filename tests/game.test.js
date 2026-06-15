@@ -21,6 +21,7 @@ function createMockContext() {
         stroke() { this.calls.push('stroke'); },
         fillRect() { this.calls.push('fillRect'); },
         strokeRect() { this.calls.push('strokeRect'); },
+        closePath() { this.calls.push('closePath'); },
         clearRect() { this.calls.push('clearRect'); },
         translate() { this.calls.push('translate'); },
         scale() { this.calls.push('scale'); },
@@ -147,6 +148,8 @@ function loadGame() {
             setRoundTimerFrames,
             setRoundTimeMs,
             setArena,
+            getArenaConfig,
+            drawBackground,
             setReducedMotion,
             recordMatchResult,
             update,
@@ -585,14 +588,42 @@ test('CPU decision helper chooses deterministic defensive and offensive actions'
     assert.equal(api.chooseAIAction({ dist: 80, health: 100, energy: 0, onGround: true, opponentAttacking: false, canPunch: true, canKick: false, difficulty, rand: 0.2 }), 'punch');
 });
 
-test('arena selection falls back to notebook for invalid values', () => {
+test('arena selection supports themed arenas and falls back to notebook', () => {
     const { api } = loadGame();
 
-    api.setArena('terminal');
-    assert.equal(api.getState().selectedArena, 'terminal');
+    api.setArena('cafeteria');
+    assert.equal(api.getState().selectedArena, 'cafeteria');
+    assert.equal(api.getArenaConfig().label, 'CAFETERIA');
+
+    api.setArena('meeting');
+    assert.equal(api.getState().selectedArena, 'meeting');
+    assert.equal(api.getArenaConfig().label, 'REUNION PRESENCIAL');
+
+    api.setArena('remoteMeeting');
+    assert.equal(api.getState().selectedArena, 'remoteMeeting');
+    assert.equal(api.getArenaConfig().label, 'REUNION REMOTA');
 
     api.setArena('missing');
     assert.equal(api.getState().selectedArena, 'notebook');
+    assert.equal(api.getArenaConfig().label, 'CUADERNO');
+});
+
+test('new arena backgrounds render themed canvas primitives', () => {
+    const { api } = loadGame();
+
+    api.setArena('cafeteria');
+    api.drawBackground();
+    api.setArena('meeting');
+    api.drawBackground();
+    api.setArena('remoteMeeting');
+    api.drawBackground();
+
+    const state = api.getState();
+    assert(state.ctxCalls.includes('strokeRect'));
+    assert(state.ctxCalls.includes('fillRect'));
+    assert(state.textCalls.includes('COFFEE'));
+    assert(state.textCalls.includes('THIS COULD BE AN EMAIL'));
+    assert(state.textCalls.includes("YOU'RE MUTED"));
 });
 
 test('local stats track wins, losses, and best streak', () => {

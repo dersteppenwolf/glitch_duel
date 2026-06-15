@@ -39,7 +39,7 @@ Estado actual:
 - Agacharse implementado con `C`, flecha abajo y boton tactil `CROUCH`.
 - Movimiento alternativo con flechas implementado.
 - Ataque especial con energia llena implementado en `L`.
-- Arenas seleccionables desde el menu principal.
+- Arenas seleccionables desde el menu principal: cuaderno, cafeteria, laboratorio, reunion presencial y reunion remota.
 - Estadisticas locales con victorias, derrotas y rachas.
 - Pantalla de fin de juego con opciones `REINICIAR` y `MENU`.
 - Controles de teclado y controles tactiles durante la partida.
@@ -218,6 +218,7 @@ Validar en navegador antes de considerar listo un cambio visual o de jugabilidad
 - Los combos deben mostrar pista/feedback visual sin tapar barras, timer ni mensajes centrales.
 - Con energia llena, `L` debe lanzar el ataque especial.
 - Cambiar la arena en el menu debe cambiar el fondo del combate.
+- Las cinco arenas deben verse distintas: cuaderno, cafeteria, laboratorio, reunion presencial y reunion remota.
 - Al terminar partidas deben actualizarse las estadisticas locales.
 - `P`, `Esc` o `PAUSA` deben pausar la partida, mostrar resumen de round/marcador/tiempo/dificultad/arena, y `RESUMIR` debe continuar.
 - El temporizador debe bajar durante `playing` y detenerse en pausa.
@@ -451,7 +452,7 @@ Limitaciones de las pruebas:
 - Agacharse con hitbox baja para esquivar golpes altos.
 - Movimiento alternativo con flechas.
 - Ataque especial con barra de energia y tecla `L`.
-- Arenas seleccionables: cuaderno, terminal y laboratorio.
+- Arenas seleccionables: cuaderno, cafeteria, laboratorio, reunion presencial y reunion remota.
 - Estadisticas locales con `localStorage`.
 - Controles moviles responsivos.
 - Pausa informativa con round, marcador, tiempo, dificultad, arena y controles clave.
@@ -616,7 +617,8 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Agacharse | Implementado con `C`, flecha abajo y boton tactil `CROUCH`; reduce la hitbox vertical. |
 | Movimiento con flechas | Implementado con flechas izquierda, derecha y arriba como alternativa a `A`, `D` y `W`. |
 | Ataque especial | Implementado con energia llena, tecla `L` y boton tactil `SPECIAL`. |
-| Arenas diferentes | Implementadas con seleccion de cuaderno, terminal y laboratorio. |
+| Arenas diferentes | Implementadas con seleccion de cuaderno, cafeteria, laboratorio, reunion presencial y reunion remota. |
+| Detalles por arena | Implementados con fondos tematicos propios para cuaderno, cafeteria, laboratorio, reunion presencial y reunion remota. |
 | Estadisticas locales | Implementadas con victorias, derrotas, racha actual y mejor racha en `localStorage`. |
 | Navegacion post-partida | Implementados botones `REINICIAR` y `MENU` en la pantalla de fin de juego. |
 | Feedback de golpes | Implementado con shake del canvas, hit-stop breve y particulas/lineas de impacto. |
@@ -648,7 +650,6 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 
 | Mejora | Objetivo | Beneficio |
 | --- | --- | --- |
-| Detalles por arena | Agregar elementos visuales propios por escenario sin assets externos. | Da mas identidad a cada arena. |
 | Combos adicionales | Agregar variantes como `K, J`, ataque aereo o combo con especial. | Amplia profundidad sin rehacer el sistema. |
 | Balance avanzado | Ajustar energia, daño y cooldown por dificultad o arena. | Permite mayor control del ritmo de combate. |
 

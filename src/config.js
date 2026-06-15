@@ -68,16 +68,28 @@ const ARENAS = {
         ground: '#222',
         accent: 'rgba(0, 0, 0, 0.08)'
     },
-    terminal: {
-        label: 'TERMINAL',
-        background: '#06120a',
-        ground: '#39ff88',
-        accent: 'rgba(57, 255, 136, 0.15)'
+    cafeteria: {
+        label: 'CAFETERIA',
+        background: '#f2dfc2',
+        ground: '#7c4f2c',
+        accent: 'rgba(124, 79, 44, 0.24)'
     },
     lab: {
         label: 'LABORATORIO',
         background: '#e8f4ff',
         ground: '#24537a',
         accent: 'rgba(36, 83, 122, 0.12)'
+    },
+    meeting: {
+        label: 'REUNION PRESENCIAL',
+        background: '#f4efe6',
+        ground: '#5b4636',
+        accent: 'rgba(91, 70, 54, 0.22)'
+    },
+    remoteMeeting: {
+        label: 'REUNION REMOTA',
+        background: '#101827',
+        ground: '#7dd3fc',
+        accent: 'rgba(125, 211, 252, 0.24)'
     }
 };
