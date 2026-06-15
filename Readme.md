@@ -181,7 +181,7 @@ Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de
 - Pantalla de fin de juego con resumen final, medalla post-partida, `REINICIAR` / `RESTART` y `MENU`.
 - Estadisticas locales con victorias, derrotas, racha actual y mejor racha, persistidas en `glitchDuelStats` con lectura fallback desde `xkcdKombatStats`.
 - Foco visible y etiquetas ARIA en controles principales.
-- Controles tactiles responsivos y aviso de orientacion vertical.
+- Controles tactiles responsivos con safe areas, vista horizontal priorizada y portrait degradado con aviso de orientacion.
 
 ### Visual Y Audio
 
@@ -335,7 +335,9 @@ node --test tests\game.test.js
 - `Reducir movimiento` persiste y reduce shake/hit-stop/particulas.
 - Humano y CPU se distinguen visualmente.
 - Las nueve arenas se ven diferentes.
-- En telefono vertical aparece la sugerencia de orientacion.
+- En movil horizontal, HUD, pausa, arena y controles tactiles son visibles sin solapamientos criticos.
+- En telefono vertical aparece la sugerencia de orientacion y la arena queda usable sobre los controles.
+- En pantallas bajas, menu, ayuda, pausa y game over permiten ver todos los botones con scroll interno si hace falta.
 - El canvas mantiene proporcion al redimensionar.
 
 ## Arquitectura
@@ -471,7 +473,7 @@ Siguiente mejora recomendada: `Trailer GIF o captura animada en README`, porque 
 | Indicador de especial listo | Texto y aura sobre el personaje al llenar energia. |
 | Pantalla final enriquecida | Marcador, dificultad, arena, racha, medalla y frase humoristica al terminar partida. |
 | Accesibilidad inicial | Foco visible, ARIA y reducir movimiento. |
-| Mobile | Controles tactiles, safe areas y aviso de orientacion. |
+| Mobile | Controles tactiles, safe areas, landscape optimizado y portrait degradado con aviso de orientacion. |
 | Arenas | Nueve fondos tematicos sin efectos jugables. |
 | Preview de arena | Menu inicial con mini-preview, nombre y descripcion por arena. |
 | Intro VS arcade | Overlay `P1 VS AI` con round, dificultad y arena antes de cada round. |

@@ -288,6 +288,43 @@ test('resizeCanvas preserves logical aspect ratio and scales backing store', () 
     assert.deepEqual(state.transform, [1.552, 0, 0, 1.552, 0, 0]);
 });
 
+test('resizeCanvas gives mobile landscape room for touch controls', () => {
+    const { api, context } = loadGame();
+
+    context.navigator.maxTouchPoints = 1;
+    context.window.innerWidth = 844;
+    context.window.innerHeight = 390;
+    startPlayingGame(api);
+
+    const state = api.getState();
+    assert.equal(state.canvasStyle.width, '628px');
+    assert.equal(state.canvasStyle.height, '314px');
+    assert.equal(state.canvasStyle.marginTop, '');
+    assert.equal(state.canvasStyle.marginBottom, '68px');
+    assert.equal(state.canvasWidth, 1256);
+    assert.equal(state.canvasHeight, 628);
+    assert.deepEqual(state.transform, [1.256, 0, 0, 1.256, 0, 0]);
+});
+
+test('resizeCanvas keeps portrait touch layout above controls and warning', () => {
+    const { api, context } = loadGame();
+
+    context.navigator.maxTouchPoints = 1;
+    context.window.innerWidth = 390;
+    context.window.innerHeight = 844;
+    startPlayingGame(api);
+
+    const state = api.getState();
+    assert.equal(state.canvasStyle.width, '374px');
+    assert.equal(state.canvasStyle.height, '187px');
+    assert.equal(state.canvasStyle.marginTop, '38px');
+    assert.equal(state.canvasStyle.marginBottom, '180px');
+    assert.equal(state.canvasWidth, 748);
+    assert.equal(state.canvasHeight, 374);
+    assert.equal(state.orientationWarningDisplay, 'block');
+    assert.deepEqual(state.transform, [0.748, 0, 0, 0.748, 0, 0]);
+});
+
 test('J triggers punch damage when opponent is in range', () => {
     const { api } = loadGame();
     const { player, opponent } = createFighters(api, 100, 170);

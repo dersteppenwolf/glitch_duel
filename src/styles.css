@@ -13,6 +13,8 @@ body {
     position: relative;
     width: 100vw;
     height: 100vh;
+    min-height: 100svh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -32,6 +34,8 @@ canvas {
 .panel-overlay {
     position: absolute;
     inset: 0;
+    box-sizing: border-box;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -599,6 +603,10 @@ input:focus-visible,
     text-align: center;
     z-index: 200;
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+    box-sizing: border-box;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
 }
 
 #winner-text {
@@ -770,8 +778,97 @@ input:focus-visible,
     }
 }
 
+@media (max-width: 900px) and (orientation: landscape) {
+    #instructions {
+        top: max(6px, env(safe-area-inset-top));
+        font-size: 11px;
+        padding: 4px 7px;
+    }
+
+    #pause-button {
+        top: max(6px, env(safe-area-inset-top));
+        right: max(8px, env(safe-area-inset-right));
+        padding: 6px 9px;
+        font-size: 11px;
+    }
+
+    #controls {
+        height: 30vh;
+    }
+
+    .control-zone {
+        bottom: max(6px, env(safe-area-inset-bottom));
+        width: clamp(145px, 34vw, 205px);
+        height: clamp(128px, 35vw, 170px);
+    }
+
+    #left-side {
+        left: max(6px, env(safe-area-inset-left));
+    }
+
+    #right-side {
+        right: max(6px, env(safe-area-inset-right));
+    }
+
+    #btn-left,
+    #btn-right,
+    #btn-jump {
+        width: clamp(46px, 10vw, 58px);
+        height: clamp(46px, 10vw, 58px);
+        font-size: 11px;
+    }
+
+    #btn-left { left: 0; top: 42px; }
+    #btn-right { left: clamp(86px, 20vw, 116px); top: 42px; }
+    #btn-jump { left: clamp(43px, 10vw, 58px); top: 0; }
+
+    #btn-block,
+    #btn-crouch {
+        width: clamp(58px, 14vw, 70px);
+        height: clamp(36px, 9vw, 46px);
+        left: clamp(40px, 10vw, 55px);
+        font-size: 9px;
+    }
+
+    #btn-block { top: clamp(74px, 17vw, 82px); }
+    #btn-crouch { top: clamp(116px, 27vw, 132px); }
+
+    #btn-punch,
+    #btn-kick {
+        width: clamp(58px, 14vw, 76px);
+        height: clamp(58px, 14vw, 76px);
+        top: 24px;
+        font-size: 11px;
+    }
+
+    #btn-punch { right: clamp(70px, 17vw, 98px); }
+    #btn-kick { right: 0; }
+
+    #btn-special {
+        width: clamp(70px, 18vw, 86px);
+        height: clamp(34px, 8vw, 44px);
+        right: clamp(32px, 9vw, 48px);
+        top: clamp(94px, 22vw, 110px);
+        font-size: 9px;
+    }
+}
+
 @media (orientation: portrait) and (max-width: 760px) {
+    .panel-overlay {
+        align-items: flex-start;
+    }
+
+    .menu-card,
+    #main-menu .menu-card {
+        max-height: calc(100dvh - 24px);
+        overflow: auto;
+    }
+
+    #orientation-warning {
+        top: max(48px, calc(env(safe-area-inset-top) + 44px));
+    }
+
     canvas {
-        margin-top: 30px;
+        margin-top: 38px;
     }
 }

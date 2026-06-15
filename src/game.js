@@ -288,18 +288,44 @@ function renderPauseSummary() {
     });
 }
 
+function hasTouchInput() {
+    return mobileControlsEnabled || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
+
+function getViewportSize() {
+    const viewport = window.visualViewport;
+
+    return {
+        width: Math.max(160, Math.floor(viewport && viewport.width ? viewport.width : window.innerWidth)),
+        height: Math.max(120, Math.floor(viewport && viewport.height ? viewport.height : window.innerHeight))
+    };
+}
+
 function resizeCanvas() {
     const aspectRatio = WIDTH / HEIGHT;
-    const maxDisplayWidth = Math.max(160, window.innerWidth - 24);
-    const maxDisplayHeight = Math.max(120, window.innerHeight * 0.72);
-    const displayWidth = Math.min(maxDisplayWidth, maxDisplayHeight * aspectRatio);
-    const displayHeight = displayWidth / aspectRatio;
+    const viewport = getViewportSize();
+    const isTouch = hasTouchInput();
+    const isPlayingTouch = isTouch && gameState === 'playing';
+    const isPortraitPhone = isTouch && viewport.height > viewport.width && viewport.width <= 760;
+    const isCompactTouch = isPlayingTouch && (viewport.width <= 900 || viewport.height <= 500);
+    const horizontalPadding = isCompactTouch || viewport.width <= 760 ? 16 : 24;
+    const heightRatio = isPlayingTouch ? (isPortraitPhone ? 0.46 : 0.82) : 0.72;
+    const topReserve = isPortraitPhone && isPlayingTouch ? 38 : 0;
+    const bottomReserve = isPlayingTouch ? (isPortraitPhone ? 180 : 68) : 0;
+    const canvasBorderReserve = 8;
+    const maxDisplayWidth = Math.max(160, viewport.width - horizontalPadding);
+    const availableHeight = viewport.height - topReserve - bottomReserve - canvasBorderReserve;
+    const maxDisplayHeight = Math.max(120, Math.min(viewport.height * heightRatio, availableHeight));
+    const displayWidth = Math.floor(Math.min(maxDisplayWidth, maxDisplayHeight * aspectRatio));
+    const displayHeight = Math.floor(displayWidth / aspectRatio);
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DEVICE_PIXEL_RATIO);
     const backingWidth = Math.round(displayWidth * dpr);
     const backingHeight = Math.round(displayHeight * dpr);
 
     canvas.style.width = `${displayWidth}px`;
     canvas.style.height = `${displayHeight}px`;
+    canvas.style.marginTop = topReserve ? `${topReserve}px` : '';
+    canvas.style.marginBottom = bottomReserve ? `${bottomReserve}px` : '';
 
     if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
         canvas.width = backingWidth;
@@ -312,8 +338,9 @@ function resizeCanvas() {
 
 function updateOrientationWarning() {
     const warning = document.getElementById('orientation-warning');
-    const isTouch = mobileControlsEnabled || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const isPortraitPhone = isTouch && window.innerHeight > window.innerWidth && window.innerWidth <= 760;
+    const isTouch = hasTouchInput();
+    const viewport = getViewportSize();
+    const isPortraitPhone = isTouch && viewport.height > viewport.width && viewport.width <= 760;
 
     warning.style.display = isPortraitPhone && gameState === 'playing' ? 'block' : 'none';
 }
@@ -1156,6 +1183,7 @@ function draw() {
 function updateControlsVisibility() {
     document.getElementById('controls').style.display = mobileControlsEnabled && gameState === 'playing' ? 'block' : 'none';
     document.getElementById('pause-button').style.display = gameState === 'playing' ? 'block' : 'none';
+    resizeCanvas();
     updateOrientationWarning();
 }
 
