@@ -1,6 +1,6 @@
 # Exec Plan: Diferenciar Personajes
 
-Estado: Implementado localmente, pendiente de commit/push.
+Estado: Cerrado en `5e6ca3f Differentiate player and CPU visuals`.
 
 ## Objetivo
 
