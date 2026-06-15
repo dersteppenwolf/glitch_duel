@@ -132,6 +132,7 @@ function loadGame() {
             resumeGame,
             togglePause,
             setDifficulty,
+            setRoundTimerFrames,
             update,
             triggerImpactFeedback,
             getState: () => ({
@@ -146,6 +147,7 @@ function loadGame() {
                 currentRound,
                 playerRounds,
                 cpuRounds,
+                roundTimerFrames,
                 screenShake,
                 hitStopFrames,
                 canvasWidth: canvas.width,
@@ -349,4 +351,36 @@ test('round system advances rounds and ends match at two wins', () => {
     state = api.getState();
     assert.equal(state.playerRounds, 2);
     assert.equal(state.gameState, 'gameOver');
+});
+
+test('round timer awards round to fighter with more health', () => {
+    const { api } = loadGame();
+
+    api.initGame();
+    api.getState().player1.health = 80;
+    api.getState().player2.health = 60;
+    api.setRoundTimerFrames(1);
+    api.update();
+
+    const state = api.getState();
+    assert.equal(state.playerRounds, 1);
+    assert.equal(state.cpuRounds, 0);
+    assert.equal(state.roundTimerFrames, 3600);
+    assert.equal(state.gameState, 'playing');
+});
+
+test('round timer tie starts another round without scoring', () => {
+    const { api } = loadGame();
+
+    api.initGame();
+    api.getState().player1.health = 70;
+    api.getState().player2.health = 70;
+    api.setRoundTimerFrames(1);
+    api.update();
+
+    const state = api.getState();
+    assert.equal(state.playerRounds, 0);
+    assert.equal(state.cpuRounds, 0);
+    assert.equal(state.currentRound, 2);
+    assert.equal(state.gameState, 'playing');
 });

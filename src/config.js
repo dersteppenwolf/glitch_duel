@@ -5,6 +5,8 @@ const HEIGHT = 500;
 const GROUND_Y = 380;
 const MAX_DEVICE_PIXEL_RATIO = 2;
 const ROUNDS_TO_WIN = 2;
+const ROUND_TIME_SECONDS = 60;
+const ROUND_TIMER_FRAMES = ROUND_TIME_SECONDS * 60;
 const ATTACKS = {
     punch: { damage: 8, range: 95, cooldown: 12 },
     kick: { damage: 14, range: 135, cooldown: 24 }

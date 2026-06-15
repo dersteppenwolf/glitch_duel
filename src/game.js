@@ -13,6 +13,7 @@ let statusTimer = 0;
 let currentRound = 1;
 let playerRounds = 0;
 let cpuRounds = 0;
+let roundTimerFrames = ROUND_TIMER_FRAMES;
 
 function getDifficultyConfig() {
     return DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.normal;
@@ -25,6 +26,10 @@ function setDifficulty(value) {
 function showStatusMessage(text, frames = 80) {
     statusMessage = text;
     statusTimer = frames;
+}
+
+function setRoundTimerFrames(value) {
+    roundTimerFrames = Math.max(0, value);
 }
 
 function resizeCanvas() {
@@ -56,6 +61,7 @@ function startRound() {
     keys = {};
     screenShake = 0;
     hitStopFrames = 0;
+    roundTimerFrames = ROUND_TIMER_FRAMES;
     gameState = 'playing';
     showStatusMessage(`ROUND ${currentRound}`, 75);
     document.getElementById('game-over').style.display = 'none';
@@ -85,6 +91,7 @@ function showMainMenu() {
     currentRound = 1;
     playerRounds = 0;
     cpuRounds = 0;
+    roundTimerFrames = ROUND_TIMER_FRAMES;
     gameState = 'menu';
     document.getElementById('game-over').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
@@ -165,14 +172,17 @@ function update() {
 
     if (player1.health <= 0 || player2.health <= 0) {
         finishRound(player2.health <= 0);
+        return;
     }
+
+    updateRoundTimer();
 }
 
 function finishRound(playerWon) {
     if (gameState !== 'playing') return;
 
-    if (playerWon) playerRounds++;
-    else cpuRounds++;
+    if (playerWon === true) playerRounds++;
+    else if (playerWon === false) cpuRounds++;
 
     document.getElementById('pause-screen').style.display = 'none';
 
@@ -187,12 +197,29 @@ function finishRound(playerWon) {
     }
 
     gameState = 'roundOver';
-    showStatusMessage(playerWon ? 'ROUND HUMANO' : 'ROUND CPU', 90);
+    const roundMessage = playerWon === null ? 'EMPATE' : (playerWon ? 'ROUND HUMANO' : 'ROUND CPU');
+    showStatusMessage(roundMessage, 90);
     updateControlsVisibility();
     setTimeout(() => {
         currentRound++;
         startRound();
     }, 1400);
+}
+
+function updateRoundTimer() {
+    if (roundTimerFrames <= 0) return;
+
+    roundTimerFrames--;
+
+    if (roundTimerFrames > 0) return;
+
+    showStatusMessage('TIME!', 90);
+
+    if (player1.health === player2.health) {
+        finishRound(null);
+    } else {
+        finishRound(player1.health > player2.health);
+    }
 }
 
 function updateStatusMessage() {
@@ -271,7 +298,7 @@ function drawHealthBars() {
     ctx.fillText(`CPU (IA): ${player2.health}%`, WIDTH - 50, 23);
 
     ctx.textAlign = 'center';
-    ctx.fillText(`ROUND ${currentRound}  ${playerRounds}-${cpuRounds}`, WIDTH / 2, 23);
+    ctx.fillText(`ROUND ${currentRound}  ${playerRounds}-${cpuRounds}  ${Math.ceil(roundTimerFrames / 60)}`, WIDTH / 2, 23);
 }
 
 function drawStatusMessage() {

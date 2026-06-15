@@ -28,6 +28,7 @@ Estado actual:
 - Seleccion de dificultad `FACIL`, `NORMAL` y `DIFICIL` desde el menu principal.
 - Combate humano contra CPU implementado.
 - Sistema de rondas al mejor de 3 implementado.
+- Temporizador de 60 segundos por round implementado.
 - Pantalla de fin de juego con opciones `REINICIAR` y `MENU`.
 - Controles de teclado y controles tactiles durante la partida.
 - Pausa con `P`, `Esc` o boton `PAUSA` durante la partida.
@@ -160,6 +161,7 @@ Validar en navegador antes de considerar listo un cambio visual o de jugabilidad
 - Deben aparecer dos personajes stickman.
 - Los controles de teclado deben responder: `A`, `D`, `W`, `S`, `J`, `K`, `P` y `Esc`.
 - `P`, `Esc` o `PAUSA` deben pausar la partida; `RESUMIR` debe continuar.
+- El temporizador debe bajar durante `playing` y detenerse en pausa.
 - Los golpes deben reducir la barra de vida del rival.
 - Al llegar una vida a cero debe avanzar el marcador de rounds.
 - Al ganar 2 rounds debe aparecer la pantalla de fin de juego.
@@ -239,11 +241,14 @@ En dispositivos tactiles se muestran botones en pantalla durante la partida para
 7. Durante la partida, el jugador controla al luchador humano y la CPU controla al rival.
 8. Durante la partida, `P`, `Esc` o `PAUSA` detienen la simulacion y muestran la pantalla de pausa.
 9. El boton `RESUMIR` continua la partida desde pausa.
-10. Cuando un luchador llega a `0%` de vida, gana el round.
-11. Si nadie llega a 2 rounds ganados, inicia el siguiente round.
-12. Al ganar 2 rounds, aparece la pantalla de fin de juego.
-13. El boton `REINICIAR` empieza una nueva partida desde round 1.
-14. El boton `MENU` vuelve al menu principal.
+10. Cada round tiene 60 segundos.
+11. Cuando un luchador llega a `0%` de vida, gana el round.
+12. Si el temporizador llega a cero, gana el round quien tenga mas vida.
+13. Si el tiempo termina con la misma vida, el round se repite sin sumar punto.
+14. Si nadie llega a 2 rounds ganados, inicia el siguiente round.
+15. Al ganar 2 rounds, aparece la pantalla de fin de juego.
+16. El boton `REINICIAR` empieza una nueva partida desde round 1.
+17. El boton `MENU` vuelve al menu principal.
 
 ### Estados Del Juego
 
@@ -289,6 +294,7 @@ Actualmente cubren:
 - Pausa, detencion de simulacion y reanudacion de partida.
 - Seleccion de dificultad y cambio de parametros de movimiento de la CPU.
 - Avance de rounds y finalizacion de partida al ganar 2 rounds.
+- Temporizador de round, victoria por vida restante y empate sin puntuacion.
 
 Limitaciones de las pruebas:
 
@@ -314,6 +320,7 @@ Limitaciones de las pruebas:
 - Inicio de partida desde boton.
 - Pausa con `P`, `Esc`, boton `PAUSA` y boton `RESUMIR`.
 - Sistema de rondas al mejor de 3.
+- Temporizador de 60 segundos por round.
 - Hitboxes logicas para cuerpo, punetazo y patada.
 - Indicador central de estado para `FIGHT!`, `BLOCK` y `K.O.`.
 - Balance de combate con punetazo rapido, patada de mayor recuperacion y daño residual al bloquear.
@@ -358,15 +365,10 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 | Hitboxes reales | Implementadas para cuerpo, punetazo y patada en coordenadas logicas. |
 | Indicador de estado | Implementado con mensajes centrales `FIGHT!`, `BLOCK` y `K.O.`. |
 | Sistema de rondas | Implementado al mejor de 3 con marcador e inicio automatico del siguiente round. |
+| Temporizador | Implementado con 60 segundos por round, victoria por vida restante y empate sin punto. |
 | Navegacion post-partida | Implementados botones `REINICIAR` y `MENU` en la pantalla de fin de juego. |
 | Feedback de golpes | Implementado con shake del canvas, hit-stop breve y particulas/lineas de impacto. |
 | Mejor escalado del canvas | Implementado con resize responsive y backing store ajustado por `devicePixelRatio`. |
-
-### Prioridad Alta
-
-| Mejora | Objetivo | Beneficio |
-| --- | --- | --- |
-| Temporizador | Agregar limite de tiempo por round. | Evita partidas demasiado largas y permite ganar por vida restante. |
 
 ### Prioridad Media
 
@@ -391,6 +393,9 @@ Esta lista funciona como backlog inicial para evolucionar el prototipo hacia un 
 
 ### Orden Recomendado De Implementacion
 
-1. Temporizador.
+1. IA mejorada.
+2. Controles moviles responsivos.
+3. Animacion de vida.
+4. Orientacion movil.
 
 Este orden prioriza mejoras visibles para el jugador sin reescribir completamente la arquitectura actual.
