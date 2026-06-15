@@ -123,10 +123,11 @@ Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de
 
 - Personajes diferenciados: humano con acento azul y banda; CPU con acento rojo, visor y antena.
 - Barras de vida animadas.
+- Barras de energia de alto contraste con marca visual cuando el especial esta listo.
 - Feedback de combos con texto, halo/trail y pista de ventana.
 - Sacudida, hit-stop y particulas en impactos.
 - Fondos tematicos por arena.
-- Audio basico generado con Web Audio API.
+- Audio generado con Web Audio API, con sonidos diferenciados por ataque, impacto, bloqueo, combo y especial.
 
 ### Tecnico
 
@@ -309,8 +310,7 @@ Limitaciones de las pruebas:
 - Persistencia de dificultad y arena.
 - Resultado detallado con telemetria de combate.
 - Personalidades de IA.
-- Sonidos diferenciados por accion.
-- Feedback audiovisual mas fuerte para el especial.
+- Feedback visual mas fuerte para el especial.
 - Modo de depuracion visual de hitboxes/estado IA.
 
 ## Sugerencias De Mejora
@@ -318,8 +318,7 @@ Limitaciones de las pruebas:
 | Prioridad | Mejora | Motivo |
 | --- | --- | --- |
 | Alta | Depuracion visual opcional | Acelera ajuste de hitboxes, combos y agacharse. |
-| Alta | Sonidos diferenciados | Mejora lectura del combate sin assets externos. |
-| Alta | Feedback del especial | Hace que gastar energia llena se sienta importante. |
+| Alta | Feedback visual del especial | Hace que gastar energia llena se sienta importante. |
 | Alta | Preview de arena | Permite ver la seleccion antes de iniciar partida. |
 | Alta | Modo entrenamiento | Facilita practicar rangos, combos y especial. |
 | Media | Reset de estadisticas | Da control sobre datos locales. |

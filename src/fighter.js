@@ -308,7 +308,7 @@ class Fighter {
         this.lastAttackType = type;
         this.state = attack.animation || type;
         this.attackCooldown = attack.cooldown;
-        playPunchSound();
+        playAttackSound(type);
 
         const attackBox = this.getAttackBox(type);
         const opponentBox = opponent.getBodyBox();
@@ -330,7 +330,7 @@ class Fighter {
             floatingTexts.push(new FloatingText(this.x, this.y - 80, bTexts[Math.floor(Math.random() * bTexts.length)], '#33f'));
             showStatusMessage(t('blockStatus'), 28);
             triggerImpactFeedback(this.x, this.y - 50, impactDirection, true);
-            playHitSound();
+            playImpactSound(attacker.lastAttackType, true);
             return;
         }
 
@@ -342,7 +342,7 @@ class Fighter {
         this.velY = -5;
         this.onGround = false;
         triggerImpactFeedback(this.x, this.y - 55, impactDirection);
-        playHitSound();
+        playImpactSound(attacker.lastAttackType);
 
         if (!this.isPlayer1) this.aiDecisionTimer = 0;
 

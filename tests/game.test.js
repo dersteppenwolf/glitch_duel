@@ -36,7 +36,7 @@ function createMockContext() {
     return ctx;
 }
 
-function createMockAudioContext() {
+function createMockAudioContext(audioEvents = []) {
     return class MockAudioContext {
         constructor() {
             this.destination = {};
@@ -47,8 +47,8 @@ function createMockAudioContext() {
                 type: '',
                 frequency: { value: 0 },
                 connect() { return this; },
-                start() {},
-                stop() {}
+                start() { audioEvents.push({ event: 'start', type: this.type, frequency: this.frequency.value }); },
+                stop() { audioEvents.push({ event: 'stop', type: this.type, frequency: this.frequency.value }); }
             };
         }
 
@@ -63,6 +63,7 @@ function createMockAudioContext() {
 
 function loadGame(options = {}) {
     const ctx = createMockContext();
+    const audioEvents = [];
     const elements = new Map();
     const canvas = {
         width: 1000,
@@ -105,7 +106,7 @@ function loadGame(options = {}) {
     const windowListeners = {};
     const storage = new Map();
     Object.entries(options.storage || {}).forEach(([key, value]) => storage.set(key, value));
-    const MockAudioContext = createMockAudioContext();
+    const MockAudioContext = createMockAudioContext(audioEvents);
     const navigatorMock = {
         maxTouchPoints: 0,
         language: options.language,
@@ -150,6 +151,8 @@ function loadGame(options = {}) {
             Fighter,
             FloatingText,
             ImpactParticle,
+            playAttackSound,
+            playImpactSound,
             t,
             setLanguage,
             getLanguage,
@@ -223,7 +226,8 @@ function loadGame(options = {}) {
         api: context.__gameTest,
         context,
         elements,
-        windowListeners
+        windowListeners,
+        audioEvents
     };
 }
 
@@ -286,6 +290,49 @@ test('K triggers kick damage when opponent is in range', () => {
     assert.equal(player.state, 'kick');
     assert.equal(player.attackCooldown, 24);
     assert.equal(opponent.health, 86);
+});
+
+test('combat sounds use distinct attack and impact profiles', () => {
+    const { api, audioEvents } = loadGame();
+    const { player, opponent } = createFighters(api, 100, 220);
+
+    player.attack('punch', opponent);
+    player.attackCooldown = 0;
+    player.attack('kick', opponent);
+
+    const starts = audioEvents.filter((event) => event.event === 'start');
+    assert.deepEqual(
+        starts.map((event) => [event.type, event.frequency]),
+        [
+            ['square', 420],
+            ['sawtooth', 190],
+            ['triangle', 220],
+            ['sawtooth', 140]
+        ]
+    );
+});
+
+test('special and block sounds have stronger distinct profiles', () => {
+    const { api, audioEvents } = loadGame();
+    const { player, opponent } = createFighters(api, 100, 220);
+    giveEnergy(player);
+
+    player.attack('special', opponent);
+    player.attackCooldown = 0;
+    opponent.state = 'block';
+    player.attack('backKick', opponent);
+
+    const starts = audioEvents.filter((event) => event.event === 'start');
+    assert.deepEqual(
+        starts.map((event) => [event.type, event.frequency]),
+        [
+            ['sawtooth', 680],
+            ['triangle', 120],
+            ['sawtooth', 95],
+            ['triangle', 180],
+            ['square', 620]
+        ]
+    );
 });
 
 test('simple combos increase damage and cooldown', () => {

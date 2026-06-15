@@ -673,21 +673,50 @@ function drawHealthBars() {
     ctx.fillStyle = '#000';
     ctx.textAlign = 'left';
     ctx.fillText(`${t('human')}: ${player1.health}%`, 50, 23);
-    ctx.fillStyle = '#06f';
-    ctx.fillRect(52, 62, player1.energy * 2, 8);
-    ctx.strokeStyle = '#000';
-    ctx.strokeRect(52, 62, 200, 8);
+    drawEnergyBar(52, 62, player1.energy, false);
     ctx.fillStyle = '#000';
     ctx.textAlign = 'right';
     ctx.fillText(`${t('cpuAI')}: ${player2.health}%`, WIDTH - 50, 23);
-    ctx.fillStyle = '#06f';
-    ctx.fillRect(WIDTH - 252, 62, player2.energy * 2, 8);
-    ctx.strokeStyle = '#000';
-    ctx.strokeRect(WIDTH - 252, 62, 200, 8);
+    drawEnergyBar(WIDTH - 252, 62, player2.energy, true);
     ctx.fillStyle = '#000';
 
     ctx.textAlign = 'center';
     ctx.fillText(`${t('round')} ${currentRound}  ${playerRounds}-${cpuRounds}  ${Math.ceil(roundTimeMs / 1000)}`, WIDTH / 2, 23);
+}
+
+function drawEnergyBar(x, y, energy, alignRight) {
+    const width = 200;
+    const height = 12;
+    const fillWidth = Math.max(0, Math.min(width, energy * 2));
+    const full = energy >= MAX_ENERGY;
+
+    ctx.fillStyle = '#fffdf2';
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x, y, width, height);
+
+    if (fillWidth > 0) {
+        ctx.fillStyle = full ? '#ffd400' : '#00d5ff';
+        ctx.fillRect(alignRight ? x + width - fillWidth : x, y, fillWidth, height);
+    }
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+        const markerX = x + (width / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(markerX, y + 1);
+        ctx.lineTo(markerX, y + height - 1);
+        ctx.stroke();
+    }
+
+    if (full) {
+        ctx.font = 'bold 10px "Comic Sans MS"';
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'center';
+        ctx.fillText('SPECIAL', x + width / 2, y + 10);
+    }
 }
 
 function drawStatusMessage() {

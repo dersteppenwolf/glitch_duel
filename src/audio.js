@@ -1,38 +1,67 @@
 let audioCtx;
 
+const ATTACK_SOUND_PROFILES = {
+    punch: { wave: 'square', start: 420, end: 150, gain: 0.12, duration: 80 },
+    kick: { wave: 'triangle', start: 220, end: 85, gain: 0.16, duration: 110 },
+    comboPunch: { wave: 'sawtooth', start: 560, end: 170, gain: 0.16, duration: 115 },
+    comboKick: { wave: 'sawtooth', start: 360, end: 95, gain: 0.18, duration: 135 },
+    backKick: { wave: 'triangle', start: 180, end: 70, gain: 0.19, duration: 150 },
+    special: { wave: 'sawtooth', start: 680, end: 90, gain: 0.22, duration: 180 }
+};
+
+const IMPACT_SOUND_PROFILES = {
+    punch: { wave: 'sawtooth', start: 190, end: 70, gain: 0.2, duration: 80 },
+    kick: { wave: 'sawtooth', start: 140, end: 55, gain: 0.23, duration: 110 },
+    comboPunch: { wave: 'sawtooth', start: 240, end: 80, gain: 0.24, duration: 105 },
+    comboKick: { wave: 'triangle', start: 165, end: 50, gain: 0.27, duration: 130 },
+    backKick: { wave: 'triangle', start: 120, end: 42, gain: 0.28, duration: 145 },
+    special: { wave: 'sawtooth', start: 95, end: 30, gain: 0.32, duration: 190 },
+    block: { wave: 'square', start: 620, end: 420, gain: 0.12, duration: 70 }
+};
+
 function initAudio() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        audioCtx = new AudioContextClass();
+    }
+}
+
+function playTone(profile) {
+    initAudio();
+    if (!audioCtx) return;
+
+    const o = audioCtx.createOscillator();
+    o.type = profile.wave;
+    o.frequency.value = profile.start;
+
+    const g = audioCtx.createGain();
+    g.gain.value = profile.gain;
+
+    o.connect(g).connect(audioCtx.destination);
+    o.start();
+    setTimeout(() => { o.frequency.value = profile.end; }, Math.floor(profile.duration * 0.35));
+    setTimeout(() => o.stop(), profile.duration);
+}
+
+function playAttackSound(type) {
+    const profile = ATTACK_SOUND_PROFILES[type] || ATTACK_SOUND_PROFILES.punch;
+    playTone(profile);
+
+    if (type === 'special') {
+        setTimeout(() => playTone({ wave: 'triangle', start: 120, end: 55, gain: 0.14, duration: 220 }), 35);
+    }
+}
+
+function playImpactSound(type, blocked = false) {
+    const profile = blocked ? IMPACT_SOUND_PROFILES.block : (IMPACT_SOUND_PROFILES[type] || IMPACT_SOUND_PROFILES.punch);
+    playTone(profile);
 }
 
 function playHitSound() {
-    initAudio();
-    if (!audioCtx) return;
-
-    const o = audioCtx.createOscillator();
-    o.type = 'sawtooth';
-    o.frequency.value = 180;
-
-    const g = audioCtx.createGain();
-    g.gain.value = 0.2;
-
-    o.connect(g).connect(audioCtx.destination);
-    o.start();
-    setTimeout(() => o.stop(), 80);
+    playImpactSound('punch');
 }
 
 function playPunchSound() {
-    initAudio();
-    if (!audioCtx) return;
-
-    const o = audioCtx.createOscillator();
-    o.type = 'square';
-    o.frequency.value = 420;
-
-    const g = audioCtx.createGain();
-    g.gain.value = 0.15;
-
-    o.connect(g).connect(audioCtx.destination);
-    o.start();
-    setTimeout(() => { o.frequency.value = 120; }, 40);
-    setTimeout(() => o.stop(), 120);
+    playAttackSound('punch');
 }
