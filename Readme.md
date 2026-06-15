@@ -4,8 +4,23 @@ Juego web arcade de pelea estilo stickman/xkcd, hecho con HTML, CSS y JavaScript
 
 Jugar en linea: https://dersteppenwolf.github.io/xkcd_kombat/
 
+Codigo fuente: https://github.com/dersteppenwolf/xkcd_kombat
+
+## Resumen
+
+| Tema | Detalle |
+| --- | --- |
+| Tipo | Juego web estatico de navegador. |
+| Stack | HTML, CSS, JavaScript puro y Canvas. |
+| Dependencias | Ninguna para jugar, validar o desplegar. |
+| Entrada local | `src/index.html`. |
+| URL publica | `https://dersteppenwolf.github.io/xkcd_kombat/`. |
+| Deploy | GitHub Pages con Actions publicando `src/`. |
+| Tests | `node --test tests\game.test.js`. |
+
 ## Tabla De Contenido
 
+- [Resumen](#resumen)
 - [Inicio Rapido](#inicio-rapido)
 - [Como Jugar](#como-jugar)
 - [Controles](#controles)
@@ -17,6 +32,7 @@ Jugar en linea: https://dersteppenwolf.github.io/xkcd_kombat/
 - [Funcionalidades: Visual Y Audio](#visual-y-audio)
 - [Funcionalidades: Tecnico](#tecnico)
 - [Ejecutar](#ejecutar)
+- [Ejecutar: Requisitos](#requisitos)
 - [Ejecutar: Opcion Directa](#opcion-directa)
 - [Ejecutar: Opcion Recomendada](#opcion-recomendada)
 - [Publicacion En Linea](#publicacion-en-linea)
@@ -30,6 +46,7 @@ Jugar en linea: https://dersteppenwolf.github.io/xkcd_kombat/
 - [Arquitectura: Orden De Scripts](#orden-de-scripts)
 - [Arquitectura: Estados Del Juego](#estados-del-juego)
 - [Pruebas](#pruebas)
+- [Solucion De Problemas](#solucion-de-problemas)
 - [Decisiones Tecnicas](#decisiones-tecnicas)
 - [No Implementado Todavia](#no-implementado-todavia)
 - [Sugerencias De Mejora](#sugerencias-de-mejora)
@@ -38,6 +55,14 @@ Jugar en linea: https://dersteppenwolf.github.io/xkcd_kombat/
 - [Backlog Completado](#backlog-completado)
 
 ## Inicio Rapido
+
+Para jugar sin instalar nada, abrir la version publicada:
+
+```text
+https://dersteppenwolf.github.io/xkcd_kombat/
+```
+
+Para ejecutar localmente, usar servidor estatico desde la raiz del proyecto.
 
 Desde `C:\tmp\game`:
 
@@ -186,6 +211,17 @@ Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de
 - Pruebas unitarias con `node:test` y mocks de DOM/canvas/audio.
 
 ## Ejecutar
+
+### Requisitos
+
+| Necesidad | Opcion |
+| --- | --- |
+| Navegador | Cualquier navegador moderno con Canvas y Web Audio. |
+| Servidor local recomendado | Python incluido en muchas instalaciones de Windows/macOS/Linux. |
+| Alternativa local | `npx http-server` si Node esta disponible. |
+| Tests | Node.js con `node:test` nativo. |
+
+No se instala nada dentro del proyecto.
 
 ### Opcion Directa
 
@@ -373,6 +409,17 @@ Limitaciones de las pruebas:
 - No reemplazan validacion visual real en navegador.
 - No verifican pixeles del Canvas.
 - No prueban audio real del navegador.
+
+## Solucion De Problemas
+
+| Problema | Revision recomendada |
+| --- | --- |
+| La pagina publicada muestra 404 | Confirmar `Settings > Pages > Source: GitHub Actions` y que el ultimo workflow este en verde. |
+| La URL publica carga sin estilos | Confirmar que el workflow publica `src/` y no la raiz del repo. |
+| Localmente no cargan scripts | Servir desde la raiz con `python -m http.server 8000` y abrir `http://localhost:8000/src/`. |
+| No suena el audio | Hacer clic o presionar una tecla primero; Web Audio se inicializa tras interaccion del usuario. |
+| Controles tactiles no aparecen | Solo se muestran durante `playing` y en dispositivos tactiles o navegadores que expongan touch. |
+| Tests fallan por sintaxis | Ejecutar `node --check` sobre los archivos de `src/` para ubicar el archivo exacto. |
 
 ## Decisiones Tecnicas
 
