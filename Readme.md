@@ -6,6 +6,8 @@ Jugar en linea: [https://dersteppenwolf.github.io/xkcd_kombat/](https://derstepp
 
 Codigo fuente: [https://github.com/dersteppenwolf/xkcd_kombat](https://github.com/dersteppenwolf/xkcd_kombat)
 
+Nota: esta aplicacion ha sido generada y evolucionada utilizando asistencia de OpenCode y GPT-5.5.
+
 ## Resumen
 
 | Tema | Detalle |
@@ -18,6 +20,7 @@ Codigo fuente: [https://github.com/dersteppenwolf/xkcd_kombat](https://github.co
 | Deploy | GitHub Pages con Actions publicando `src/`. |
 | Tests | `node --test tests\game.test.js`. |
 | Estado | Jugable, publicado y con backlog priorizado. |
+| Asistencia | OpenCode y GPT-5.5. |
 
 ## Tabla De Contenido
 
