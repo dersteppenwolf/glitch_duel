@@ -307,6 +307,7 @@ class Fighter {
             if (this.energy < SPECIAL_ENERGY_COST) return;
             this.energy -= SPECIAL_ENERGY_COST;
             if (this.isPlayer1) recordPlayerSpecial();
+            triggerSpecialFeedback(this);
         }
 
         this.lastAttackType = type;

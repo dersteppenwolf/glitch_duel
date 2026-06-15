@@ -187,6 +187,7 @@ function loadGame(options = {}) {
             getPostMatchMedal,
             update,
             triggerImpactFeedback,
+            triggerSpecialFeedback,
             getState: () => ({
                 player1,
                 player2,
@@ -209,6 +210,7 @@ function loadGame(options = {}) {
                 hitStopFrames,
                 visualFrame,
                 impactFlash,
+                specialFlash,
                 vsIntroTimer,
                 matchStats,
                 canvasWidth: canvas.width,
@@ -531,6 +533,20 @@ test('special attack consumes full energy and deals heavy damage', () => {
     assert.equal(player.state, 'special');
     assert.equal(player.energy, 0);
     assert.equal(opponent.health, 74);
+    assert.equal(api.getState().specialFlash.color, player.accentColor);
+    assert(api.getState().floatingTexts.some((text) => text.text === 'SPECIAL!'));
+});
+
+test('special feedback respects reduced motion', () => {
+    const { api } = loadGame();
+    const player = new api.Fighter(100, true);
+
+    api.setReducedMotion(true);
+    api.triggerSpecialFeedback(player);
+
+    const state = api.getState();
+    assert.equal(state.specialFlash.maxTimer, 12);
+    assert.equal(state.specialFlash.fullFlash, false);
 });
 
 test('hitboxes prevent damage when opponent body is outside attack box', () => {

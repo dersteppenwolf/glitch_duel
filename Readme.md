@@ -165,7 +165,7 @@ Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de
 - Bloqueo con dano residual.
 - Agacharse con hitbox baja.
 - Combos `J,J`, `J,K` y `K,K`.
-- Ataque especial con energia llena en `L`.
+- Ataque especial con energia llena en `L` y feedback visual reforzado.
 - IA con bloqueo ante ataques cercanos, retirada con baja vida y ataques condicionados por rango.
 
 ### UI/UX
@@ -193,6 +193,7 @@ Las arenas son visuales. No modifican dano, velocidad, IA, hitboxes ni reglas de
 - Poses de victoria y derrota al cerrar rounds o partidas.
 - Medallas post-partida como `Bug Exterminator`, `Firewall Humano`, `Combo Goblin` y `404 Survivor`.
 - Mensajes `ROUND`, `FIGHT!`, `TIME!`, `K.O.` y bloqueo con panel estilo comic.
+- Flash, rastro y texto `SPECIAL!` al gastar la barra de energia.
 - Feedback de combos con texto, halo/trail y pista de ventana.
 - Sacudida, hit-stop estilizado y particulas en impactos.
 - Fondos tematicos por arena con animaciones ligeras que respetan `Reducir movimiento`.
@@ -435,11 +436,10 @@ Limitaciones de las pruebas:
 
 Priorizacion orientada a atraer y retener usuarios: primero mejoras visibles en los primeros segundos, luego motivacion para rejugar y finalmente profundidad o mantenimiento.
 
-Siguiente mejora recomendada: `Feedback visual mas fuerte para el especial`, porque hace que gastar energia llena se sienta mas importante.
+Siguiente mejora recomendada: `Indicador de especial listo sobre el personaje`, porque comunica la oportunidad de usar `L` sin depender solo del HUD.
 
 | Prioridad | Mejora | Motivo | Tipo |
 | --- | --- | --- | --- |
-| Alta | Feedback visual mas fuerte para el especial | Hace que gastar energia llena se sienta importante con flash, rastro y texto `SPECIAL!`. | Visual / combate |
 | Alta | Indicador de especial listo sobre el personaje | Evita que el jugador tenga que mirar solo el HUD y aumenta la emocion de usar `L`. | Visual / UX |
 | Alta | Pantalla final enriquecida | Muestra marcador, dificultad, arena, racha, medalla y frase humoristica para dar mejor cierre. | UX / progresion |
 | Alta | Trailer GIF o captura animada en README | Comunica el atractivo del juego antes de abrirlo y mejora la pagina del repositorio. | Documentacion / marketing |
@@ -467,6 +467,7 @@ Siguiente mejora recomendada: `Feedback visual mas fuerte para el especial`, por
 | Menu, ayuda y pausa | Flujo completo con overlays y resumen. |
 | Combate base | Movimiento, ataques, bloqueo, hitboxes y rondas. |
 | Combos y especial | `J,J`, `J,K`, `K,K` y `L` con energia llena. |
+| Feedback del especial | Flash, rastro y texto `SPECIAL!` al usar la barra completa. |
 | Accesibilidad inicial | Foco visible, ARIA y reducir movimiento. |
 | Mobile | Controles tactiles, safe areas y aviso de orientacion. |
 | Arenas | Nueve fondos tematicos sin efectos jugables. |

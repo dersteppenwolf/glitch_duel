@@ -23,6 +23,7 @@ let visualFrame = 0;
 let impactFlash = null;
 let matchStats = createMatchStats();
 let vsIntroTimer = 0;
+let specialFlash = null;
 const VS_INTRO_FRAMES = 90;
 
 function getDifficultyConfig() {
@@ -314,6 +315,7 @@ function startRound() {
     screenShake = 0;
     hitStopFrames = 0;
     impactFlash = null;
+    specialFlash = null;
     roundTimerFrames = ROUND_TIMER_FRAMES;
     roundTimeMs = ROUND_TIME_MS;
     vsIntroTimer = VS_INTRO_FRAMES;
@@ -343,6 +345,7 @@ function showMainMenu() {
     screenShake = 0;
     hitStopFrames = 0;
     impactFlash = null;
+    specialFlash = null;
     statusMessage = '';
     statusTimer = 0;
     currentRound = 1;
@@ -535,6 +538,26 @@ function updateEffects() {
         impactFlash.timer--;
         if (impactFlash.timer <= 0) impactFlash = null;
     }
+
+    if (specialFlash) {
+        specialFlash.timer--;
+        if (specialFlash.timer <= 0) specialFlash = null;
+    }
+}
+
+function triggerSpecialFeedback(fighter) {
+    const duration = reducedMotionEnabled ? 12 : 24;
+    const color = fighter.accentColor || '#ffcc00';
+    specialFlash = {
+        x: fighter.x,
+        y: fighter.y - 52,
+        direction: fighter.facingRight ? 1 : -1,
+        color,
+        timer: duration,
+        maxTimer: duration,
+        fullFlash: !reducedMotionEnabled
+    };
+    floatingTexts.push(new FloatingText(fighter.x, fighter.y - 140, 'SPECIAL!', color));
 }
 
 function updateHealthAnimations() {
@@ -1068,6 +1091,44 @@ function drawImpactFlash() {
     ctx.restore();
 }
 
+function drawSpecialFlash() {
+    if (!specialFlash) return;
+
+    const progress = specialFlash.timer / specialFlash.maxTimer;
+    const beamLength = 170 + (1 - progress) * 90;
+    const beamHeight = 28 + (1 - progress) * 18;
+    const startX = specialFlash.x;
+    const endX = startX + specialFlash.direction * beamLength;
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, progress * 0.75);
+    if (specialFlash.fullFlash) {
+        ctx.fillStyle = specialFlash.color;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        ctx.globalAlpha = Math.max(0, progress * 0.9);
+    }
+
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = beamHeight;
+    ctx.beginPath();
+    ctx.moveTo(startX, specialFlash.y);
+    ctx.lineTo(endX, specialFlash.y - 8);
+    ctx.stroke();
+
+    ctx.strokeStyle = specialFlash.color;
+    ctx.lineWidth = Math.max(8, beamHeight * 0.45);
+    ctx.beginPath();
+    ctx.moveTo(startX, specialFlash.y);
+    ctx.lineTo(endX, specialFlash.y - 8);
+    ctx.stroke();
+
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(startX, specialFlash.y, 34 + (1 - progress) * 24, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+}
+
 function draw() {
     visualFrame++;
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -1088,6 +1149,7 @@ function draw() {
         player2.draw();
     }
     impactParticles.forEach((p) => p.draw());
+    drawSpecialFlash();
     drawImpactFlash();
     floatingTexts.forEach((t) => t.draw());
     drawHealthBars();
