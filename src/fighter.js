@@ -33,6 +33,21 @@ class Fighter {
         this.prevSpecialPressed = false;
         this.aiCounterTimer = 0;
         this.aiMemory = { attack: 0, block: 0 };
+        this.airAttackUsed = false;
+        this.styleKey = 'balanced';
+        this.moveSpeedModifier = 1;
+        this.damageModifier = 1;
+        this.energyModifier = 1;
+    }
+
+    applyStyle(styleKey) {
+        const style = FIGHTER_STYLES[styleKey] || FIGHTER_STYLES.balanced;
+        this.styleKey = FIGHTER_STYLES[styleKey] ? styleKey : 'balanced';
+        this.moveSpeedModifier = style.moveSpeed;
+        this.damageModifier = style.damage;
+        this.energyModifier = style.energy;
+        this.health = Math.round(100 * style.health);
+        this.displayHealth = this.health;
     }
 
     update(keys, opponent) {
@@ -92,12 +107,12 @@ class Fighter {
             this.velX = 0;
         } else {
             if (keys.a || keys.arrowleft || keys.left) {
-                this.velX = -5;
+                this.velX = -5 * this.moveSpeedModifier;
                 if (this.onGround && this.attackCooldown === 0) this.state = 'walk';
             }
 
             if (keys.d || keys.arrowright || keys.right) {
-                this.velX = 5;
+                this.velX = 5 * this.moveSpeedModifier;
                 if (this.onGround && this.attackCooldown === 0) this.state = 'walk';
             }
 
@@ -113,8 +128,8 @@ class Fighter {
         const specialPressed = !!(keys.l || keys.special);
 
         if (specialPressed && !this.prevSpecialPressed) this.attack('special', opponent);
-        if (punchPressed && !this.prevPunchPressed) this.handleAttackCommand('punch', opponent);
-        if (kickPressed && !this.prevKickPressed) this.handleAttackCommand('kick', opponent);
+        if (punchPressed && !this.prevPunchPressed) this.handleAttackCommand(this.onGround ? 'punch' : 'airPunch', opponent);
+        if (kickPressed && !this.prevKickPressed) this.handleAttackCommand(this.onGround ? 'kick' : 'airKick', opponent);
 
         this.prevPunchPressed = punchPressed;
         this.prevKickPressed = kickPressed;
@@ -123,6 +138,16 @@ class Fighter {
 
     handleAttackCommand(input, opponent) {
         if (this.attackCooldown > 0 || this.state === 'block' || this.state === 'crouch') return;
+
+        if (input === 'airPunch' || input === 'airKick') {
+            if (this.onGround || this.airAttackUsed) return;
+            this.airAttackUsed = true;
+            this.comboBuffer = [];
+            this.clearComboHint();
+            this.attack(input, opponent);
+            if (this.isPlayer1) recordPlayerAirAttack();
+            return;
+        }
 
         if (this.comboTimer <= 0) this.comboBuffer = [];
 
@@ -265,7 +290,7 @@ class Fighter {
     }
 
     gainEnergy(amount) {
-        this.energy = Math.min(MAX_ENERGY, this.energy + amount);
+        this.energy = Math.min(MAX_ENERGY, this.energy + Math.round(amount * this.energyModifier));
     }
 
     applyPhysics() {
@@ -280,6 +305,7 @@ class Fighter {
             this.y = GROUND_Y;
             this.velY = 0;
             this.onGround = true;
+            this.airAttackUsed = false;
         }
     }
 
@@ -305,7 +331,7 @@ class Fighter {
         const attack = ATTACKS[type];
         if (!attack) return null;
 
-        if (type === 'punch' || type === 'comboPunch' || type === 'special') {
+        if (type === 'punch' || type === 'comboPunch' || type === 'special' || type === 'airPunch') {
             return {
                 x: this.facingRight ? this.x + attack.xOffset : this.x - attack.xOffset - attack.range,
                 y: this.y + attack.yOffset,
@@ -314,7 +340,7 @@ class Fighter {
             };
         }
 
-        if (type === 'kick' || type === 'comboKick' || type === 'backKick') {
+        if (type === 'kick' || type === 'comboKick' || type === 'backKick' || type === 'airKick') {
             return {
                 x: this.facingRight ? this.x + attack.xOffset : this.x - attack.xOffset - attack.range,
                 y: this.y + attack.yOffset,
@@ -360,7 +386,7 @@ class Fighter {
         const opponentBox = opponent.getBodyBox();
 
         if (attackBox && this.intersects(attackBox, opponentBox)) {
-            opponent.takeHit(attack.damage, this);
+            opponent.takeHit(Math.round(attack.damage * this.damageModifier), this);
             if (type !== 'special') this.gainEnergy(ENERGY_GAIN_ON_HIT);
         }
     }

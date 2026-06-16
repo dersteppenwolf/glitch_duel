@@ -21,6 +21,7 @@ let cpuRounds = 0;
 let roundTimerFrames = ROUND_TIMER_FRAMES;
 let roundTimeMs = ROUND_TIME_MS;
 let selectedArena = 'notebook';
+let selectedFighterStyle = 'balanced';
 let stats = loadStats();
 let reducedMotionEnabled = loadReducedMotionPreference();
 let lastFrameTimestamp = null;
@@ -63,6 +64,12 @@ function setArena(value) {
     renderArenaPreview();
 }
 
+function setFighterStyle(value) {
+    selectedFighterStyle = FIGHTER_STYLES[value] ? value : 'balanced';
+    if (matchStats) matchStats.fighterStyle = selectedFighterStyle;
+    renderStylePreference();
+}
+
 function getArenaLabel() {
     const arena = getArenaConfig();
     return t(arena.labelKey || arena.label);
@@ -88,7 +95,7 @@ function getDifficultyLabel() {
 }
 
 function createMatchStats() {
-    return { playerCombos: 0, playerBlocks: 0, playerSpecials: 0 };
+    return { playerCombos: 0, playerBlocks: 0, playerSpecials: 0, playerAirAttacks: 0, fighterStyle: selectedFighterStyle };
 }
 
 function recordPlayerCombo() {
@@ -103,6 +110,10 @@ function recordPlayerSpecial() {
     matchStats.playerSpecials++;
 }
 
+function recordPlayerAirAttack() {
+    matchStats.playerAirAttacks++;
+}
+
 function getPostMatchMedal(playerWon) {
     if (!playerWon) return { title: t('medalMachine'), detail: t('medalMachineDetail') };
     if (matchStats.playerCombos > 0) return { title: t('medalCombo'), detail: t('medalComboDetail') };
@@ -114,6 +125,10 @@ function getPostMatchMedal(playerWon) {
 function getPostMatchPhrase(playerWon) {
     if (playerWon && matchStats.playerSpecials > 0) return t('finalPhraseSpecial');
     if (playerWon && matchStats.playerBlocks >= 2) return t('finalPhraseFirewall');
+    if (playerWon && matchStats.playerAirAttacks > 0) return t('finalPhraseAir');
+    if (playerWon && matchStats.fighterStyle === 'fast') return t('finalPhraseFast');
+    if (playerWon && matchStats.fighterStyle === 'heavy') return t('finalPhraseHeavy');
+    if (playerWon && matchStats.fighterStyle === 'technical') return t('finalPhraseTechnical');
     if (playerWon) return t('finalPhraseWin');
     return t('finalPhraseLoss');
 }
@@ -200,6 +215,11 @@ function renderArenaPreview() {
     text.textContent = t(getArenaPreviewTextKey());
 }
 
+function renderStylePreference() {
+    const select = document.getElementById('style-select');
+    if (select) select.value = selectedFighterStyle;
+}
+
 function renderLanguagePreference() {
     const select = document.getElementById('language-select');
     if (select) select.value = getLanguage();
@@ -254,6 +274,7 @@ function renderLanguage() {
     setElementAria('btn-kick', 'kick');
     setElementAria('btn-special', 'specialButtonLabel');
     renderLanguagePreference();
+    renderStylePreference();
     renderStats();
     renderArenaPreview();
     renderPauseSummary();
@@ -348,6 +369,8 @@ function updateOrientationWarning() {
 function startRound() {
     player1 = new Fighter(250, true);
     player2 = new Fighter(750, false);
+    player1.applyStyle(selectedFighterStyle);
+    player2.applyStyle('balanced');
     floatingTexts = [];
     impactParticles = [];
     keys = {};
@@ -1295,6 +1318,10 @@ function setupMainMenu() {
     document.getElementById('arena-select').addEventListener('change', (e) => {
         playUISound('select');
         setArena(e.target.value);
+    });
+    document.getElementById('style-select').addEventListener('change', (e) => {
+        playUISound('select');
+        setFighterStyle(e.target.value);
     });
     document.getElementById('reduce-motion-toggle').addEventListener('change', (e) => {
         playUISound('select');

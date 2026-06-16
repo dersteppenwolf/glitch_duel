@@ -88,7 +88,7 @@ No `npm install`, `package.json`, bundler, or backend server is required.
 ## How To Play
 
 1. Open `src/index.html` directly or serve the project from `http://localhost:8000/src/`.
-2. Choose language, difficulty, and arena from the menu.
+2. Choose language, difficulty, arena, and fighter style from the menu.
 3. Press `INICIAR JUEGO` / `START GAME`.
 4. Win rounds by reducing the CPU health to `0%` or having more health when time runs out.
 5. Win 2 rounds to finish the match.
@@ -104,6 +104,7 @@ No `npm install`, `package.json`, bundler, or backend server is required.
 | Block | S / I | BLOCK | Reduces damage, but does not remove it completely. |
 | Punch | J | PUNCH | Fast, shorter range. |
 | Kick | K | KICK | Longer range, longer recovery. |
+| Air punch / air kick | J / K while jumping | PUNCH / KICK while jumping | One air attack per jump. |
 | Special | L | SPECIAL | Requires full energy and consumes the full bar. |
 | Pause / resume | P / Esc | PAUSA | Shows the match summary. |
 
@@ -166,8 +167,10 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Logical hitboxes for body, punch, kick, combos, and special.
 - Blocking with chip damage.
 - Crouch with low hitbox.
+- Air punch and air kick, limited to one air attack per jump.
 - `J,J`, `J,K`, and `K,K` combos.
 - Special attack on `L` with full energy and stronger visual feedback.
+- Fighter styles: balanced, fast, heavy, and technical.
 - AI with difficulty-based reactions, range-aware attacks, tactical specials, counter windows, short memory, and wall-aware defense.
 
 ### UI/UX
@@ -177,6 +180,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Persistent language selector.
 - Difficulty selector.
 - Arena selector with visual preview and description.
+- Fighter style selector.
 - Arcade `VS` intro with difficulty and arena before each round.
 - `Reducir movimiento` option persisted in `glitchDuelReducedMotion`, with fallback reads from `xkcdKombatReducedMotion`.
 - Pause screen with round, score, time, difficulty, arena, and controls summary.
@@ -470,6 +474,7 @@ Next recommended improvement: `Training mode`, because it makes it easier to pra
 | Menu, help, and pause | Complete flow with overlays and summary. |
 | Base combat | Movement, attacks, blocking, hitboxes, and rounds. |
 | Combos and special | `J,J`, `J,K`, `K,K`, and `L` with full energy. |
+| Air attacks and fighter styles | `J`/`K` in the air, style selector, and style-aware victory phrases. |
 | CPU AI tuning | Difficulty-based block reactions, range-aware attacks, cooldown checks, and wall-aware retreats. |
 | Tactical CPU AI | Counter windows after blocking, comeback specials, and short memory for repeated player attacks. |
 | Special feedback | Flash, trail, and `SPECIAL!` text when using the full bar. |

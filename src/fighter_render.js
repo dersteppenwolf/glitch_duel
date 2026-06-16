@@ -48,7 +48,7 @@ function drawFighter(fighter) {
     ctx.lineTo(baseX - 15 + Math.sin(legAngle * Math.PI / 180) * 12, baseY + 35);
     ctx.stroke();
 
-    if (fighter.state !== 'kick') {
+    if (fighter.state !== 'kick' && fighter.state !== 'airKick') {
         ctx.beginPath();
         ctx.moveTo(baseX, hipY);
         ctx.lineTo(baseX + 15 - Math.sin(legAngle * Math.PI / 180) * 12, baseY + 35);
@@ -69,9 +69,9 @@ function drawFighter(fighter) {
     ctx.beginPath();
     ctx.moveTo(baseX, shoulderY);
 
-    if (fighter.state === 'punch' || fighter.state === 'special') {
+    if (fighter.state === 'punch' || fighter.state === 'special' || fighter.state === 'airPunch') {
         ctx.lineTo(baseX + 52, baseY - 48);
-    } else if (fighter.state === 'kick') {
+    } else if (fighter.state === 'kick' || fighter.state === 'airKick') {
         ctx.quadraticCurveTo(baseX + 15, baseY - 35, baseX + 22, baseY - 20);
     } else if (fighter.state === 'block') {
         ctx.lineTo(baseX + 15, baseY - 65);
@@ -84,7 +84,7 @@ function drawFighter(fighter) {
 
     ctx.stroke();
 
-    if (fighter.state === 'punch' || fighter.state === 'special') {
+    if (fighter.state === 'punch' || fighter.state === 'special' || fighter.state === 'airPunch') {
         const fistX = baseX + 62;
         const fistY = baseY - 48;
 
@@ -129,7 +129,7 @@ function drawFighter(fighter) {
         }
     }
 
-    if (fighter.state === 'kick') {
+    if (fighter.state === 'kick' || fighter.state === 'airKick') {
         const footX = baseX + 54;
         const footY = baseY - 3;
 

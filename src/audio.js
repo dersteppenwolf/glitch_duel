@@ -3,6 +3,8 @@ let audioCtx;
 const ATTACK_SOUND_PROFILES = {
     punch: { wave: 'square', start: 420, end: 150, gain: 0.12, duration: 80 },
     kick: { wave: 'triangle', start: 220, end: 85, gain: 0.16, duration: 110 },
+    airPunch: { wave: 'square', start: 500, end: 190, gain: 0.12, duration: 90 },
+    airKick: { wave: 'triangle', start: 280, end: 90, gain: 0.16, duration: 120 },
     comboPunch: { wave: 'sawtooth', start: 560, end: 170, gain: 0.16, duration: 115 },
     comboKick: { wave: 'sawtooth', start: 360, end: 95, gain: 0.18, duration: 135 },
     backKick: { wave: 'triangle', start: 180, end: 70, gain: 0.19, duration: 150 },
@@ -12,6 +14,8 @@ const ATTACK_SOUND_PROFILES = {
 const IMPACT_SOUND_PROFILES = {
     punch: { wave: 'sawtooth', start: 190, end: 70, gain: 0.2, duration: 80 },
     kick: { wave: 'sawtooth', start: 140, end: 55, gain: 0.23, duration: 110 },
+    airPunch: { wave: 'sawtooth', start: 220, end: 75, gain: 0.21, duration: 90 },
+    airKick: { wave: 'triangle', start: 170, end: 55, gain: 0.24, duration: 120 },
     comboPunch: { wave: 'sawtooth', start: 240, end: 80, gain: 0.24, duration: 105 },
     comboKick: { wave: 'triangle', start: 165, end: 50, gain: 0.27, duration: 130 },
     backKick: { wave: 'triangle', start: 120, end: 42, gain: 0.28, duration: 145 },

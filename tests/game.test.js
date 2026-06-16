@@ -170,6 +170,7 @@ function loadGame(options = {}) {
             resumeGame,
             togglePause,
             setDifficulty,
+            setFighterStyle,
             setRoundTimerFrames,
             setRoundTimeMs,
             skipVsIntro,
@@ -184,7 +185,9 @@ function loadGame(options = {}) {
             recordPlayerCombo,
             recordPlayerBlock,
             recordPlayerSpecial,
+            recordPlayerAirAttack,
             getPostMatchMedal,
+            getPostMatchPhrase,
             update,
             triggerImpactFeedback,
             triggerSpecialFeedback,
@@ -195,6 +198,7 @@ function loadGame(options = {}) {
                 impactParticles,
                 gameState,
                 selectedDifficulty,
+                selectedFighterStyle,
                 statusMessage,
                 statusTimer,
                 currentRound,
@@ -228,6 +232,7 @@ function loadGame(options = {}) {
                 arenaPreviewTitle: document.getElementById('arena-preview-title').textContent,
                 arenaPreviewText: document.getElementById('arena-preview-text').textContent,
                 languageSelectValue: document.getElementById('language-select').value,
+                styleSelectValue: document.getElementById('style-select').value,
                 pauseButtonDisplay: document.getElementById('pause-button').style.display,
                 reducedMotionToggleChecked: document.getElementById('reduce-motion-toggle').checked,
                 orientationWarningDisplay: document.getElementById('orientation-warning').style.display,
@@ -346,6 +351,54 @@ test('K triggers kick damage when opponent is in range', () => {
     assert.equal(player.state, 'kick');
     assert.equal(player.attackCooldown, 24);
     assert.equal(opponent.health, 86);
+});
+
+test('air attacks use punch and kick inputs once per jump', () => {
+    const { api } = loadGame();
+    const player = new api.Fighter(100, true);
+    const opponent = new api.Fighter(190, false);
+
+    player.onGround = false;
+    player.y = 320;
+    player.updatePlayerControls({ j: true }, opponent);
+
+    assert.equal(player.state, 'airPunch');
+    assert.equal(player.airAttackUsed, true);
+    assert.equal(opponent.health, 91);
+
+    player.attackCooldown = 0;
+    player.prevKickPressed = false;
+    player.updatePlayerControls({ k: true }, opponent);
+
+    assert.equal(player.state, 'airPunch');
+    assert.equal(opponent.health, 91);
+
+    player.y = 381;
+    player.applyPhysics();
+
+    assert.equal(player.onGround, true);
+    assert.equal(player.airAttackUsed, false);
+});
+
+test('fighter styles apply local movement damage energy and health tuning', () => {
+    const { api } = loadGame();
+    const fast = new api.Fighter(100, true);
+    const heavy = new api.Fighter(100, true);
+    const technical = new api.Fighter(100, true);
+    const opponent = new api.Fighter(190, false);
+
+    fast.applyStyle('fast');
+    fast.updatePlayerControls({ d: true }, opponent);
+    assert(Math.abs(fast.velX - 5.7) < 0.0001);
+
+    heavy.applyStyle('heavy');
+    heavy.attack('punch', opponent);
+    assert.equal(opponent.health, 91);
+
+    technical.applyStyle('technical');
+    assert.equal(technical.health, 92);
+    technical.gainEnergy(14);
+    assert.equal(technical.energy, 18);
 });
 
 test('combat sounds use distinct attack and impact profiles', () => {
@@ -842,6 +895,38 @@ test('difficulty selection changes CPU movement tuning', () => {
     api.setDifficulty('invalid');
 
     assert.equal(api.getState().selectedDifficulty, 'normal');
+});
+
+test('fighter style selection applies to new rounds and falls back safely', () => {
+    const { api } = loadGame();
+
+    api.setFighterStyle('fast');
+    startPlayingGame(api);
+
+    let state = api.getState();
+    assert.equal(state.selectedFighterStyle, 'fast');
+    assert.equal(state.styleSelectValue, 'fast');
+    assert.equal(state.player1.styleKey, 'fast');
+    assert.equal(state.player1.moveSpeedModifier, 1.14);
+
+    api.setFighterStyle('missing');
+    state = api.getState();
+
+    assert.equal(state.selectedFighterStyle, 'balanced');
+});
+
+test('post-match phrases include air attacks and fighter style wins', () => {
+    const { api } = loadGame();
+
+    api.recordPlayerAirAttack();
+    assert.equal(api.getPostMatchPhrase(true), 'Ganaste desde el aire. La gravedad abrio un ticket y lo cerraste con estilo.');
+
+    api.setFighterStyle('heavy');
+    api.initGame();
+    assert.equal(api.getPostMatchPhrase(true), 'Modo pesado confirmado: cada golpe sono como migracion en viernes.');
+
+    api.recordPlayerSpecial();
+    assert.equal(api.getPostMatchPhrase(true), 'Energia bien gastada. La CPU todavia esta renderizando excusas.');
 });
 
 test('CPU decision helper chooses deterministic defensive and offensive actions', () => {

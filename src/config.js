@@ -18,12 +18,20 @@ const ENERGY_GAIN_ON_DAMAGE = 8;
 const ATTACKS = {
     punch: { damage: 8, range: 95, cooldown: 12, height: 36, yOffset: -66, xOffset: 20, animation: 'punch' },
     kick: { damage: 14, range: 135, cooldown: 24, height: 42, yOffset: -32, xOffset: 18, animation: 'kick' },
+    airPunch: { damage: 9, range: 90, cooldown: 18, height: 42, yOffset: -78, xOffset: 18, animation: 'airPunch' },
+    airKick: { damage: 13, range: 125, cooldown: 28, height: 46, yOffset: -48, xOffset: 18, animation: 'airKick' },
     comboPunch: { damage: 12, range: 108, cooldown: 18, height: 38, yOffset: -68, xOffset: 22, animation: 'punch' },
     comboKick: { damage: 18, range: 150, cooldown: 30, height: 46, yOffset: -34, xOffset: 18, animation: 'kick' },
     backKick: { damage: 22, range: 145, cooldown: 36, height: 48, yOffset: -30, xOffset: 16, animation: 'kick' },
     special: { damage: 26, range: 185, cooldown: 45, height: 64, yOffset: -76, xOffset: 20, animation: 'special' }
 };
 const BLOCK_DAMAGE_MULTIPLIER = 0.2;
+const FIGHTER_STYLES = {
+    balanced: { labelKey: 'styleBalanced', moveSpeed: 1, damage: 1, energy: 1, health: 1 },
+    fast: { labelKey: 'styleFast', moveSpeed: 1.14, damage: 0.9, energy: 1, health: 1 },
+    heavy: { labelKey: 'styleHeavy', moveSpeed: 0.88, damage: 1.14, energy: 1, health: 1 },
+    technical: { labelKey: 'styleTechnical', moveSpeed: 1, damage: 0.94, energy: 1.25, health: 0.92 }
+};
 const DIFFICULTIES = {
     easy: {
         decisionMin: 22,
