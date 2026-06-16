@@ -1,6 +1,6 @@
 # GLITCH DUEL
 
-Line-art arcade fighting web game built with plain HTML, CSS, and JavaScript on Canvas. The human player fights a CPU in best-of-3 rounds with combos, blocking, a special attack, themed arenas, touch controls, and a Spanish/English interface.
+Line-art arcade fighting web game built with plain HTML, CSS, and JavaScript on Canvas. The human player fights a CPU in best-of-3 rounds with combos, air attacks, fighter styles, blocking, a special attack, themed arenas, touch controls, and a Spanish/English interface.
 
 Play online: [https://dersteppenwolf.github.io/glitch_duel/](https://dersteppenwolf.github.io/glitch_duel/)
 
@@ -32,6 +32,7 @@ Note: this application has been generated and evolved with assistance from OpenC
 - [Controls](#controls)
 - [Languages](#languages)
 - [Arenas](#arenas)
+- [Fighter Styles](#fighter-styles)
 - [Features](#features)
 - [Features: Combat](#combat)
 - [Features: UI/UX](#uiux)
@@ -119,6 +120,19 @@ Available combos:
 The second combo key must be pressed within the combo window. If you wait too long, the normal attack for the pressed key comes out instead.
 
 Energy charges when hitting, taking damage, or blocking. `L` is not a normal strike: it only activates the special when the bar is full.
+
+## Fighter Styles
+
+The style selector changes only the human player. The CPU keeps its own difficulty tuning.
+
+| Style | Effect | Tradeoff |
+| --- | --- | --- |
+| Balanced | Baseline movement, damage, energy, and health. | No specialty. |
+| Fast | Faster movement. | Lower damage. |
+| Heavy | Higher damage. | Slower movement. |
+| Technical | Higher energy gain. | Lower starting health and slightly lower damage. |
+
+Styles are intentionally small tuning changes so difficulty, arenas, hitboxes, and round rules remain readable.
 
 ## Languages
 
@@ -291,7 +305,7 @@ Post-deploy verification:
 
 - The URL should load the main menu without `/src/` in the path.
 - Styles should be applied.
-- The language, difficulty, and arena selectors should work.
+- The language, difficulty, arena, and fighter style selectors should work.
 - Starting a match should load the canvas and respond to keyboard input.
 - If the page shows 404, check that `Source` is `GitHub Actions` and that the latest workflow completed successfully.
 
@@ -329,6 +343,7 @@ node --test tests\game.test.js
 - `C` and down arrow crouch.
 - `S` and `I` block.
 - `J`, `K`, and `L` work according to energy/cooldown.
+- `J` and `K` in the air trigger one air attack per jump.
 - `J,J`, `J,K`, and `K,K` combos show distinct feedback.
 - The timer counts down in real seconds during `playing` and stops while paused.
 - Reaching `0%` advances the round or ends the match.
@@ -338,6 +353,7 @@ node --test tests\game.test.js
 - `Tab` shows visible focus.
 - The language selector switches Spanish/English and persists after reload.
 - The arena selector changes the background.
+- The fighter style selector changes player tuning.
 - `Reducir movimiento` persists and reduces shake/hit-stop/particles.
 - Human and CPU are visually distinct.
 - The nine arenas look different.
@@ -406,6 +422,7 @@ The tests cover, among other points:
 - Blocking with `S` and `I`.
 - Crouch and block precedence.
 - Strikes, combos, special, energy, and cooldowns.
+- Air attacks and fighter style tuning.
 - Hitboxes and blocked damage.
 - Reduced motion.
 - Separated AI and deterministic decisions.
@@ -414,6 +431,7 @@ The tests cover, among other points:
 - Pause, help, stats, rounds, timer, and game over.
 - Visual identity for human/CPU.
 - Enriched final summary, post-match medals, UI sounds, and arcade-style messages.
+- Style-aware and air-attack victory phrases.
 
 Test limitations:
 
