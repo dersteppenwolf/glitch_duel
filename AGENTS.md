@@ -4,7 +4,7 @@
 - This is a small static browser game, not a packaged app: no `package.json`, lockfile, bundler, or build step is present.
 - The current product identity is `GLITCH DUEL`; avoid reintroducing previous branding in active UI or docs.
 - Main entrypoint is `src/index.html`; open or serve that path, not the old deleted `stick_game.html`.
-- Code is split across `src/index.html`, `src/styles.css`, `src/i18n.js`, `src/config.js`, `src/audio.js`, `src/effects.js`, `src/ai.js`, `src/fighter_render.js`, `src/fighter.js`, and `src/game.js`; keep new gameplay logic in the closest existing file.
+- Code is split across `src/index.html`, `src/styles.css`, `src/i18n.js`, `src/config.js`, `src/audio.js`, `src/effects.js`, `src/ai.js`, `src/fighter_render.js`, `src/fighter.js`, `src/arena_render.js`, `src/hud_render.js`, and `src/game.js`; keep new gameplay logic in the closest existing file.
 - Unit tests live in `tests/game.test.js` and use Node's built-in `node:test` with DOM/canvas/audio mocks; no npm install is needed.
 
 ## Run And Verify

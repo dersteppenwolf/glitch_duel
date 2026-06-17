@@ -142,7 +142,7 @@ function loadGame(options = {}) {
 
     context.globalThis = context;
 
-    const sourceFiles = ['i18n.js', 'config.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'game.js'];
+    const sourceFiles = ['i18n.js', 'config.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'arena_render.js', 'hud_render.js', 'game.js'];
     const source = sourceFiles
         .map((file) => fs.readFileSync(path.join(__dirname, '..', 'src', file), 'utf8'))
         .join('\n');

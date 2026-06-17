@@ -377,7 +377,9 @@ node --test tests\game.test.js
 | `src/ai.js` | Testable CPU decision logic. |
 | `src/fighter_render.js` | Fighter drawing and related visual feedback. |
 | `src/fighter.js` | Individual physics, controls, attacks, combos, hitboxes, damage, and energy. |
-| `src/game.js` | Global state, screen flow, rounds, timer, backgrounds, HUD, and events. |
+| `src/arena_render.js` | Arena backgrounds and themed arena details. |
+| `src/hud_render.js` | Health, energy, status panels, VS intro, and screen flashes. |
+| `src/game.js` | Global state, screen flow, rounds, timer, effects updates, draw orchestration, and events. |
 | `tests/game.test.js` | Tests with DOM/canvas/audio mocks. |
 
 ### Script Order
@@ -392,6 +394,8 @@ node --test tests\game.test.js
 <script src="ai.js"></script>
 <script src="fighter_render.js"></script>
 <script src="fighter.js"></script>
+<script src="arena_render.js"></script>
+<script src="hud_render.js"></script>
 <script src="game.js"></script>
 ```
 
