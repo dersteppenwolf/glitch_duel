@@ -1,5 +1,7 @@
 # GLITCH DUEL
 
+May the glitch be with you.
+
 Line-art arcade fighting web game built with plain HTML, CSS, and JavaScript on Canvas. The human player fights a CPU in best-of-3 rounds with combos, air attacks, fighter styles, blocking, a special attack, themed arenas, touch controls, and a Spanish/English interface.
 
 Play online: [https://dersteppenwolf.github.io/glitch_duel/](https://dersteppenwolf.github.io/glitch_duel/)
