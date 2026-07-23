@@ -188,6 +188,7 @@ function loadGame(options = {}) {
             getArenaLabel,
             renderArenaPreview,
             drawBackground,
+            drawArenaForeground,
             setReducedMotion,
             renderLanguage,
             recordMatchResult,
@@ -1255,6 +1256,28 @@ test('new arena backgrounds render themed canvas primitives', () => {
     assert(state.textCalls.includes('f(punch) = pain'));
     assert(state.textCalls.includes('SERVER DOWN'));
     assert(state.textCalls.includes('BOOTH 404'));
+});
+
+test('arena foreground layer renders peripheral props for every arena and fallback', () => {
+    const arenaKeys = ['notebook', 'cafeteria', 'lab', 'meeting', 'remoteMeeting', 'mathClass', 'serverDown', 'geekConvention'];
+
+    arenaKeys.forEach((arenaKey) => {
+        const { api } = loadGame();
+        api.setArena(arenaKey);
+        api.drawArenaForeground();
+
+        const state = api.getState();
+        assert(state.ctxCalls.includes('fillRect'));
+        assert(state.ctxCalls.includes('strokeRect') || state.ctxCalls.includes('arc'));
+    });
+
+    const { api } = loadGame();
+    api.setArena('missing');
+    api.drawArenaForeground();
+    const state = api.getState();
+    assert.equal(state.selectedArena, 'notebook');
+    assert(state.ctxCalls.includes('fillRect'));
+    assert(state.ctxCalls.includes('strokeRect'));
 });
 
 test('arena animations advance through draw and respect reduced motion', () => {

@@ -715,6 +715,7 @@ function draw() {
         player1.draw();
         player2.draw();
     }
+    drawArenaForeground();
     impactParticles.forEach((p) => p.draw());
     drawSpecialFlash();
     drawImpactFlash();

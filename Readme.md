@@ -222,7 +222,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Flash, trail, and `SPECIAL!` text when spending the energy bar.
 - Combo feedback with text, halo/trail, and combo-window hint.
 - Stylized shake, hit-stop, and impact particles.
-- Themed arena backgrounds with light animations that respect `Reducir movimiento`.
+- Themed arena backgrounds with light animations and layered background, midground, and peripheral foreground props that respect `Reducir movimiento`.
 - Audio generated with the Web Audio API, with distinct sounds for attacks, impact, block, combo, special, and UI.
 
 ### Technical
@@ -367,7 +367,7 @@ node --test tests\game.test.js
 - The fighter style selector changes player tuning.
 - `Reducir movimiento` persists and reduces shake/hit-stop/particles.
 - Human and CPU are visually distinct.
-- The nine arenas look different.
+- The eight arenas look different, with foreground props that do not block fighters, HUD, or combat feedback.
 - On mobile landscape, HUD, pause, arena, and touch controls are visible without critical overlaps.
 - On portrait phones, the orientation hint appears and the arena remains usable above the controls.
 - On low-height screens, menu, help, pause, and game over can show all buttons with internal scroll when needed.
@@ -492,7 +492,7 @@ Test limitations:
 | Initial accessibility | Visible focus, ARIA, and reduced motion. |
 | README gameplay trailer | Animated GIF near the top of the README showing menu, VS intro, combat, combos, and special feedback. |
 | Mobile | Touch controls, safe areas, optimized landscape, and degraded portrait with orientation warning. |
-| Arenas | Nine themed backgrounds with no gameplay effects. |
+| Arenas | Eight themed layered backgrounds with no gameplay effects. |
 | Arena preview | Initial menu with mini-preview, name, and description per arena. |
 | Arcade VS intro | `P1 VS AI` overlay with round, difficulty, and arena before each round. |
 | i18n | Spanish/English with autodetection and persistence. |

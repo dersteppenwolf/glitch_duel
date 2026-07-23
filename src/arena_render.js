@@ -47,6 +47,70 @@ function drawArenaDetails(arenaKey, arena) {
     ctx.restore();
 }
 
+function drawArenaForeground() {
+    const arena = getArenaConfig();
+
+    ctx.save();
+    ctx.globalAlpha = 0.64;
+    ctx.fillStyle = arena.ground;
+    ctx.strokeStyle = arena.ground;
+    ctx.lineWidth = 3;
+
+    if (selectedArena === 'cafeteria') {
+        ctx.fillRect(0, 430, 210, 70);
+        ctx.fillRect(810, 430, 190, 70);
+        ctx.strokeRect(34, 360, 52, 86);
+        ctx.strokeRect(914, 360, 52, 86);
+    } else if (selectedArena === 'lab') {
+        ctx.fillRect(0, 432, 190, 68);
+        ctx.fillRect(830, 432, 170, 68);
+        ctx.beginPath();
+        ctx.moveTo(80, 420);
+        ctx.lineTo(122, 372);
+        ctx.lineTo(160, 420);
+        ctx.stroke();
+        ctx.strokeRect(878, 382, 54, 48);
+    } else if (selectedArena === 'meeting') {
+        ctx.fillRect(0, 438, 225, 62);
+        ctx.fillRect(775, 438, 225, 62);
+        ctx.strokeRect(46, 366, 58, 72);
+        ctx.strokeRect(896, 366, 58, 72);
+    } else if (selectedArena === 'remoteMeeting') {
+        ctx.fillRect(0, 442, 230, 58);
+        ctx.fillRect(770, 442, 230, 58);
+        ctx.strokeRect(30, 370, 120, 58);
+        ctx.strokeRect(850, 370, 120, 58);
+    } else if (selectedArena === 'mathClass') {
+        ctx.fillRect(0, 438, 205, 62);
+        ctx.fillRect(795, 438, 205, 62);
+        ctx.strokeRect(42, 388, 105, 42);
+        ctx.strokeRect(853, 388, 105, 42);
+    } else if (selectedArena === 'serverDown') {
+        ctx.fillStyle = 'rgba(17, 24, 39, 0.88)';
+        ctx.fillRect(0, 352, 94, 148);
+        ctx.fillRect(906, 352, 94, 148);
+        ctx.strokeStyle = '#ef4444';
+        ctx.strokeRect(18, 374, 58, 98);
+        ctx.strokeRect(924, 374, 58, 98);
+    } else if (selectedArena === 'geekConvention') {
+        ctx.fillRect(0, 438, 220, 62);
+        ctx.fillRect(780, 438, 220, 62);
+        ctx.beginPath();
+        ctx.arc(72, 392, 24, 0, Math.PI * 2);
+        ctx.arc(928, 392, 24, 0, Math.PI * 2);
+        ctx.fill();
+    } else {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+        ctx.fillRect(0, 430, 174, 70);
+        ctx.fillRect(826, 430, 174, 70);
+        ctx.strokeStyle = 'rgba(200, 40, 40, 0.55)';
+        ctx.strokeRect(30, 380, 104, 42);
+        ctx.strokeRect(866, 380, 104, 42);
+    }
+
+    ctx.restore();
+}
+
 function drawNotebookDetails(arena) {
     ctx.strokeStyle = 'rgba(200, 40, 40, 0.35)';
     ctx.lineWidth = 3;
