@@ -2,7 +2,7 @@
 
 Prioritization aims to attract and retain users: first visible improvements in the opening seconds, then replay motivation, and finally depth or maintenance.
 
-Next recommended improvement: `Training mode`, because it makes it easier to practice ranges, combos, blocking, and special without timer pressure.
+Next recommended improvement: `Frame-rate-independent combat simulation`, because cooldowns, physics, combo windows, and AI behavior currently advance per rendered frame while the round clock uses elapsed time.
 
 Modern browser API improvements should use capability detection, keep graceful fallbacks, and avoid adding dependencies.
 
@@ -71,6 +71,22 @@ AI improvements should preserve the current lightweight rule-based approach unle
 | 59 | Low | Smooth screen transitions | Uses View Transitions API where available, with fallback to current overlays. | Visual |
 | 60 | Low | Export/import local data | Allows saves, stats, or settings to be backed up through JSON files. | Persistence |
 | 61 | Low | Advanced visual effects experiment | Explores optional WebGPU or post-processing effects without replacing the main Canvas 2D renderer. | Visual / R&D |
+
+## Current Implementation Findings
+
+These items come from reviewing the current source, shipped HTML, tests, documentation, and Pages workflow. They are kept separate so correctness and resilience work can be prioritized without rewriting the existing feature roadmap.
+
+| # | Priority | Improvement | Reason | Type |
+| --- | --- | --- | --- | --- |
+| 62 | High | Frame-rate-independent combat simulation | Uses bounded fixed 60 Hz simulation steps so cooldowns, combo windows, hit-stun, physics, AI decisions, and movement retain the same balance at 30, 60, or 120 FPS while preserving the real-time round clock. Add regression cases for each cadence. | Combat / quality |
+| 63 | High | Use posture-specific pushboxes for fighter separation | Replaces the hard-coded center-distance collision rule with `getPushBox()` overlap resolution so standing, crouching, airborne, corner, and facing behavior match the existing collision model and documentation. | Combat / collision |
+| 64 | High | Recover from interrupted input and inactive pages | Clears pressed keys on blur, visibility loss, and touch/pointer cancellation; automatically pauses an active match when the page becomes hidden and requires an explicit resume. | Input / lifecycle |
+| 65 | Medium | Native accessible touch controls | Replaces touch-control `div` elements with semantic buttons and pointer-event handling, preserving combat controls while providing focus order, keyboard activation, and cancellation support. | Accessibility / input |
+| 66 | Medium | Keep overlays touch-scrollable | Limits `touch-action: none` to gameplay surfaces and controls so menu, help, pause, and game-over panels remain vertically scrollable on low-height phones. | Mobile UX / accessibility |
+| 67 | Medium | Pages validation quality gate | Runs syntax checks for every shipped script and `node --test tests\game.test.js` before Pages deployment; run the validation job on pull requests and make deployment depend on it. | CI / quality |
+| 68 | Medium | Static HTML integration-contract tests | Verify required element IDs, local assets, and classic-script load order in `src/index.html` so a renamed ID, missing asset, or ordering regression cannot pass only because the DOM mock is permissive. | Testing / quality |
+| 69 | Low | Complete localized accessibility labels | Translate fixed group labels for the GitHub link, settings, and touch controls when switching language, with tests for Spanish and English accessible names. | i18n / accessibility |
+| 70 | Low | Keep documentation and configuration inventory aligned | Correct the visual smoke checklist from nine to eight arenas and add a lightweight count check so arena selectors, configuration, and docs stay synchronized. | Documentation / quality |
 
 ## Deferred Ideas
 
