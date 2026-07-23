@@ -44,7 +44,6 @@ AI improvements should preserve the current lightweight rule-based approach unle
 | 32 | Medium | Lightweight performance telemetry | Tracks FPS, long frames, and gameplay timing locally to guide visual and balance tuning. | Dev tool / performance |
 | 33 | Medium | Input replay test harness | Replays recorded input sequences in tests or debug mode to verify combat, AI, and regression scenarios. | Testing / dev tool |
 | 34 | Medium | AI decision tuning hooks | Moves AI chances such as bait, air attack, crouch, zoning, rushdown, and counter timing into difficulty config with focused unit tests. | Maintenance / AI |
-| 35 | Medium | Layered arena depth | Adds background, midground, and foreground details to make arenas feel richer without changing hitboxes. | Visual |
 | 36 | Medium | Reactive arena effects | Lets backgrounds respond to hits, combos, special attacks, low health, final seconds, and KO. | Visual / feedback |
 | 37 | Medium | Arena readability pass | Checks every arena for fighter contrast, HUD clarity, corner readability, and reduced-motion behavior. | Accessibility / visual |
 | 38 | Medium | Animated arena previews | Makes the arena selector more attractive with lightweight looping previews. | UI / visual |
@@ -71,6 +70,12 @@ AI improvements should preserve the current lightweight rule-based approach unle
 | 59 | Low | Smooth screen transitions | Uses View Transitions API where available, with fallback to current overlays. | Visual |
 | 60 | Low | Export/import local data | Allows saves, stats, or settings to be backed up through JSON files. | Persistence |
 | 61 | Low | Advanced visual effects experiment | Explores optional WebGPU or post-processing effects without replacing the main Canvas 2D renderer. | Visual / R&D |
+
+## Completed From Active Backlog
+
+| # | Improvement | Result |
+| --- | --- | --- |
+| 35 | Layered arena depth | Eight arenas now render a static peripheral foreground layer after fighters and before combat feedback, preserving hitboxes and HUD readability. Implemented in `eb472d7`. |
 
 ## Current Implementation Findings
 
