@@ -47,6 +47,7 @@ Note: this application has been generated and evolved with assistance from OpenC
     - [Direct Option](#direct-option)
     - [Recommended Option](#recommended-option)
   - [Online Publishing](#online-publishing)
+  - [Security](#security)
   - [Validation](#validation)
     - [Automated Validation](#automated-validation)
     - [Basic Smoke](#basic-smoke)
@@ -313,6 +314,13 @@ Post-deploy verification:
 - If the page shows 404, check that `Source` is `GitHub Actions` and that the latest workflow completed successfully.
 
 There is no build step: `src/index.html`, `src/styles.css`, and the scripts in `src/` are uploaded directly.
+
+## Security
+
+- Match statistics from `localStorage` are validated as bounded non-negative integers before use. Invalid or unknown fields are discarded.
+- The page includes a same-origin Content Security Policy that blocks external scripts, styles, connections, plugins, forms, and injected base URLs. It is defense in depth, not a replacement for safe DOM rendering.
+- GitHub Pages does not allow this repository to set response headers. A CDN or proxy is required to deliver a CSP header with `frame-ancestors 'none'` if anti-framing protection is required.
+- The Pages workflow pins third-party action revisions to reviewed commit SHAs. Review and update those SHAs through the official action releases.
 
 ## Validation
 

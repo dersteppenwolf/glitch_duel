@@ -2,6 +2,7 @@ const REDUCED_MOTION_STORAGE_KEY = 'glitchDuelReducedMotion';
 const LEGACY_REDUCED_MOTION_STORAGE_KEY = 'xkcdKombatReducedMotion';
 const STATS_STORAGE_KEY = 'glitchDuelStats';
 const LEGACY_STATS_STORAGE_KEY = 'xkcdKombatStats';
+const MAX_STAT_VALUE = 1000000;
 
 let player1;
 let player2;
@@ -164,12 +165,26 @@ function getArenaConfig() {
     return ARENAS[selectedArena] || ARENAS.notebook;
 }
 
+function normalizeStat(value) {
+    return Number.isSafeInteger(value) && value >= 0 && value <= MAX_STAT_VALUE ? value : 0;
+}
+
 function loadStats() {
     const defaults = { wins: 0, losses: 0, currentStreak: 0, bestStreak: 0 };
 
     try {
         const raw = window.localStorage && (window.localStorage.getItem(STATS_STORAGE_KEY) || window.localStorage.getItem(LEGACY_STATS_STORAGE_KEY));
-        return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
+        if (!raw) return defaults;
+
+        const saved = JSON.parse(raw);
+        if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return defaults;
+
+        return {
+            wins: normalizeStat(saved.wins),
+            losses: normalizeStat(saved.losses),
+            currentStreak: normalizeStat(saved.currentStreak),
+            bestStreak: normalizeStat(saved.bestStreak)
+        };
     } catch (_) {
         return defaults;
     }
@@ -289,7 +304,30 @@ function renderGameOverText() {
     const playerWon = playerRounds >= ROUNDS_TO_WIN;
     const medal = getPostMatchMedal(playerWon);
     const phrase = getPostMatchPhrase(playerWon);
-    winText.innerHTML = `${playerWon ? t('playerWins') : t('cpuWins')}<div class="post-match-medal"><span>${medal.title}</span><small>${medal.detail}</small></div><div class="post-match-summary"><div>${t('finalScore')}: ${playerRounds}-${cpuRounds}</div><div>${t('finalDifficulty')}: ${getDifficultyLabel()}</div><div>${t('finalArena')}: ${getArenaLabel()}</div><div>${t('finalStreak')}: ${stats.currentStreak} | ${t('finalBest')}: ${stats.bestStreak}</div><p>${phrase}</p></div>`;
+    const result = document.createElement('div');
+    const medalElement = document.createElement('div');
+    const medalTitle = document.createElement('span');
+    const medalDetail = document.createElement('small');
+    const summary = document.createElement('div');
+    const score = document.createElement('div');
+    const difficulty = document.createElement('div');
+    const arena = document.createElement('div');
+    const streak = document.createElement('div');
+    const phraseElement = document.createElement('p');
+
+    result.textContent = playerWon ? t('playerWins') : t('cpuWins');
+    medalElement.className = 'post-match-medal';
+    medalTitle.textContent = medal.title;
+    medalDetail.textContent = medal.detail;
+    medalElement.append(medalTitle, medalDetail);
+    summary.className = 'post-match-summary';
+    score.textContent = `${t('finalScore')}: ${playerRounds}-${cpuRounds}`;
+    difficulty.textContent = `${t('finalDifficulty')}: ${getDifficultyLabel()}`;
+    arena.textContent = `${t('finalArena')}: ${getArenaLabel()}`;
+    streak.textContent = `${t('finalStreak')}: ${stats.currentStreak} | ${t('finalBest')}: ${stats.bestStreak}`;
+    phraseElement.textContent = phrase;
+    summary.append(score, difficulty, arena, streak, phraseElement);
+    winText.replaceChildren(result, medalElement, summary);
 }
 
 function renderPauseSummary() {

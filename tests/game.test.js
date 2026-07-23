@@ -75,31 +75,40 @@ function loadGame(options = {}) {
         }
     };
 
+    function createElement(id = '') {
+        return {
+            id,
+            style: {},
+            innerHTML: '',
+            textContent: '',
+            value: '',
+            checked: false,
+            className: '',
+            children: [],
+            listeners: {},
+            attributes: {},
+            addEventListener(type, handler) {
+                this.listeners[type] = handler;
+            },
+            setAttribute(name, value) {
+                this.attributes[name] = value;
+            },
+            getAttribute(name) {
+                return this.attributes[name];
+            },
+            append(...children) {
+                this.children.push(...children);
+            },
+            replaceChildren(...children) {
+                this.children = [];
+                this.append(...children);
+            }
+        };
+    }
+
     function getElement(id) {
         if (id === 'game') return canvas;
-
-        if (!elements.has(id)) {
-            elements.set(id, {
-                id,
-                style: {},
-                innerHTML: '',
-                textContent: '',
-                value: '',
-                checked: false,
-                listeners: {},
-                attributes: {},
-                addEventListener(type, handler) {
-                    this.listeners[type] = handler;
-                },
-                setAttribute(name, value) {
-                    this.attributes[name] = value;
-                },
-                getAttribute(name) {
-                    return this.attributes[name];
-                }
-            });
-        }
-
+        if (!elements.has(id)) elements.set(id, createElement(id));
         return elements.get(id);
     }
 
@@ -121,7 +130,7 @@ function loadGame(options = {}) {
         },
         requestAnimationFrame() {},
         navigator: navigatorMock,
-        document: { documentElement: {}, getElementById: getElement },
+        document: { documentElement: {}, createElement, getElementById: getElement },
         window: {
             innerWidth: 800,
             innerHeight: 600,
@@ -188,6 +197,7 @@ function loadGame(options = {}) {
             recordPlayerAirAttack,
             getPostMatchMedal,
             getPostMatchPhrase,
+            renderGameOverText,
             update,
             triggerImpactFeedback,
             triggerSpecialFeedback,
@@ -224,6 +234,10 @@ function loadGame(options = {}) {
                 helpScreenDisplay: document.getElementById('help-screen').style.display,
                 pauseScreenDisplay: document.getElementById('pause-screen').style.display,
                 winnerTextHtml: document.getElementById('winner-text').innerHTML,
+                winnerTextText: (() => {
+                    const getText = (element) => element.textContent + element.children.map(getText).join('');
+                    return getText(document.getElementById('winner-text'));
+                })(),
                 pauseSummaryText: document.getElementById('pause-summary').textContent,
                 startButtonText: document.getElementById('start-button').textContent,
                 helpButtonText: document.getElementById('help-button').textContent,
@@ -1293,6 +1307,51 @@ test('legacy motion and stats preferences are still read', () => {
     assert.equal(state.stats.bestStreak, 3);
 });
 
+test('local stats discard invalid fields and unknown properties', () => {
+    const { api } = loadGame({
+        storage: {
+            glitchDuelStats: JSON.stringify({
+                wins: 12,
+                losses: -1,
+                currentStreak: 1.5,
+                bestStreak: 1000001,
+                injected: 'ignored'
+            })
+        }
+    });
+
+    const stats = api.getState().stats;
+    assert.deepEqual({ ...stats }, { wins: 12, losses: 0, currentStreak: 0, bestStreak: 0 });
+    assert.deepEqual(Object.keys(stats), ['wins', 'losses', 'currentStreak', 'bestStreak']);
+});
+
+test('local stats reject non-object values and markup before game-over rendering', () => {
+    const { api } = loadGame({
+        storage: {
+            glitchDuelStats: JSON.stringify({
+                wins: 0,
+                losses: 0,
+                currentStreak: 0,
+                bestStreak: '<img src=x onerror=alert(1)>'
+            })
+        }
+    });
+
+    assert.equal(api.getState().stats.bestStreak, 0);
+    api.renderGameOverText();
+
+    const state = api.getState();
+    assert.equal(state.winnerTextHtml, '');
+    assert.match(state.winnerTextText, /Mejor: 0/);
+    assert.doesNotMatch(state.winnerTextText, /<img/);
+
+    const nonObject = loadGame({ storage: { glitchDuelStats: '[]' } });
+    assert.deepEqual({ ...nonObject.api.getState().stats }, { wins: 0, losses: 0, currentStreak: 0, bestStreak: 0 });
+
+    const malformed = loadGame({ storage: { glitchDuelStats: '{invalid' } });
+    assert.deepEqual({ ...malformed.api.getState().stats }, { wins: 0, losses: 0, currentStreak: 0, bestStreak: 0 });
+});
+
 test('improved CPU blocks incoming close attacks', () => {
     const { api, context } = loadGame();
     const cpu = new api.Fighter(180, false);
@@ -1394,12 +1453,12 @@ test('round system advances rounds and ends match at two wins', () => {
     assert.equal(state.gameState, 'gameOver');
     assert.equal(state.player1.state, 'victory');
     assert.equal(state.player2.state, 'defeat');
-    assert.match(state.winnerTextHtml, /Bug Exterminator/);
-    assert.match(state.winnerTextHtml, /Marcador: 2-0/);
-    assert.match(state.winnerTextHtml, /Dificultad: NORMAL/);
-    assert.match(state.winnerTextHtml, /Arena: CUADERNO/);
-    assert.match(state.winnerTextHtml, /Racha: 1 \| Mejor: 1/);
-    assert.match(state.winnerTextHtml, /Bug eliminado/);
+    assert.match(state.winnerTextText, /Bug Exterminator/);
+    assert.match(state.winnerTextText, /Marcador: 2-0/);
+    assert.match(state.winnerTextText, /Dificultad: NORMAL/);
+    assert.match(state.winnerTextText, /Arena: CUADERNO/);
+    assert.match(state.winnerTextText, /Racha: 1 \| Mejor: 1/);
+    assert.match(state.winnerTextText, /Bug eliminado/);
 });
 
 test('post-match medals use simple match stats', () => {

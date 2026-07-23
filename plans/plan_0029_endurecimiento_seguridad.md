@@ -153,3 +153,26 @@ Se cargo `karpathy-guidelines` antes de finalizar este plan.
 - Commit recomendado: `Harden client-side security`.
 - Ejecutar todas las validaciones antes del commit.
 - No hacer push salvo que el usuario lo solicite.
+
+## Estado De Implementacion
+
+Implementado el 2026-07-23.
+
+- Completado: `src/game.js` normaliza las cuatro estadisticas permitidas como enteros entre `0` y `1_000_000`, rechaza JSON no objeto, arreglos, valores invalidos y propiedades desconocidas.
+- Completado: `renderGameOverText()` ya no usa `innerHTML`; construye el panel final con nodos DOM y `textContent`. Los mensajes de victoria en `src/i18n.js` tampoco contienen markup HTML.
+- Completado: `src/index.html` incluye una CSP meta de mismo origen que bloquea conexiones, objetos, formularios y bases URL no permitidas.
+- Completado: `.github/workflows/pages.yml` fija las cuatro Actions de Pages a SHAs oficiales revisados, conservando los comentarios de version.
+- Completado: `tests/game.test.js` cubre campos de estadisticas invalidos, markup malicioso, arreglos y JSON malformado; el mock DOM soporta el render seguro necesario.
+- Completado: `Readme.md` documenta la validacion de estadisticas, la CSP y la limitacion de cabeceras en GitHub Pages.
+
+Validacion ejecutada:
+
+- `node --test tests\game.test.js`: 69 pruebas superadas.
+- `node --check` para todos los archivos `src\*.js`: correcto.
+- `git diff --check`: correcto.
+- Revision estatica: no quedan usos de `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `document.write`, `eval` o `Function` en `src`; las referencias `uses:` del workflow no usan etiquetas movibles.
+
+Pendiente de validacion operativa:
+
+- Smoke test en navegador servido localmente para confirmar que no hay violaciones CSP y que el panel final conserva su apariencia.
+- Ejecucion publicada del workflow de GitHub Pages para confirmar el despliegue con las acciones fijadas.
