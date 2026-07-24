@@ -18,33 +18,32 @@ Modern browser APIs must use capability detection, preserve graceful fallbacks, 
 
 | Order | # | Improvement | Why now |
 | --- | --- | --- | --- |
-| 1 | 67 | Pages validation quality gate | Protects every later deployment with syntax and unit-test checks. |
-| 2 | 62 | Frame-rate-independent combat simulation | Removes hardware-dependent movement, cooldown, combo, hit-stun, and AI timing. |
-| 3 | 63 | Posture-specific pushboxes and collision regressions | Makes fighter separation use the collision model already exposed by `Fighter`. |
-| 4 | 64 | Interrupted-input recovery and inactive-page pause | Prevents stuck controls and hidden matches continuing in an ambiguous state. |
-| 5 | 65 / 66 | Accessible touch controls and scrollable overlays | Fixes concrete mobile and assistive-technology interaction gaps. |
-| 6 | 37 | Arena readability pass | Validates contrast and occlusion after layered arena depth. |
-| 7 | 68 | Static HTML integration contract | Protects required IDs, local assets, script order, and arena inventory. |
+| 1 | 62 | Frame-rate-independent combat simulation | Removes hardware-dependent movement, cooldown, combo, hit-stun, and AI timing. |
+| 2 | 63 | Posture-specific pushboxes and collision regressions | Makes fighter separation use the collision model already exposed by `Fighter`. |
+| 3 | 64 | Interrupted-input recovery and inactive-page pause | Prevents stuck controls and hidden matches continuing in an ambiguous state. |
+| 4 | 65 / 66 | Accessible touch controls and scrollable overlays | Fixes concrete mobile and assistive-technology interaction gaps. |
+| 5 | 37 | Arena readability pass | Validates contrast and occlusion after layered arena depth. |
+| 6 | 68 | Static HTML integration contract | Protects required IDs, local assets, script order, and arena inventory. |
+| 7 | 10 | Developer visual debug overlay | Makes hitbox, state, cooldown, and AI tuning observable. |
 | 8 | 1 | Training mode | First major gameplay feature after combat stabilization. |
 | 9 | 15 | First-run onboarding | Reduces initial control and combat friction. |
 | 10 | 6 | Deterministic seeded matches | Establishes the foundation for replayable regression scenarios. |
 
-Next recommended improvement: `#67 Pages validation quality gate`. After that small release-safety change, implement `#62 Frame-rate-independent combat simulation`.
+Next recommended improvement: `#62 Frame-rate-independent combat simulation`.
 
 ## Correctness And Release Safety
 
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
-| 67 | High | Ready | S | - | Pages validation quality gate | Run all `src/*.js` syntax checks and `node --test tests/game.test.js` on pull requests and before Pages deploy; deploy only after validation passes. |
-| 62 | High | Ready | L | 67 | Frame-rate-independent combat simulation | Use bounded fixed 60 Hz simulation steps and prove equivalent cooldown, combo, hit-stun, movement, AI, and round timing at 30/60/120 FPS. |
+| 62 | High | Ready | L | - | Frame-rate-independent combat simulation | Use bounded fixed 60 Hz simulation steps and prove equivalent cooldown, combo, hit-stun, movement, AI, and round timing at 30/60/120 FPS. |
 | 63 | High | Ready | M | 62 | Posture-specific pushboxes and collision regressions | Resolve fighter overlap through `getPushBox()` and cover standing, crouching, airborne, facing, and corner cases. Absorbs former `#11`. |
-| 64 | High | Ready | M | 67 | Interrupted-input recovery and inactive-page pause | Clear input on blur/visibility/cancellation and auto-pause a hidden active match until explicit resume. |
-| 68 | Medium | Ready | M | 67 | Static HTML integration contract | Verify required IDs, local assets, classic-script order, and selector/config/i18n arena inventory. Absorbs the remaining work from `#70`. |
+| 64 | High | Ready | M | - | Interrupted-input recovery and inactive-page pause | Clear input on blur/visibility/cancellation and auto-pause a hidden active match until explicit resume. |
+| 68 | Medium | Ready | M | - | Static HTML integration contract | Verify required IDs, local assets, classic-script order, and selector/config/i18n arena inventory. Absorbs the remaining work from `#70`. |
 | 10 | Medium | Ready | S | 63 | Developer visual debug overlay | Show hitboxes, hurtboxes, pushboxes, states, cooldowns, AI action, and optional FPS; absorbs former `#2`. |
 | 6 | High | Blocked | M | 62 | Deterministic seeded matches | Inject seeded RNG and fixed match scenarios so complete combat/AI bugs are reproducible. |
 | 33 | Medium | Blocked | L | 6 | Input replay test harness | Record and replay input sequences only after deterministic simulation and RNG exist. |
-| 31 | Medium | Ready | M | 22, 67 | Local combat telemetry | Capture bounded local aggregate data for balancing combos, blocks, specials, damage, and round duration, with visible reset controls. |
-| 32 | Medium | Ready | S | 67 | Lightweight performance telemetry | Measure FPS and long frames locally before introducing performance architecture or quality presets. |
+| 31 | Medium | Ready | M | 22 | Local combat telemetry | Capture bounded local aggregate data for balancing combos, blocks, specials, damage, and round duration, with visible reset controls. |
+| 32 | Medium | Ready | S | - | Lightweight performance telemetry | Measure FPS and long frames locally before introducing performance architecture or quality presets. |
 | 48 | Low | Blocked | M | 31 | Advanced balance | Tune attacks, styles, and difficulty only from observed telemetry and regression scenarios. |
 | 57 | Low | Partial | S | - | Background organization | Split arena helpers further only when measured file growth makes the current renderer hard to maintain. |
 | 58 | Low | Blocked | S | 32 | CSS compositing optimization | Add containment or targeted layer hints only when performance measurements identify a concrete issue. |
@@ -101,7 +100,7 @@ AI changes stay inside the current rule-based architecture. Each stage must incl
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
 | 37 | High | Ready | M | - | Arena readability pass | Check all eight arenas for fighter contrast, HUD clarity, corner readability, foreground occlusion, and reduced motion. |
-| 3 | Medium | Ready | M | 67 | PWA offline install | Add install/offline support with cache-version tests and safe update behavior; it is not a prerequisite for gameplay work. |
+| 3 | Medium | Ready | M | - | PWA offline install | Add install/offline support with cache-version tests and safe update behavior; it is not a prerequisite for gameplay work. |
 | 20 | Medium | Ready | M | - | HUD theme selector | Add arcade, console, and notebook presentation without changing gameplay information. |
 | 27 | Medium | Partial | S | - | Remaining HUD animations | Add only missing low-health and round-win emphasis; health and energy already animate. |
 | 36 | Medium | Blocked | M | 37 | Reactive arena effects | Respond to hits, combos, special, low health, final seconds, and KO after readability is validated. |
@@ -124,6 +123,7 @@ AI changes stay inside the current rule-based architecture. Each stage must incl
 | 34 | Merged | AI decision tuning hooks | New contextual AI work in `#16-#19` must place tunable chances in difficulty config with focused tests. |
 | 35 | Completed | Layered arena depth | Eight arenas render peripheral foreground after fighters and before combat feedback. Implemented in `eb472d7`. |
 | 56 | Completed | Difficulty personality visuals | CPU appearance already varies by difficulty and is covered by tests. |
+| 67 | Completed | Pages validation quality gate | Pull requests and pushes validate all JavaScript and unit tests; Pages deploy depends on the successful gate. |
 | 70 | Merged | Documentation/configuration inventory | README now says eight arenas; remaining automatic inventory checks moved into `#68`. |
 
 ## Deferred Experiments

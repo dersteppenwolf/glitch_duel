@@ -1,6 +1,7 @@
-name: Deploy GitHub Pages
+name: Validate and Deploy GitHub Pages
 
 on:
+  pull_request:
   push:
     branches:
       - main
@@ -8,15 +9,42 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Show Node.js version
+        run: node --version
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          for file in src/*.js; do
+            node --check "$file"
+          done
+
+      - name: Run unit tests
+        run: node --test tests/game.test.js
+
   deploy:
+    needs: validate
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

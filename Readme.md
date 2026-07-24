@@ -246,7 +246,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 | Browser | Any modern browser with Canvas and Web Audio. |
 | Recommended local server | Python, included in many Windows/macOS/Linux installations. |
 | Local alternative | `npx http-server` if Node is available. |
-| Tests | Node.js with native `node:test`. |
+| Tests | Node.js 24 with native `node:test`. |
 
 Nothing is installed inside the project.
 
@@ -280,7 +280,7 @@ npx http-server . -p 8000
 
 ## Online Publishing
 
-The repo includes GitHub Pages with Actions in `.github/workflows/pages.yml`.
+The repo includes GitHub Pages with Actions in `.github/workflows/pages.yml`. Pull requests, pushes to `main`, and manual runs execute the same Node.js 24 syntax and unit-test validation. Pages deployment starts only after that validation passes and is skipped for pull requests.
 
 The workflow publishes the `src/` folder as the site root, so the expected URL is:
 
@@ -295,15 +295,16 @@ Required GitHub configuration:
 - Under `Build and deployment`, set `Source: GitHub Actions`.
 - Do not select `Deploy from a branch`; the site is published with the `.github/workflows/pages.yml` workflow.
 - Confirm the repository has Actions enabled in `Settings > Actions > General`.
-- Push to `main` or manually run `Deploy GitHub Pages` from the `Actions` tab.
+- Push to `main` or manually run `Validate and Deploy GitHub Pages` from the `Actions` tab.
 - Wait for the workflow to finish green.
 - Open the URL published by the workflow or the expected URL listed above.
+- Optionally configure the `validate` job as a required status check in branch protection.
 
 Permissions used by the workflow:
 
-- `contents: read` to read the repository.
-- `pages: write` to publish to GitHub Pages.
-- `id-token: write` to authenticate the official Pages deployment.
+- `contents: read` globally so validation can read the repository.
+- `pages: write` only in the `deploy` job to publish GitHub Pages.
+- `id-token: write` only in the `deploy` job to authenticate the official Pages deployment.
 
 Post-deploy verification:
 
@@ -327,14 +328,10 @@ There is no build step: `src/index.html`, `src/styles.css`, and the scripts in `
 ### Automated Validation
 
 ```powershell
-node --check src\i18n.js
-node --check src\config.js
-node --check src\audio.js
-node --check src\effects.js
-node --check src\ai.js
-node --check src\fighter_render.js
-node --check src\fighter.js
-node --check src\game.js
+Get-ChildItem -LiteralPath "src" -Filter "*.js" | ForEach-Object {
+    node --check $_.FullName
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 node --test tests\game.test.js
 ```
 
