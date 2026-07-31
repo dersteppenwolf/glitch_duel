@@ -18,29 +18,22 @@ Modern browser APIs must use capability detection, preserve graceful fallbacks, 
 
 | Order | # | Improvement | Why now |
 | --- | --- | --- | --- |
-| 1 | 62 | Frame-rate-independent combat simulation | Removes hardware-dependent movement, cooldown, combo, hit-stun, and AI timing. |
-| 2 | 63 | Posture-specific pushboxes and collision regressions | Makes fighter separation use the collision model already exposed by `Fighter`. |
-| 3 | 64 | Interrupted-input recovery and inactive-page pause | Prevents stuck controls and hidden matches continuing in an ambiguous state. |
-| 4 | 65 / 66 | Accessible touch controls and scrollable overlays | Fixes concrete mobile and assistive-technology interaction gaps. |
-| 5 | 37 | Arena readability pass | Validates contrast and occlusion after layered arena depth. |
-| 6 | 68 | Static HTML integration contract | Protects required IDs, local assets, script order, and arena inventory. |
-| 7 | 10 | Developer visual debug overlay | Makes hitbox, state, cooldown, and AI tuning observable. |
-| 8 | 1 | Training mode | First major gameplay feature after combat stabilization. |
-| 9 | 15 | First-run onboarding | Reduces initial control and combat friction. |
-| 10 | 6 | Deterministic seeded matches | Establishes the foundation for replayable regression scenarios. |
+| 1 | 37 | Arena readability pass | Validates contrast and occlusion after layered arena depth. |
+| 2 | 68 | Static HTML integration contract | Protects required IDs, local assets, script order, and arena inventory. |
+| 3 | 10 | Developer visual debug overlay | Makes hitbox, state, cooldown, and AI tuning observable. |
+| 4 | 1 | Training mode | First major gameplay feature after combat stabilization. |
+| 5 | 15 | First-run onboarding | Reduces initial control and combat friction. |
+| 6 | 6 | Deterministic seeded matches | Establishes the foundation for replayable regression scenarios. |
 
-Next recommended improvement: `#62 Frame-rate-independent combat simulation`.
+Next recommended improvement: `#37 Arena readability pass`.
 
 ## Correctness And Release Safety
 
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
-| 62 | High | Ready | L | - | Frame-rate-independent combat simulation | Use bounded fixed 60 Hz simulation steps and prove equivalent cooldown, combo, hit-stun, movement, AI, and round timing at 30/60/120 FPS. |
-| 63 | High | Ready | M | 62 | Posture-specific pushboxes and collision regressions | Resolve fighter overlap through `getPushBox()` and cover standing, crouching, airborne, facing, and corner cases. Absorbs former `#11`. |
-| 64 | High | Ready | M | - | Interrupted-input recovery and inactive-page pause | Clear input on blur/visibility/cancellation and auto-pause a hidden active match until explicit resume. |
 | 68 | Medium | Ready | M | - | Static HTML integration contract | Verify required IDs, local assets, classic-script order, and selector/config/i18n arena inventory. Absorbs the remaining work from `#70`. |
-| 10 | Medium | Ready | S | 63 | Developer visual debug overlay | Show hitboxes, hurtboxes, pushboxes, states, cooldowns, AI action, and optional FPS; absorbs former `#2`. |
-| 6 | High | Blocked | M | 62 | Deterministic seeded matches | Inject seeded RNG and fixed match scenarios so complete combat/AI bugs are reproducible. |
+| 10 | Medium | Ready | S | - | Developer visual debug overlay | Show hitboxes, hurtboxes, pushboxes, states, cooldowns, AI action, and optional FPS; absorbs former `#2`. |
+| 6 | High | Ready | M | - | Deterministic seeded matches | Inject seeded RNG and fixed match scenarios so complete combat/AI bugs are reproducible. |
 | 33 | Medium | Blocked | L | 6 | Input replay test harness | Record and replay input sequences only after deterministic simulation and RNG exist. |
 | 31 | Medium | Ready | M | 22 | Local combat telemetry | Capture bounded local aggregate data for balancing combos, blocks, specials, damage, and round duration, with visible reset controls. |
 | 32 | Medium | Ready | S | - | Lightweight performance telemetry | Measure FPS and long frames locally before introducing performance architecture or quality presets. |
@@ -52,11 +45,11 @@ Next recommended improvement: `#62 Frame-rate-independent combat simulation`.
 
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | High | Blocked | L | 62, 63, 64 | Training mode | Provide reset, configurable positions, optional timer, health/energy controls, and CPU behavior without duplicating match logic. |
+| 1 | High | Ready | L | - | Training mode | Provide reset, configurable positions, optional timer, health/energy controls, and CPU behavior without duplicating match logic. |
 | 15 | High | Ready | M | - | First-run onboarding | Explain movement, blocking, attacks, combos, and special once, with a skip path and no interruption for returning players. |
 | 9 | Medium | Blocked | M | 1 | Combo trials | Build objective-based sequences on training reset, positioning, and success-detection infrastructure. |
 | 7 | Medium | Blocked | M | 14 | Daily/local quick missions | Offer bounded local challenges using the shared match-event model. |
-| 8 | Medium | Blocked | L | 62, 14 | Arcade ladder run | Add a five-fight escalating run with deterministic progression and a final summary. |
+| 8 | Medium | Blocked | L | 14 | Arcade ladder run | Add a five-fight escalating run with deterministic progression and a final summary. |
 | 13 | Medium | Blocked | M | 14 | Local achievements | Add first win, blocking, combo, and special goals through the shared local event model. |
 | 14 | Medium | Ready | M | - | Local match history | Define a bounded versioned record for difficulty, arena, style, duration, medal, and notable events. |
 | 21 | Medium | Ready | S | - | Persist difficulty and arena | Validate saved values against current configuration and preserve safe fallbacks. |
@@ -64,19 +57,17 @@ Next recommended improvement: `#62 Frame-rate-independent combat simulation`.
 | 28 | Medium | Partial | S | 14 | Perfect and comeback conditions | Extend the existing medal/phrase system only with perfect, comeback, and no-special result conditions. |
 | 39 | Medium | Ready | S | - | Share match results | Share a text-only score, medal, streak, or final phrase through Web Share with clipboard fallback. |
 | 41 | Low | Ready | S | - | New impact phrases and medals | Add content to the existing phrase/medal system without new progression rules. |
-| 47 | Low | Blocked | M | 1, 63 | Additional combos | Add combat depth only after training and collision regression coverage exist. |
+| 47 | Low | Blocked | M | 1 | Additional combos | Add combat depth only after training and collision regression coverage exist. |
 | 60 | Low | Blocked | M | 14, 22 | Export/import local data | Export a versioned schema and validate imports without overwriting unrelated settings. |
 
 ## Input, Accessibility, And UX
 
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
-| 65 | High | Ready | M | 64 | Native accessible touch controls | Replace role-based `div` controls with semantic buttons and pointer events, including cancellation and focus behavior. |
-| 66 | High | Ready | S | 65 | Keep overlays touch-scrollable | Restrict `touch-action: none` to gameplay surfaces and allow vertical pan in menu, help, pause, and game-over containers. |
-| 4 | Medium | Blocked | L | 64 | Action-based input, gamepad, and remapping | Introduce one action mapping layer, then add Gamepad API and persistent keyboard mappings. Absorbs former `#5`. |
+| 4 | Medium | Ready | L | - | Action-based input, gamepad, and remapping | Introduce one action mapping layer, then add Gamepad API and persistent keyboard mappings. Absorbs former `#5`. |
 | 12 | Medium | Ready | S | - | Fullscreen and wake lock | Use capability detection, release wake lock outside play, and preserve current layout fallback. |
 | 24 | Medium | Blocked | M | 15 | More visual help | Add diagrams for keyboard, touch, combos, and special after onboarding structure exists. |
-| 25 | Medium | Ready | L | 65, 66 | Advanced accessibility preferences | Add contrast/color preferences, richer announcements, dialog focus entry/restore, focus containment, and inert hidden overlays. |
+| 25 | Medium | Ready | L | - | Advanced accessibility preferences | Add contrast/color preferences, richer announcements, dialog focus entry/restore, focus containment, and inert hidden overlays. |
 | 26 | Medium | Ready | M | 37 | Colorblind-safe combat feedback | Differentiate hit, block, special, and danger using shape, text, pattern, and motion rather than color alone. |
 | 29 | Medium | Ready | S | - | Haptic feedback | Add optional capability-detected vibration for hits, blocks, special, and match events. |
 | 30 | Medium | Ready | M | - | Separate audio controls | Add persisted combat/UI volume controls; do not invent ambient or voice channels until those sounds exist. |
@@ -88,7 +79,7 @@ AI changes stay inside the current rule-based architecture. Each stage must incl
 
 | # | Priority | Status | Size | Depends on | Improvement | Remaining scope |
 | --- | --- | --- | --- | --- | --- | --- |
-| 16 | Medium | Ready | M | 63 | Contextual AI tactics | Add missing bait, crouch defense, whiff punish, and air choices using difficulty-config tuning hooks. Absorbs former `#34`. |
+| 16 | Medium | Ready | M | - | Contextual AI tactics | Add missing bait, crouch defense, whiff punish, and air choices using difficulty-config tuning hooks. Absorbs former `#34`. |
 | 17 | Medium | Partial | M | 16 | Timer tempo and anti-turtle behavior | Add timer-aware forced approach, stop retreating when behind late, and respond to excessive blocking; health, corners, range, and memory already exist. |
 | 18 | Medium | Blocked | M | 16 | Style-aware AI adaptation | Adjust tactics against fast, heavy, balanced, and technical styles after contextual actions are stable. |
 | 19 | Medium | Partial | M | 16 | Positional AI special usage | Add hit-stun confirmation, corner pressure, range safety, and timer context; lethal/comeback/energy logic already exists. |
@@ -120,6 +111,11 @@ AI changes stay inside the current rule-based architecture. Each stage must incl
 | 2 | Merged | Optional visual debug | Consolidated with `#10` as one developer overlay item. |
 | 5 | Merged | Remappable controls | Consolidated into `#4` behind an action-based input abstraction. |
 | 11 | Merged | Collision regression tests | Consolidated into `#63` so the collision fix cannot land without posture and corner regression coverage. |
+| 62 | Completed | Frame-rate-independent combat simulation | Bounded fixed 60 Hz combat steps keep movement, combat timers, AI, and round time equivalent at 30/60/120 FPS. |
+| 63 | Completed | Posture-specific pushboxes and collision regressions | Fighter separation uses `getPushBox()` with standing, crouch, air, facing, and corner coverage. |
+| 64 | Completed | Interrupted-input recovery and inactive-page pause | Blur, visibility and pointer interruption clear input; hidden active matches pause until explicit resume. |
+| 65 | Completed | Native accessible touch controls | Eight semantic buttons use Pointer Events with cancellation, capture-loss, multitouch, and focus handling. |
+| 66 | Completed | Keep overlays touch-scrollable | Gameplay surfaces retain `touch-action: none`; menu, help, pause, and game-over allow vertical pan and scroll. |
 | 34 | Merged | AI decision tuning hooks | New contextual AI work in `#16-#19` must place tunable chances in difficulty config with focused tests. |
 | 35 | Completed | Layered arena depth | Eight arenas render peripheral foreground after fighters and before combat feedback. Implemented in `eb472d7`. |
 | 56 | Completed | Difficulty personality visuals | CPU appearance already varies by difficulty and is covered by tests. |

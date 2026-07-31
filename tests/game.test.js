@@ -76,6 +76,7 @@ function loadGame(options = {}) {
     };
 
     function createElement(id = '') {
+        const capturedPointers = new Set();
         return {
             id,
             style: {},
@@ -89,6 +90,15 @@ function loadGame(options = {}) {
             attributes: {},
             addEventListener(type, handler) {
                 this.listeners[type] = handler;
+            },
+            setPointerCapture(pointerId) {
+                capturedPointers.add(pointerId);
+            },
+            hasPointerCapture(pointerId) {
+                return capturedPointers.has(pointerId);
+            },
+            releasePointerCapture(pointerId) {
+                capturedPointers.delete(pointerId);
             },
             setAttribute(name, value) {
                 this.attributes[name] = value;
@@ -113,6 +123,7 @@ function loadGame(options = {}) {
     }
 
     const windowListeners = {};
+    const documentListeners = {};
     const storage = new Map();
     Object.entries(options.storage || {}).forEach(([key, value]) => storage.set(key, value));
     const MockAudioContext = createMockAudioContext(audioEvents);
@@ -130,7 +141,15 @@ function loadGame(options = {}) {
         },
         requestAnimationFrame() {},
         navigator: navigatorMock,
-        document: { documentElement: {}, createElement, getElementById: getElement },
+        document: {
+            documentElement: {},
+            hidden: false,
+            createElement,
+            getElementById: getElement,
+            addEventListener(type, handler) {
+                documentListeners[type] = handler;
+            }
+        },
         window: {
             innerWidth: 800,
             innerHeight: 600,
@@ -178,6 +197,9 @@ function loadGame(options = {}) {
             pauseGame,
             resumeGame,
             togglePause,
+            clearActiveInput,
+            setupMobileControls,
+            setupKeyboardControls,
             setDifficulty,
             setFighterStyle,
             setRoundTimerFrames,
@@ -200,11 +222,15 @@ function loadGame(options = {}) {
             getPostMatchPhrase,
             renderGameOverText,
             update,
+            advanceSimulation,
+            checkCollision,
             triggerImpactFeedback,
             triggerSpecialFeedback,
             getState: () => ({
                 player1,
                 player2,
+                keys: { ...keys },
+                activePointerCount: activePointers.size,
                 floatingTexts,
                 impactParticles,
                 gameState,
@@ -217,6 +243,7 @@ function loadGame(options = {}) {
                 cpuRounds,
                 roundTimerFrames,
                 roundTimeMs,
+                simulationAccumulator,
                 selectedArena,
                 selectedLanguage,
                 reducedMotionEnabled,
@@ -265,6 +292,7 @@ function loadGame(options = {}) {
         context,
         elements,
         windowListeners,
+        documentListeners,
         audioEvents
     };
 }
@@ -649,6 +677,107 @@ test('fighters expose distinct hurtboxes and pushboxes by posture', () => {
     assert(crouchHurtBox.y > standingHurtBox.y);
     assert(crouchPushBox.height < standingPushBox.height);
     assert(airHurtBox.height < standingHurtBox.height);
+});
+
+test('pushbox collision resolves overlap by posture and leaves airborne fighters alone', () => {
+    const { api } = loadGame();
+
+    api.initGame();
+    api.skipVsIntro();
+    let state = api.getState();
+    state.player1.x = 480;
+    state.player2.x = 500;
+    api.checkCollision();
+
+    assert.equal(state.player2.x - state.player1.x, 56);
+
+    state.player1.x = 480;
+    state.player2.x = 500;
+    state.player1.state = 'crouch';
+    api.checkCollision();
+    assert.equal(state.player2.x - state.player1.x, 56);
+
+    state.player1.x = 480;
+    state.player2.x = 500;
+    state.player1.onGround = false;
+    state.player1.state = 'jump';
+    state.player1.y = 200;
+    api.checkCollision();
+    assert.equal(state.player1.x, 480);
+    assert.equal(state.player2.x, 500);
+});
+
+test('pushbox collision transfers separation away from arena corners', () => {
+    const { api } = loadGame();
+
+    api.initGame();
+    api.skipVsIntro();
+    const state = api.getState();
+    state.player1.x = 50;
+    state.player2.x = 55;
+    state.player1.facingRight = false;
+    state.player2.facingRight = true;
+    api.checkCollision();
+
+    assert.equal(state.player1.x, 50);
+    assert.equal(state.player2.x, 106);
+    assert.equal(state.player1.getPushBox().x + state.player1.getPushBox().width, state.player2.getPushBox().x);
+});
+
+test('blur and hidden pages clear input and pause an active match without resuming it', () => {
+    const { api, context, windowListeners, documentListeners } = loadGame();
+
+    api.setupKeyboardControls();
+    startPlayingGame(api);
+    windowListeners.keydown({ key: 'd', preventDefault() {} });
+    assert.equal(api.getState().keys.d, true);
+
+    windowListeners.blur();
+    assert.equal(Object.keys(api.getState().keys).length, 0);
+
+    windowListeners.keydown({ key: 'a', preventDefault() {} });
+    context.document.hidden = true;
+    documentListeners.visibilitychange();
+    assert.equal(api.getState().gameState, 'paused');
+    assert.equal(Object.keys(api.getState().keys).length, 0);
+
+    context.document.hidden = false;
+    documentListeners.visibilitychange();
+    assert.equal(api.getState().gameState, 'paused');
+});
+
+test('pointer controls support simultaneous input and release cancellation safely', () => {
+    const { api, elements } = loadGame();
+
+    api.setupMobileControls();
+    const left = elements.get('btn-left');
+    const punch = elements.get('btn-punch');
+    const event = (pointerId) => ({ pointerId, button: 0, preventDefault() {} });
+
+    left.listeners.pointerdown(event(1));
+    punch.listeners.pointerdown(event(2));
+    assert.equal(api.getState().keys.left, true);
+    assert.equal(api.getState().keys.punch, true);
+    assert.equal(api.getState().activePointerCount, 2);
+
+    left.listeners.pointercancel(event(1));
+    assert.equal(api.getState().keys.left, false);
+    assert.equal(api.getState().keys.punch, true);
+
+    punch.listeners.lostpointercapture(event(2));
+    assert.equal(api.getState().keys.left, false);
+    assert.equal(api.getState().keys.punch, false);
+    assert.equal(api.getState().activePointerCount, 0);
+});
+
+test('touch controls are native buttons with stable accessible IDs', () => {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.html'), 'utf8');
+    const controlIds = ['left', 'right', 'jump', 'crouch', 'block', 'punch', 'kick', 'special'];
+
+    controlIds.forEach((id) => {
+        assert.match(html, new RegExp(`<button class="btn" id="btn-${id}" type="button"`));
+    });
+    assert.doesNotMatch(html, /class="btn"[^>]*role="button"/);
 });
 
 test('special attack consumes full energy and deals heavy damage', () => {
@@ -1541,12 +1670,75 @@ test('round timer uses delta time and pauses outside playing', () => {
 
     api.initGame();
     api.skipVsIntro();
-    api.update(2500);
-    assert.equal(api.getState().roundTimeMs, 57500);
+    api.getState().player2.aiDecisionTimer = 999;
+    for (let i = 0; i < 150; i++) api.update();
+    assert(Math.abs(api.getState().roundTimeMs - 57500) < 0.001);
 
     api.pauseGame();
-    api.update(2500);
-    assert.equal(api.getState().roundTimeMs, 57500);
+    api.advanceSimulation(100);
+    assert(Math.abs(api.getState().roundTimeMs - 57500) < 0.001);
+});
+
+test('fixed-step simulation keeps combat state equivalent at 30, 60, and 120 FPS', () => {
+    function runAtFrameRate(frameMs, frames) {
+        const { api, context } = loadGame();
+        const originalRandom = context.Math.random;
+
+        try {
+            context.Math.random = () => 0.5;
+            api.initGame();
+            api.skipVsIntro();
+            for (let i = 0; i < frames; i++) api.advanceSimulation(frameMs);
+        } finally {
+            context.Math.random = originalRandom;
+        }
+
+        const state = api.getState();
+        return {
+            player1: {
+                x: state.player1.x,
+                y: state.player1.y,
+                health: state.player1.health,
+                energy: state.player1.energy,
+                state: state.player1.state,
+                attackCooldown: state.player1.attackCooldown,
+                hitStun: state.player1.hitStun,
+                comboTimer: state.player1.comboTimer
+            },
+            player2: {
+                x: state.player2.x,
+                y: state.player2.y,
+                health: state.player2.health,
+                energy: state.player2.energy,
+                state: state.player2.state,
+                attackCooldown: state.player2.attackCooldown,
+                hitStun: state.player2.hitStun,
+                aiDecisionTimer: state.player2.aiDecisionTimer
+            },
+            roundTimeMs: state.roundTimeMs,
+            roundTimerFrames: state.roundTimerFrames,
+            gameState: state.gameState
+        };
+    }
+
+    const at30 = runAtFrameRate(1000 / 30, 30);
+    const at60 = runAtFrameRate(1000 / 60, 60);
+    const at120 = runAtFrameRate(1000 / 120, 120);
+
+    assert.deepEqual(at30, at60);
+    assert.deepEqual(at60, at120);
+});
+
+test('fixed-step simulation bounds long frames without retaining stale time', () => {
+    const { api } = loadGame();
+
+    api.initGame();
+    api.skipVsIntro();
+    api.advanceSimulation(1000);
+
+    const state = api.getState();
+    assert(Math.abs(state.roundTimeMs - 59900) < 0.001);
+    assert(state.simulationAccumulator < 1000 / 60);
 });
 
 test('round timer tie starts another round without scoring', () => {

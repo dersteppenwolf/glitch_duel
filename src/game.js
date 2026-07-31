@@ -9,6 +9,7 @@ let player2;
 let floatingTexts = [];
 let impactParticles = [];
 let keys = {};
+let activePointers = new Map();
 let gameState = 'menu';
 let mobileControlsEnabled = false;
 let screenShake = 0;
@@ -26,6 +27,7 @@ let selectedFighterStyle = 'balanced';
 let stats = loadStats();
 let reducedMotionEnabled = loadReducedMotionPreference();
 let lastFrameTimestamp = null;
+let simulationAccumulator = 0;
 let visualFrame = 0;
 let impactFlash = null;
 let matchStats = createMatchStats();
@@ -48,12 +50,27 @@ function showStatusMessage(text, frames = 80) {
 
 function setRoundTimerFrames(value) {
     roundTimerFrames = Math.max(0, value);
-    roundTimeMs = roundTimerFrames * (1000 / 60);
+    roundTimeMs = roundTimerFrames * FIXED_STEP_MS;
 }
 
 function setRoundTimeMs(value) {
     roundTimeMs = Math.max(0, value);
-    roundTimerFrames = Math.ceil(roundTimeMs / (1000 / 60));
+    roundTimerFrames = Math.ceil(roundTimeMs / FIXED_STEP_MS);
+}
+
+function resetSimulationClock() {
+    lastFrameTimestamp = null;
+    simulationAccumulator = 0;
+}
+
+function clearActiveInput() {
+    activePointers.forEach(({ button, pointerId }) => {
+        if (button.releasePointerCapture && button.hasPointerCapture && button.hasPointerCapture(pointerId)) {
+            button.releasePointerCapture(pointerId);
+        }
+    });
+    activePointers.clear();
+    keys = {};
 }
 
 function skipVsIntro() {
@@ -411,7 +428,7 @@ function startRound() {
     player2.applyStyle('balanced');
     floatingTexts = [];
     impactParticles = [];
-    keys = {};
+    clearActiveInput();
     screenShake = 0;
     hitStopFrames = 0;
     impactFlash = null;
@@ -419,6 +436,7 @@ function startRound() {
     roundTimerFrames = ROUND_TIMER_FRAMES;
     roundTimeMs = ROUND_TIME_MS;
     vsIntroTimer = VS_INTRO_FRAMES;
+    resetSimulationClock();
     gameState = 'playing';
     showStatusMessage(`${t('round')} ${currentRound}`, 75);
     document.getElementById('game-over').style.display = 'none';
@@ -441,7 +459,7 @@ function showMainMenu() {
     player2 = new Fighter(750, false);
     floatingTexts = [];
     impactParticles = [];
-    keys = {};
+    clearActiveInput();
     screenShake = 0;
     hitStopFrames = 0;
     impactFlash = null;
@@ -455,6 +473,7 @@ function showMainMenu() {
     roundTimerFrames = ROUND_TIMER_FRAMES;
     roundTimeMs = ROUND_TIME_MS;
     vsIntroTimer = 0;
+    resetSimulationClock();
     gameState = 'menu';
     document.getElementById('game-over').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
@@ -481,11 +500,12 @@ function hideHelpScreen() {
     updateControlsVisibility();
 }
 
-function pauseGame() {
+function pauseGame(silent = false) {
     if (gameState !== 'playing') return;
 
-    playUISound('pause');
-    keys = {};
+    if (!silent) playUISound('pause');
+    clearActiveInput();
+    resetSimulationClock();
     gameState = 'paused';
     renderPauseSummary();
     document.getElementById('pause-screen').style.display = 'flex';
@@ -496,7 +516,8 @@ function resumeGame() {
     if (gameState !== 'paused') return;
 
     playUISound('resume');
-    keys = {};
+    clearActiveInput();
+    resetSimulationClock();
     gameState = 'playing';
     document.getElementById('pause-screen').style.display = 'none';
     updateControlsVisibility();
@@ -508,22 +529,30 @@ function togglePause() {
 }
 
 function checkCollision() {
-    const dist = Math.abs(player1.x - player2.x);
+    const firstBox = player1.getPushBox();
+    const secondBox = player2.getPushBox();
 
-    if (dist < 65 && Math.abs(player1.y - player2.y) < 80) {
-        const push = (65 - dist) / 2;
+    if (!player1.intersects(firstBox, secondBox)) return;
 
-        if (player1.x < player2.x) {
-            player1.x -= push;
-            player2.x += push;
-        } else {
-            player1.x += push;
-            player2.x -= push;
-        }
-    }
+    const overlap = Math.min(firstBox.x + firstBox.width, secondBox.x + secondBox.width) - Math.max(firstBox.x, secondBox.x);
+    if (overlap <= 0) return;
+
+    const firstCenter = firstBox.x + firstBox.width / 2;
+    const secondCenter = secondBox.x + secondBox.width / 2;
+    const left = firstCenter <= secondCenter ? player1 : player2;
+    const right = left === player1 ? player2 : player1;
+    const halfPush = overlap / 2;
+    const leftCapacity = left.x - 50;
+    const rightCapacity = WIDTH - 50 - right.x;
+    const leftPush = Math.min(halfPush, leftCapacity);
+    const rightPush = Math.min(halfPush, rightCapacity);
+    const remaining = overlap - leftPush - rightPush;
+
+    left.x -= leftPush + Math.min(remaining, Math.max(0, leftCapacity - leftPush));
+    right.x += rightPush + Math.min(remaining, Math.max(0, rightCapacity - rightPush));
 }
 
-function update(deltaMs = 1000 / 60) {
+function update() {
     if (gameState !== 'playing') return;
 
     if (vsIntroTimer > 0) {
@@ -548,11 +577,14 @@ function update(deltaMs = 1000 / 60) {
         return;
     }
 
-    updateRoundTimer(deltaMs);
+    updateRoundTimer();
 }
 
 function finishRound(playerWon) {
     if (gameState !== 'playing') return;
+
+    clearActiveInput();
+    resetSimulationClock();
 
     if (playerWon === true) playerRounds++;
     else if (playerWon === false) cpuRounds++;
@@ -596,11 +628,11 @@ function setFinishPoses(playerWon) {
     loser.onGround = true;
 }
 
-function updateRoundTimer(deltaMs = 1000 / 60) {
-    if (roundTimeMs <= 0) return;
+function updateRoundTimer() {
+    if (roundTimerFrames <= 0) return;
 
-    roundTimeMs = Math.max(0, roundTimeMs - deltaMs);
-    roundTimerFrames = Math.ceil(roundTimeMs / (1000 / 60));
+    roundTimerFrames = Math.max(0, roundTimerFrames - 1);
+    roundTimeMs = roundTimerFrames * FIXED_STEP_MS;
 
     if (roundTimeMs > 0) return;
 
@@ -734,11 +766,28 @@ function updateControlsVisibility() {
     updateOrientationWarning();
 }
 
+function advanceSimulation(deltaMs) {
+    if (gameState !== 'playing') return;
+
+    simulationAccumulator = Math.min(MAX_FRAME_DELTA_MS, simulationAccumulator + Math.max(0, deltaMs));
+    let steps = 0;
+
+    while (simulationAccumulator + 0.000001 >= FIXED_STEP_MS && steps < MAX_SIMULATION_STEPS) {
+        update();
+        simulationAccumulator -= FIXED_STEP_MS;
+        steps++;
+    }
+
+    if (simulationAccumulator < 0.000001 || (steps === MAX_SIMULATION_STEPS && simulationAccumulator >= FIXED_STEP_MS)) {
+        simulationAccumulator = 0;
+    }
+}
+
 function gameLoop(timestamp = 0) {
-    const deltaMs = lastFrameTimestamp === null ? 1000 / 60 : Math.min(100, Math.max(0, timestamp - lastFrameTimestamp));
+    const deltaMs = lastFrameTimestamp === null ? 0 : Math.min(MAX_FRAME_DELTA_MS, Math.max(0, timestamp - lastFrameTimestamp));
     lastFrameTimestamp = timestamp;
 
-    update(deltaMs);
+    advanceSimulation(deltaMs);
     draw();
     requestAnimationFrame(gameLoop);
 }
@@ -762,20 +811,39 @@ function setupMobileControls() {
         const btn = btns[key];
         if (!btn) return;
 
-        btn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
+        const releasePointer = (pointerId) => {
+            const active = activePointers.get(pointerId);
+            if (!active) return;
+
+            activePointers.delete(pointerId);
+            keys[active.key] = Array.from(activePointers.values()).some((pointer) => pointer.key === active.key);
+        };
+
+        btn.addEventListener('pointerdown', (e) => {
+            if (e.button !== undefined && e.button !== 0) return;
+            if (e.preventDefault) e.preventDefault();
             initAudio();
+            activePointers.set(e.pointerId, { key, button: btn, pointerId: e.pointerId });
+            if (btn.setPointerCapture) btn.setPointerCapture(e.pointerId);
             keys[key] = true;
-        }, { passive: false });
+        });
 
-        btn.addEventListener('touchend', (e) => {
-            e.preventDefault();
+        btn.addEventListener('pointerup', (e) => releasePointer(e.pointerId));
+        btn.addEventListener('pointercancel', (e) => releasePointer(e.pointerId));
+        btn.addEventListener('lostpointercapture', (e) => releasePointer(e.pointerId));
+        btn.addEventListener('keydown', (e) => {
+            if (e.repeat || (e.key !== ' ' && e.key !== 'Enter')) return;
+            if (e.preventDefault) e.preventDefault();
+            keys[key] = true;
+        });
+        btn.addEventListener('keyup', (e) => {
+            if (e.key !== ' ' && e.key !== 'Enter') return;
+            if (e.preventDefault) e.preventDefault();
             keys[key] = false;
-        }, { passive: false });
-
-        btn.addEventListener('mousedown', () => { keys[key] = true; });
-        btn.addEventListener('mouseup', () => { keys[key] = false; });
-        btn.addEventListener('mouseleave', () => { keys[key] = false; });
+        });
+        btn.addEventListener('click', (e) => {
+            if (e.preventDefault) e.preventDefault();
+        });
     });
 }
 
@@ -793,7 +861,7 @@ function setupKeyboardControls() {
             e.preventDefault();
         }
 
-        keys[key] = true;
+        if (gameState === 'playing') keys[key] = true;
     });
 
     window.addEventListener('keyup', (e) => {
@@ -867,3 +935,9 @@ window.addEventListener('load', () => {
 });
 
 window.addEventListener('resize', resizeCanvas);
+window.addEventListener('blur', clearActiveInput);
+
+document.addEventListener('visibilitychange', () => {
+    clearActiveInput();
+    if (document.hidden && gameState === 'playing') pauseGame(true);
+});

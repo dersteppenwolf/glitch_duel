@@ -205,7 +205,8 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Game over screen with final summary, post-match medal, `REINICIAR` / `RESTART`, and `MENU`.
 - Local stats with wins, losses, current streak, and best streak, persisted in `glitchDuelStats` with fallback reads from `xkcdKombatStats`.
 - Visible focus and ARIA labels on main controls.
-- Responsive touch controls with safe areas, prioritized landscape view, and degraded portrait layout with orientation warning.
+- Native button-based touch controls with Pointer Events, safe areas, prioritized landscape view, and degraded portrait layout with orientation warning.
+- Active matches pause when the page becomes hidden and require an explicit resume.
 
 ### Visual And Audio
 
@@ -230,8 +231,8 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Static project with no external dependencies.
 - Classic scripts, no ES modules and no build step.
 - Canvas uses a fixed logical space of `1000x500`.
-- Round timer is based on delta time from `requestAnimationFrame(timestamp)`.
-- Cooldowns, combo window, hit-stun, hit-stop, and visual timers remain frame-based.
+- Combat uses bounded fixed 60 Hz simulation steps driven by `requestAnimationFrame(timestamp)`, so movement, cooldowns, combo windows, hit-stun, hit-stop, AI timing, and the round timer do not depend on render rate.
+- Render-only effects remain tied to drawing; combat simulation does not catch up after pause or a hidden page.
 - AI is separated in `src/ai.js`.
 - Fighter rendering is separated in `src/fighter_render.js`.
 - i18n is separated in `src/i18n.js`.
@@ -353,7 +354,8 @@ node --test tests\game.test.js
 - `J`, `K`, and `L` work according to energy/cooldown.
 - `J` and `K` in the air trigger one air attack per jump.
 - `J,J`, `J,K`, and `K,K` combos show distinct feedback.
-- The timer counts down in real seconds during `playing` and stops while paused.
+- The timer, movement, cooldowns, combos, hit-stun, hit-stop, and CPU decisions remain equivalent at 30, 60, and 120 FPS.
+- The timer stops while paused; hiding an active page pauses it and requires an explicit resume.
 - Reaching `0%` advances the round or ends the match.
 
 ### Visual And Accessibility Smoke
@@ -366,6 +368,7 @@ node --test tests\game.test.js
 - Human and CPU are visually distinct.
 - The eight arenas look different, with foreground props that do not block fighters, HUD, or combat feedback.
 - On mobile landscape, HUD, pause, arena, and touch controls are visible without critical overlaps.
+- Touch controls are native buttons: holding two controls works, and cancelling or leaving a control does not retain input.
 - On portrait phones, the orientation hint appears and the arena remains usable above the controls.
 - On low-height screens, menu, help, pause, and game over can show all buttons with internal scroll when needed.
 - The canvas keeps its proportion after resize.
@@ -441,6 +444,7 @@ The tests cover, among other points:
 - Arenas, fallback, and background rendering.
 - Detected language, manual change, and persistence.
 - Pause, help, stats, rounds, timer, and game over.
+- Fixed-step combat equivalence, posture-specific pushbox resolution, interrupted input recovery, hidden-page pause, and native Pointer Event controls.
 - Visual identity for human/CPU.
 - Enriched final summary, post-match medals, UI sounds, and arcade-style messages.
 - Style-aware and air-attack victory phrases.
