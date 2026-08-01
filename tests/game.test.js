@@ -1602,18 +1602,13 @@ test('local stats reject non-object values and markup before game-over rendering
 });
 
 test('improved CPU blocks incoming close attacks', () => {
-    const { api, context } = loadGame();
+    const { api } = loadGame();
     const cpu = new api.Fighter(180, false);
     const opponent = new api.Fighter(100, true);
-    const originalRandom = context.Math.random;
     opponent.state = 'punch';
 
-    try {
-        context.Math.random = () => 0.1;
-        cpu.updateAI(opponent);
-    } finally {
-        context.Math.random = originalRandom;
-    }
+    api.setMatchRandomSeed(0);
+    cpu.updateAI(opponent);
 
     assert.equal(cpu.state, 'block');
     assert.equal(cpu.aiAction, 'block');
