@@ -24,6 +24,7 @@
 
                 <div class="menu-actions">
                     <button id="start-button" type="button" data-i18n="start">INICIAR JUEGO</button>
+                    <button id="training-button" type="button" data-i18n="training">ENTRENAMIENTO</button>
                     <button id="help-button" type="button" data-i18n="help">AYUDA</button>
                 </div>
 
@@ -163,6 +164,18 @@
             </div>
         </div>
 
+        <div id="onboarding-screen" class="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+            <div class="menu-card onboarding-card">
+                <div class="menu-kicker" data-i18n="onboardingKicker">PRIMER DUELO</div>
+                <h1 id="onboarding-title">MUEVETE</h1>
+                <p id="onboarding-text"></p>
+                <div class="menu-actions">
+                    <button id="onboarding-next-button" type="button">SIGUIENTE</button>
+                    <button id="onboarding-skip-button" type="button" data-i18n="onboardingSkip">OMITIR</button>
+                </div>
+            </div>
+        </div>
+
         <div id="pause-screen" class="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
             <div class="menu-card">
                 <div class="menu-kicker" data-i18n="pauseKicker">Combate detenido</div>
@@ -190,6 +203,26 @@
                 <button class="btn" id="btn-kick" type="button" aria-label="Patada" data-i18n-aria="kick">KICK<br>(K)</button>
                 <button class="btn" id="btn-special" type="button" aria-label="Ataque especial con energia llena" data-i18n-aria="specialButtonLabel">SPECIAL<br>(L)</button>
             </div>
+        </div>
+
+        <div id="training-panel" aria-label="Controles de entrenamiento">
+            <select id="training-position-select" aria-label="Posicion de entrenamiento">
+                <option value="mid" data-i18n="trainingPositionMid">MEDIA</option>
+                <option value="close" data-i18n="trainingPositionClose">CERCA</option>
+                <option value="corner" data-i18n="trainingPositionCorner">ESQUINA</option>
+            </select>
+            <select id="training-cpu-select" aria-label="CPU de entrenamiento">
+                <option value="idle" data-i18n="trainingCpuIdle">CPU QUIETA</option>
+                <option value="block" data-i18n="trainingCpuBlock">CPU BLOQUEA</option>
+                <option value="normal" data-i18n="trainingCpuNormal">CPU NORMAL</option>
+            </select>
+            <select id="training-timer-select" aria-label="Timer de entrenamiento">
+                <option value="off" data-i18n="trainingTimerOff">SIN TIEMPO</option>
+                <option value="on" data-i18n="trainingTimerOn">CON TIEMPO</option>
+            </select>
+            <button id="training-reset-button" type="button" data-i18n="trainingReset">RESET</button>
+            <button id="training-health-button" type="button" data-i18n="trainingHealth">VIDA</button>
+            <button id="training-energy-button" type="button" data-i18n="trainingEnergy">ENERGIA</button>
         </div>
 
         <div id="game-over" role="dialog" aria-modal="true" aria-labelledby="winner-text">

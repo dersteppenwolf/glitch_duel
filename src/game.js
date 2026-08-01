@@ -2,6 +2,7 @@ const REDUCED_MOTION_STORAGE_KEY = 'glitchDuelReducedMotion';
 const LEGACY_REDUCED_MOTION_STORAGE_KEY = 'xkcdKombatReducedMotion';
 const STATS_STORAGE_KEY = 'glitchDuelStats';
 const LEGACY_STATS_STORAGE_KEY = 'xkcdKombatStats';
+const ONBOARDING_STORAGE_KEY = 'glitchDuelOnboardingSeen';
 const MAX_STAT_VALUE = 1000000;
 
 let player1;
@@ -33,6 +34,16 @@ let impactFlash = null;
 let matchStats = createMatchStats();
 let vsIntroTimer = 0;
 let specialFlash = null;
+let gameMode = 'versus';
+let trainingConfig = { position: 'mid', cpu: 'idle', timer: false };
+let matchSeed = 0;
+let debugOverlayEnabled = getDebugQueryEnabled();
+let debugFrameCount = 0;
+let debugStepCount = 0;
+let debugTimestamp = null;
+let debugFps = 0;
+let debugTicksPerSecond = 0;
+let onboardingStep = 0;
 const VS_INTRO_FRAMES = 90;
 
 function getDifficultyConfig() {
@@ -61,6 +72,79 @@ function setRoundTimeMs(value) {
 function resetSimulationClock() {
     lastFrameTimestamp = null;
     simulationAccumulator = 0;
+}
+
+function getDebugQueryEnabled() {
+    const search = window.location && typeof window.location.search === 'string' ? window.location.search : '';
+    return /(?:^|[?&])debug(?:=1|=true|&|$)/.test(search);
+}
+
+function getSeedFromLocation() {
+    const search = window.location && typeof window.location.search === 'string' ? window.location.search : '';
+    const match = /(?:^|[?&])seed=([^&]+)/.exec(search);
+    if (!match || !/^\d+$/.test(match[1])) return null;
+    const value = Number(match[1]);
+    return Number.isSafeInteger(value) && value >= 0 && value <= 4294967295 ? value : null;
+}
+
+function initializeMatchSeed(seed = getSeedFromLocation()) {
+    matchSeed = setMatchRandomSeed(seed === null ? Math.floor(Math.random() * 4294967296) : seed);
+}
+
+function toggleDebugOverlay() {
+    debugOverlayEnabled = !debugOverlayEnabled;
+}
+
+function getDebugData() {
+    const describe = (fighter) => fighter && ({
+        hurtBox: fighter.getHurtBox(),
+        pushBox: fighter.getPushBox(),
+        hitBox: fighter.getAttackBox(fighter.lastAttackType),
+        state: fighter.state,
+        cooldown: fighter.attackCooldown,
+        hitStun: fighter.hitStun,
+        comboTimer: fighter.comboTimer,
+        aiDecisionTimer: fighter.aiDecisionTimer,
+        aiAction: fighter.aiAction,
+        energy: fighter.energy,
+        x: fighter.x,
+        y: fighter.y
+    });
+
+    return { enabled: debugOverlayEnabled, seed: matchSeed, gameState, fps: debugFps, ticks: debugTicksPerSecond, player1: describe(player1), player2: describe(player2) };
+}
+
+function loadOnboardingSeen() {
+    try {
+        return window.localStorage && window.localStorage.getItem(ONBOARDING_STORAGE_KEY) === '1';
+    } catch (_) {
+        return false;
+    }
+}
+
+function renderOnboarding() {
+    const step = onboardingStep + 1;
+    setElementText('onboarding-title', `onboardingTitle${step}`);
+    setElementText('onboarding-text', `onboardingText${step}`);
+    setElementText('onboarding-next-button', step === 3 ? 'onboardingStart' : 'onboardingNext');
+}
+
+function completeOnboarding(startGame = false) {
+    try {
+        if (window.localStorage) window.localStorage.setItem(ONBOARDING_STORAGE_KEY, '1');
+    } catch (_) {
+        // localStorage can be unavailable in private browsing or tests.
+    }
+    document.getElementById('onboarding-screen').style.display = 'none';
+    if (startGame) initGame();
+}
+
+function showOnboardingIfNeeded() {
+    const screen = document.getElementById('onboarding-screen');
+    if (!screen || loadOnboardingSeen()) return;
+    onboardingStep = 0;
+    renderOnboarding();
+    screen.style.display = 'flex';
 }
 
 function clearActiveInput() {
@@ -435,6 +519,7 @@ function startRound() {
     specialFlash = null;
     roundTimerFrames = ROUND_TIMER_FRAMES;
     roundTimeMs = ROUND_TIME_MS;
+    if (gameMode === 'training') resetTraining();
     vsIntroTimer = VS_INTRO_FRAMES;
     resetSimulationClock();
     gameState = 'playing';
@@ -447,11 +532,72 @@ function startRound() {
 }
 
 function initGame() {
+    gameMode = 'versus';
+    initializeMatchSeed();
     currentRound = 1;
     playerRounds = 0;
     cpuRounds = 0;
     matchStats = createMatchStats();
     startRound();
+}
+
+function startTraining() {
+    gameMode = 'training';
+    initializeMatchSeed();
+    currentRound = 1;
+    playerRounds = 0;
+    cpuRounds = 0;
+    matchStats = createMatchStats();
+    startRound();
+}
+
+function resetTraining() {
+    if (!player1 || !player2) return;
+    const positions = TRAINING_POSITIONS[trainingConfig.position] || TRAINING_POSITIONS.mid;
+    [player1.x, player2.x] = positions;
+    [player1, player2].forEach((fighter) => {
+        fighter.y = GROUND_Y;
+        fighter.velX = 0;
+        fighter.velY = 0;
+        fighter.state = 'idle';
+        fighter.attackCooldown = 0;
+        fighter.hitStun = 0;
+        fighter.energy = 0;
+        fighter.onGround = true;
+    });
+    player1.health = Math.round(100 * (FIGHTER_STYLES[player1.styleKey] || FIGHTER_STYLES.balanced).health);
+    player1.displayHealth = player1.health;
+    player2.health = 100;
+    player2.displayHealth = 100;
+    player2.trainingBehavior = trainingConfig.cpu;
+    roundTimerFrames = trainingConfig.timer ? ROUND_TIMER_FRAMES : 0;
+    roundTimeMs = trainingConfig.timer ? ROUND_TIME_MS : 0;
+    clearActiveInput();
+}
+
+function setTrainingPosition(value) {
+    trainingConfig.position = TRAINING_POSITIONS[value] ? value : 'mid';
+    if (gameMode === 'training') resetTraining();
+}
+
+function setTrainingCpu(value) {
+    trainingConfig.cpu = ['idle', 'block', 'normal'].includes(value) ? value : 'idle';
+    if (player2) player2.trainingBehavior = trainingConfig.cpu;
+}
+
+function setTrainingTimer(value) {
+    trainingConfig.timer = value === 'on';
+    if (gameMode === 'training') resetTraining();
+}
+
+function refillTraining(type) {
+    if (gameMode !== 'training' || !player1) return;
+    if (type === 'health') {
+        player1.health = Math.round(100 * (FIGHTER_STYLES[player1.styleKey] || FIGHTER_STYLES.balanced).health);
+        player1.displayHealth = player1.health;
+    } else if (type === 'energy') {
+        player1.energy = MAX_ENERGY;
+    }
 }
 
 function showMainMenu() {
@@ -481,6 +627,7 @@ function showMainMenu() {
     document.getElementById('pause-screen').style.display = 'none';
     renderStats();
     updateControlsVisibility();
+    showOnboardingIfNeeded();
 }
 
 function showHelpScreen() {
@@ -555,6 +702,8 @@ function checkCollision() {
 function update() {
     if (gameState !== 'playing') return;
 
+    debugStepCount++;
+
     if (vsIntroTimer > 0) {
         vsIntroTimer--;
         updateEffects();
@@ -573,6 +722,11 @@ function update() {
     updateEffects();
 
     if (player1.health <= 0 || player2.health <= 0) {
+        if (gameMode === 'training') {
+            resetTraining();
+            showStatusMessage(t('trainingReset'), 60);
+            return;
+        }
         finishRound(player2.health <= 0);
         return;
     }
@@ -629,12 +783,19 @@ function setFinishPoses(playerWon) {
 }
 
 function updateRoundTimer() {
+    if (gameMode === 'training' && !trainingConfig.timer) return;
     if (roundTimerFrames <= 0) return;
 
     roundTimerFrames = Math.max(0, roundTimerFrames - 1);
     roundTimeMs = roundTimerFrames * FIXED_STEP_MS;
 
     if (roundTimeMs > 0) return;
+
+    if (gameMode === 'training') {
+        resetTraining();
+        showStatusMessage(t('trainingReset'), 60);
+        return;
+    }
 
     showStatusMessage(t('time'), 90);
 
@@ -717,11 +878,11 @@ function triggerImpactFeedback(x, y, direction, blocked = false, accentColor = n
     }
 
     for (let i = 0; i < count; i++) {
-        const spread = -1.2 + Math.random() * 2.4;
-        const speed = blocked ? 3 + Math.random() * 3 : 5 + Math.random() * 6;
+        const spread = -1.2 + randomCosmetic() * 2.4;
+        const speed = blocked ? 3 + randomCosmetic() * 3 : 5 + randomCosmetic() * 6;
         const vx = direction * speed;
         const vy = spread * speed;
-        const color = !blocked && accentColor && i === 0 ? accentColor : colors[Math.floor(Math.random() * colors.length)];
+        const color = !blocked && accentColor && i === 0 ? accentColor : colors[Math.floor(randomCosmetic() * colors.length)];
         const type = i % 3 === 0 ? 'dot' : 'line';
 
         impactParticles.push(new ImpactParticle(x, y, vx, vy, color, type));
@@ -755,13 +916,43 @@ function draw() {
     drawHealthBars();
     drawVsIntro();
     drawStatusMessage();
+    if (debugOverlayEnabled) drawDebugOverlay();
 
+    ctx.restore();
+}
+
+function drawDebugBox(box, color, label) {
+    if (!box) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(box.x, box.y, box.width, box.height);
+    ctx.fillStyle = color;
+    ctx.fillText(label, box.x, box.y - 3);
+}
+
+function drawDebugOverlay() {
+    const data = getDebugData();
+    ctx.save();
+    ctx.font = `bold 11px ${GAME_FONT_FAMILY}`;
+    ctx.textAlign = 'left';
+    [[data.player1, '#1f6feb', 'P1'], [data.player2, '#d22', 'CPU']].forEach(([fighter, color, label], index) => {
+        if (!fighter) return;
+        drawDebugBox(fighter.hurtBox, '#ff00aa', `${label} hurt`);
+        drawDebugBox(fighter.pushBox, '#00aaff', `${label} push`);
+        drawDebugBox(fighter.hitBox, '#ff8800', `${label} hit`);
+        ctx.fillStyle = '#111';
+        ctx.fillText(`${label} ${fighter.state} cd:${fighter.cooldown} stun:${fighter.hitStun} combo:${fighter.comboTimer} ai:${fighter.aiAction}/${fighter.aiDecisionTimer} e:${fighter.energy}`, 12, HEIGHT - 42 + index * 14);
+    });
+    ctx.fillStyle = '#111';
+    ctx.fillText(`debug ${data.gameState} fps:${data.fps} ticks:${data.ticks} seed:${data.seed}`, 12, HEIGHT - 12);
     ctx.restore();
 }
 
 function updateControlsVisibility() {
     document.getElementById('controls').style.display = mobileControlsEnabled && gameState === 'playing' ? 'block' : 'none';
     document.getElementById('pause-button').style.display = gameState === 'playing' ? 'block' : 'none';
+    const trainingPanel = document.getElementById('training-panel');
+    if (trainingPanel) trainingPanel.style.display = gameMode === 'training' && gameState === 'playing' ? 'block' : 'none';
     resizeCanvas();
     updateOrientationWarning();
 }
@@ -788,6 +979,16 @@ function gameLoop(timestamp = 0) {
     lastFrameTimestamp = timestamp;
 
     advanceSimulation(deltaMs);
+    debugFrameCount++;
+    if (debugTimestamp === null) debugTimestamp = timestamp;
+    if (timestamp - debugTimestamp >= 1000) {
+        const elapsed = timestamp - debugTimestamp;
+        debugFps = Math.round(debugFrameCount * 1000 / elapsed);
+        debugTicksPerSecond = Math.round(debugStepCount * 1000 / elapsed);
+        debugFrameCount = 0;
+        debugStepCount = 0;
+        debugTimestamp = timestamp;
+    }
     draw();
     requestAnimationFrame(gameLoop);
 }
@@ -857,6 +1058,12 @@ function setupKeyboardControls() {
             return;
         }
 
+        if (key === '`' && (gameState === 'playing' || gameState === 'paused')) {
+            if (e.preventDefault) e.preventDefault();
+            toggleDebugOverlay();
+            return;
+        }
+
         if (gameState === 'playing' && key.startsWith('arrow') && e.preventDefault) {
             e.preventDefault();
         }
@@ -895,6 +1102,10 @@ function setupMainMenu() {
         playUISound('select');
         showHelpScreen();
     });
+    document.getElementById('training-button').addEventListener('click', () => {
+        playUISound('start');
+        startTraining();
+    });
     document.getElementById('back-button').addEventListener('click', () => {
         playUISound('menu');
         hideHelpScreen();
@@ -921,6 +1132,27 @@ function setupMainMenu() {
     });
 }
 
+function setupTrainingControls() {
+    document.getElementById('training-reset-button').addEventListener('click', resetTraining);
+    document.getElementById('training-health-button').addEventListener('click', () => refillTraining('health'));
+    document.getElementById('training-energy-button').addEventListener('click', () => refillTraining('energy'));
+    document.getElementById('training-position-select').addEventListener('change', (e) => setTrainingPosition(e.target.value));
+    document.getElementById('training-cpu-select').addEventListener('change', (e) => setTrainingCpu(e.target.value));
+    document.getElementById('training-timer-select').addEventListener('change', (e) => setTrainingTimer(e.target.value));
+}
+
+function setupOnboarding() {
+    document.getElementById('onboarding-next-button').addEventListener('click', () => {
+        if (onboardingStep < 2) {
+            onboardingStep++;
+            renderOnboarding();
+        } else {
+            completeOnboarding(true);
+        }
+    });
+    document.getElementById('onboarding-skip-button').addEventListener('click', () => completeOnboarding(false));
+}
+
 window.addEventListener('load', () => {
     resizeCanvas();
     renderLanguage();
@@ -931,6 +1163,8 @@ window.addEventListener('load', () => {
     setupKeyboardControls();
     setupMainMenu();
     setupRestartButton();
+    setupTrainingControls();
+    setupOnboarding();
     gameLoop();
 });
 

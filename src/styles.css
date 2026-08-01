@@ -153,6 +153,11 @@ input:focus-visible,
     display: none;
 }
 
+#onboarding-screen {
+    display: none;
+    z-index: 190;
+}
+
 #pause-screen {
     display: none;
 }
@@ -491,6 +496,27 @@ input:focus-visible,
     display: none;
     z-index: 100;
     touch-action: none;
+}
+
+#training-panel {
+    display: none;
+    position: absolute;
+    left: 12px;
+    top: 52px;
+    z-index: 110;
+    max-width: min(440px, calc(100vw - 24px));
+    padding: 6px;
+    border: 3px solid #000;
+    background: rgba(255, 253, 242, 0.96);
+}
+
+#training-panel select,
+#training-panel button {
+    margin: 2px;
+    padding: 4px 6px;
+    border: 2px solid #000;
+    background: #fff;
+    font: bold 11px "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
 }
 
 .control-zone {

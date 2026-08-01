@@ -19,6 +19,7 @@
 ## Runtime Notes
 - `gameState` in `src/game.js` controls simulation: `menu`, `paused`, `roundOver`, and `gameOver` stop updates; only `playing` advances physics, AI, and combat.
 - Combat uses bounded fixed 60 Hz simulation steps accumulated from `requestAnimationFrame(timestamp)`; movement, round timer, cooldowns, combo windows, hit-stun, hit-stop, and AI timing advance only in those steps. Reset the clock on pause, resume, round start, and hidden-page return to avoid catch-up.
+- `?debug=1` or backtick enables developer combat diagnostics; `?seed=<uint32>` seeds simulation RNG for reproducible matches. Training reuses the normal simulation and must not duplicate fighter or combat rules.
 - Mobile controls and the pause button are hidden outside `playing`; call `updateControlsVisibility()` when changing state.
 - Web Audio is created lazily after user interaction via `initAudio()` to satisfy browser autoplay policies.
 - Canvas simulation uses fixed logical dimensions `1000x500`; `resizeCanvas()` maps that space to a responsive CSS size and DPR-aware backing store. Keep hitboxes in logical coordinates.

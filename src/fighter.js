@@ -224,6 +224,19 @@ class Fighter {
     }
 
     updateAI(opponent) {
+        if (this.trainingBehavior === 'idle') {
+            this.aiAction = 'idle';
+            this.velX = 0;
+            return;
+        }
+
+        if (this.trainingBehavior === 'block') {
+            this.aiAction = 'block';
+            this.state = 'block';
+            this.velX = 0;
+            return;
+        }
+
         const dist = Math.abs(this.x - opponent.x);
         const difficulty = getDifficultyConfig();
         const opponentAttacking = opponent.state === 'punch' || opponent.state === 'kick' || opponent.state === 'special';
@@ -236,8 +249,8 @@ class Fighter {
         this.aiDecisionTimer--;
 
         if (this.aiDecisionTimer <= 0) {
-            this.aiDecisionTimer = difficulty.decisionMin + Math.floor(Math.random() * difficulty.decisionSpread);
-            const rand = Math.random();
+            this.aiDecisionTimer = difficulty.decisionMin + Math.floor(randomSimulation() * difficulty.decisionSpread);
+            const rand = randomSimulation();
             this.aiAction = chooseAIAction({
                 dist,
                 health: this.health,
@@ -523,7 +536,7 @@ class Fighter {
                 this.aiDecisionTimer = 0;
             }
             const bTexts = ['¡BLOCK!', '*ping*', 'CHIP'];
-            floatingTexts.push(new FloatingText(this.x, this.y - 80, bTexts[Math.floor(Math.random() * bTexts.length)], '#33f'));
+            floatingTexts.push(new FloatingText(this.x, this.y - 80, bTexts[Math.floor(randomCosmetic() * bTexts.length)], '#33f'));
             showStatusMessage(t('blockStatus'), 28);
             triggerImpactFeedback(this.x, this.y - 50, impactDirection, true);
             playImpactSound(attacker.lastAttackType, true);
@@ -543,7 +556,7 @@ class Fighter {
         if (!this.isPlayer1) this.aiDecisionTimer = 0;
 
         const texts = ['¡ZAP!', '¡SPLAT!', '¡BOOM!', '404', 'NaN', '¡OW!', 'Segmentation Fault', 'Python 2.7', 'Compiling...', 'Buffer Overflow'];
-        floatingTexts.push(new FloatingText(this.x, this.y - 70, texts[Math.floor(Math.random() * texts.length)], '#c00'));
+        floatingTexts.push(new FloatingText(this.x, this.y - 70, texts[Math.floor(randomCosmetic() * texts.length)], '#c00'));
     }
 
     draw() {

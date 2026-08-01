@@ -18,23 +18,15 @@ Modern browser APIs must use capability detection, preserve graceful fallbacks, 
 
 | Order | # | Improvement | Why now |
 | --- | --- | --- | --- |
-| 1 | 37 | Arena readability pass | Validates contrast and occlusion after layered arena depth. |
-| 2 | 68 | Static HTML integration contract | Protects required IDs, local assets, script order, and arena inventory. |
-| 3 | 10 | Developer visual debug overlay | Makes hitbox, state, cooldown, and AI tuning observable. |
-| 4 | 1 | Training mode | First major gameplay feature after combat stabilization. |
-| 5 | 15 | First-run onboarding | Reduces initial control and combat friction. |
-| 6 | 6 | Deterministic seeded matches | Establishes the foundation for replayable regression scenarios. |
+| 1 | 4 | Action-based input, gamepad, and remapping | Builds on the stabilized input lifecycle and touch controls. |
 
-Next recommended improvement: `#37 Arena readability pass`.
+Next recommended improvement: `#4 Action-based input, gamepad, and remapping`.
 
 ## Correctness And Release Safety
 
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
-| 68 | Medium | Ready | M | - | Static HTML integration contract | Verify required IDs, local assets, classic-script order, and selector/config/i18n arena inventory. Absorbs the remaining work from `#70`. |
-| 10 | Medium | Ready | S | - | Developer visual debug overlay | Show hitboxes, hurtboxes, pushboxes, states, cooldowns, AI action, and optional FPS; absorbs former `#2`. |
-| 6 | High | Ready | M | - | Deterministic seeded matches | Inject seeded RNG and fixed match scenarios so complete combat/AI bugs are reproducible. |
-| 33 | Medium | Blocked | L | 6 | Input replay test harness | Record and replay input sequences only after deterministic simulation and RNG exist. |
+| 33 | Medium | Ready | L | - | Input replay test harness | Record and replay input sequences only after deterministic simulation and RNG exist. |
 | 31 | Medium | Ready | M | 22 | Local combat telemetry | Capture bounded local aggregate data for balancing combos, blocks, specials, damage, and round duration, with visible reset controls. |
 | 32 | Medium | Ready | S | - | Lightweight performance telemetry | Measure FPS and long frames locally before introducing performance architecture or quality presets. |
 | 48 | Low | Blocked | M | 31 | Advanced balance | Tune attacks, styles, and difficulty only from observed telemetry and regression scenarios. |
@@ -45,9 +37,7 @@ Next recommended improvement: `#37 Arena readability pass`.
 
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | High | Ready | L | - | Training mode | Provide reset, configurable positions, optional timer, health/energy controls, and CPU behavior without duplicating match logic. |
-| 15 | High | Ready | M | - | First-run onboarding | Explain movement, blocking, attacks, combos, and special once, with a skip path and no interruption for returning players. |
-| 9 | Medium | Blocked | M | 1 | Combo trials | Build objective-based sequences on training reset, positioning, and success-detection infrastructure. |
+| 9 | Medium | Ready | M | - | Combo trials | Build objective-based sequences on training reset, positioning, and success-detection infrastructure. |
 | 7 | Medium | Blocked | M | 14 | Daily/local quick missions | Offer bounded local challenges using the shared match-event model. |
 | 8 | Medium | Blocked | L | 14 | Arcade ladder run | Add a five-fight escalating run with deterministic progression and a final summary. |
 | 13 | Medium | Blocked | M | 14 | Local achievements | Add first win, blocking, combo, and special goals through the shared local event model. |
@@ -66,9 +56,9 @@ Next recommended improvement: `#37 Arena readability pass`.
 | --- | --- | --- | --- | --- | --- | --- |
 | 4 | Medium | Ready | L | - | Action-based input, gamepad, and remapping | Introduce one action mapping layer, then add Gamepad API and persistent keyboard mappings. Absorbs former `#5`. |
 | 12 | Medium | Ready | S | - | Fullscreen and wake lock | Use capability detection, release wake lock outside play, and preserve current layout fallback. |
-| 24 | Medium | Blocked | M | 15 | More visual help | Add diagrams for keyboard, touch, combos, and special after onboarding structure exists. |
+| 24 | Medium | Ready | M | - | More visual help | Add diagrams for keyboard, touch, combos, and special after onboarding structure exists. |
 | 25 | Medium | Ready | L | - | Advanced accessibility preferences | Add contrast/color preferences, richer announcements, dialog focus entry/restore, focus containment, and inert hidden overlays. |
-| 26 | Medium | Ready | M | 37 | Colorblind-safe combat feedback | Differentiate hit, block, special, and danger using shape, text, pattern, and motion rather than color alone. |
+| 26 | Medium | Ready | M | - | Colorblind-safe combat feedback | Differentiate hit, block, special, and danger using shape, text, pattern, and motion rather than color alone. |
 | 29 | Medium | Ready | S | - | Haptic feedback | Add optional capability-detected vibration for hits, blocks, special, and match events. |
 | 30 | Medium | Ready | M | - | Separate audio controls | Add persisted combat/UI volume controls; do not invent ambient or voice channels until those sounds exist. |
 | 69 | Low | Ready | S | - | Complete localized accessibility labels | Translate fixed accessible group names for GitHub, settings, and touch controls in Spanish and English. |
@@ -90,16 +80,15 @@ AI changes stay inside the current rule-based architecture. Each stage must incl
 
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
-| 37 | High | Ready | M | - | Arena readability pass | Check all eight arenas for fighter contrast, HUD clarity, corner readability, foreground occlusion, and reduced motion. |
 | 3 | Medium | Ready | M | - | PWA offline install | Add install/offline support with cache-version tests and safe update behavior; it is not a prerequisite for gameplay work. |
 | 20 | Medium | Ready | M | - | HUD theme selector | Add arcade, console, and notebook presentation without changing gameplay information. |
 | 27 | Medium | Partial | S | - | Remaining HUD animations | Add only missing low-health and round-win emphasis; health and energy already animate. |
-| 36 | Medium | Blocked | M | 37 | Reactive arena effects | Respond to hits, combos, special, low health, final seconds, and KO after readability is validated. |
+| 36 | Medium | Ready | M | - | Reactive arena effects | Respond to hits, combos, special, low health, final seconds, and KO after readability is validated. |
 | 38 | Medium | Ready | M | - | Animated arena previews | Add lightweight loops that respect reduced motion and do not duplicate the full canvas renderer. |
 | 40 | Medium | Ready | M | - | Spatial audio polish | Position combat sounds by fighter location while preserving mono-safe output. |
-| 42 | Low | Blocked | M | 37 | More visual arenas | Add cosmetic arenas only after the current eight pass readability review. |
-| 43 | Low | Blocked | M | 37 | Cosmetic arena variants | Add day/night/alert/rain/neon variants without gameplay effects. |
-| 44 | Low | Partial | S | 37 | Richer foreground silhouettes | Extend the peripheral foreground delivered by `#35` only where the readability pass identifies safe opportunities. |
+| 42 | Low | Ready | M | - | More visual arenas | Add cosmetic arenas only after the current eight pass readability review. |
+| 43 | Low | Ready | M | - | Cosmetic arena variants | Add day/night/alert/rain/neon variants without gameplay effects. |
+| 44 | Low | Partial | S | - | Richer foreground silhouettes | Extend the peripheral foreground delivered by `#35` only where the readability pass identifies safe opportunities. |
 | 45 | Low | Ready | S | - | Arena-specific intro transitions | Add small title-card differences without delaying control or changing round state. |
 | 46 | Low | Blocked | M | 32 | Visual quality preset | Add low/normal/high effects only if performance telemetry shows a real need. |
 | 59 | Low | Ready | S | - | Smooth screen transitions | Use View Transitions when available with current overlays as fallback. |
@@ -121,6 +110,12 @@ AI changes stay inside the current rule-based architecture. Each stage must incl
 | 56 | Completed | Difficulty personality visuals | CPU appearance already varies by difficulty and is covered by tests. |
 | 67 | Completed | Pages validation quality gate | Pull requests and pushes validate all JavaScript and unit tests; Pages deploy depends on the successful gate. |
 | 70 | Merged | Documentation/configuration inventory | README now says eight arenas; remaining automatic inventory checks moved into `#68`. |
+| 37 | Completed | Arena readability pass | Eight arenas retain readable fighters, HUD, corners, peripheral foreground, and reduced-motion behavior. |
+| 68 | Completed | Static HTML integration contract | Tests protect required IDs, local resources, classic script order, and HTML/config/i18n arena inventory. |
+| 10 | Completed | Developer visual debug overlay | `?debug=1` or backtick shows combat boxes, state, timers, AI, render FPS, simulation ticks, and seed. |
+| 1 | Completed | Training mode | Reuses match simulation with position, CPU, timer, reset, health, and energy controls. |
+| 15 | Completed | First-run onboarding | Localized three-step onboarding explains core controls once with skip and start paths. |
+| 6 | Completed | Deterministic seeded matches | `?seed=<uint32>` and test scenarios reproduce simulation independently of render randomness. |
 
 ## Deferred Experiments
 

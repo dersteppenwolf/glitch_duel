@@ -36,7 +36,7 @@ class ImpactParticle {
         this.type = type;
         this.life = 18;
         this.maxLife = 18;
-        this.size = 4 + Math.random() * 5;
+        this.size = 4 + randomCosmetic() * 5;
     }
 
     update() {

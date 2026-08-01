@@ -207,6 +207,8 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Visible focus and ARIA labels on main controls.
 - Native button-based touch controls with Pointer Events, safe areas, prioritized landscape view, and degraded portrait layout with orientation warning.
 - Active matches pause when the page becomes hidden and require an explicit resume.
+- Training mode with position, CPU, timer, reset, health, and energy controls.
+- First-run onboarding with an immediate skip path.
 
 ### Visual And Audio
 
@@ -224,6 +226,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Combo feedback with text, halo/trail, and combo-window hint.
 - Stylized shake, hit-stop, and impact particles.
 - Themed arena backgrounds with light animations and layered background, midground, and peripheral foreground props that respect `Reducir movimiento`.
+- All eight arenas are reviewed for HUD, fighter, corner, foreground, and reduced-motion readability.
 - Audio generated with the Web Audio API, with distinct sounds for attacks, impact, block, combo, special, and UI.
 
 ### Technical
@@ -237,6 +240,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Fighter rendering is separated in `src/fighter_render.js`.
 - i18n is separated in `src/i18n.js`.
 - Unit tests use `node:test` with DOM/canvas/audio mocks.
+- Use `?debug=1` or `` ` `` during a match to show developer combat diagnostics; use `?seed=<uint32>` to reproduce simulation randomness.
 
 ## Run
 

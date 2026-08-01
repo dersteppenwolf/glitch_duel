@@ -12,6 +12,11 @@ const ROUND_TIMER_FRAMES = ROUND_TIME_SECONDS * 60;
 const FIXED_STEP_MS = 1000 / 60;
 const MAX_FRAME_DELTA_MS = 100;
 const MAX_SIMULATION_STEPS = 6;
+const TRAINING_POSITIONS = {
+    mid: [350, 650],
+    close: [440, 560],
+    corner: [90, 200]
+};
 const MAX_ENERGY = 100;
 const SPECIAL_ENERGY_COST = 100;
 const COMBO_WINDOW_FRAMES = 36;
@@ -179,3 +184,33 @@ const ARENAS = {
         accent: 'rgba(154, 52, 18, 0.18)'
     }
 };
+
+let simulationRandom = Math.random;
+let cosmeticRandom = Math.random;
+
+function createSeededRandom(seed) {
+    let state = seed >>> 0;
+
+    return () => {
+        state += 0x6D2B79F5;
+        let value = state;
+        value = Math.imul(value ^ value >>> 15, value | 1);
+        value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+        return ((value ^ value >>> 14) >>> 0) / 4294967296;
+    };
+}
+
+function setMatchRandomSeed(seed) {
+    const normalized = Number(seed) >>> 0;
+    simulationRandom = createSeededRandom(normalized);
+    cosmeticRandom = createSeededRandom(normalized ^ 0x9E3779B9);
+    return normalized;
+}
+
+function randomSimulation() {
+    return simulationRandom();
+}
+
+function randomCosmetic() {
+    return cosmeticRandom();
+}

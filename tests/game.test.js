@@ -154,6 +154,7 @@ function loadGame(options = {}) {
             innerWidth: 800,
             innerHeight: 600,
             devicePixelRatio: 2,
+            location: { search: options.search || '' },
             AudioContext: MockAudioContext,
             webkitAudioContext: MockAudioContext,
             localStorage: {
@@ -183,6 +184,8 @@ function loadGame(options = {}) {
             playImpactSound,
             playUISound,
             t,
+            I18N,
+            ARENAS,
             setLanguage,
             getLanguage,
             chooseAIAction,
@@ -197,6 +200,18 @@ function loadGame(options = {}) {
             pauseGame,
             resumeGame,
             togglePause,
+            startTraining,
+            resetTraining,
+            setTrainingPosition,
+            setTrainingCpu,
+            setTrainingTimer,
+            refillTraining,
+            toggleDebugOverlay,
+            getDebugData,
+            setMatchRandomSeed,
+            createSeededRandom,
+            showOnboardingIfNeeded,
+            completeOnboarding,
             clearActiveInput,
             setupMobileControls,
             setupKeyboardControls,
@@ -234,6 +249,10 @@ function loadGame(options = {}) {
                 floatingTexts,
                 impactParticles,
                 gameState,
+                gameMode,
+                trainingConfig: { ...trainingConfig },
+                matchSeed,
+                debugOverlayEnabled,
                 selectedDifficulty,
                 selectedFighterStyle,
                 statusMessage,
@@ -260,6 +279,7 @@ function loadGame(options = {}) {
                 canvasStyle: { ...canvas.style },
                 mainMenuDisplay: document.getElementById('main-menu').style.display,
                 helpScreenDisplay: document.getElementById('help-screen').style.display,
+                onboardingScreenDisplay: document.getElementById('onboarding-screen').style.display,
                 pauseScreenDisplay: document.getElementById('pause-screen').style.display,
                 winnerTextHtml: document.getElementById('winner-text').innerHTML,
                 winnerTextText: (() => {
@@ -778,6 +798,83 @@ test('touch controls are native buttons with stable accessible IDs', () => {
         assert.match(html, new RegExp(`<button class="btn" id="btn-${id}" type="button"`));
     });
     assert.doesNotMatch(html, /class="btn"[^>]*role="button"/);
+});
+
+test('static HTML contract preserves local assets, script order, controls, and arena inventory', () => {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.html'), 'utf8');
+    const requiredIds = ['game', 'main-menu', 'help-screen', 'pause-screen', 'onboarding-screen', 'training-panel', 'start-button', 'training-button', 'arena-select'];
+    const scripts = ['i18n.js', 'config.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'arena_render.js', 'hud_render.js', 'game.js'];
+    const { api } = loadGame();
+
+    requiredIds.forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
+    assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1]), scripts);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css">/);
+    Object.keys(api.ARENAS).forEach((arena) => {
+        assert.match(html, new RegExp(`<option value="${arena}"`));
+        const key = `arena${arena.charAt(0).toUpperCase()}${arena.slice(1)}`;
+        const previewKey = `arenaPreview${arena.charAt(0).toUpperCase()}${arena.slice(1)}`;
+        assert.ok(api.I18N.es[key]);
+        assert.ok(api.I18N.en[key]);
+        assert.ok(api.I18N.es[previewKey]);
+        assert.ok(api.I18N.en[previewKey]);
+    });
+});
+
+test('training mode reuses fighters with configurable CPU, reset, timer, health, and energy', () => {
+    const { api } = loadGame();
+
+    api.startTraining();
+    api.skipVsIntro();
+    let state = api.getState();
+    assert.equal(state.gameMode, 'training');
+    assert.equal(state.roundTimerFrames, 0);
+    assert.equal(state.player2.trainingBehavior, 'idle');
+
+    api.setTrainingPosition('close');
+    api.setTrainingCpu('block');
+    api.setTrainingTimer('on');
+    api.refillTraining('energy');
+    state = api.getState();
+    assert.equal(state.player1.x, 440);
+    assert.equal(state.player2.x, 560);
+    assert.equal(state.player2.trainingBehavior, 'block');
+    assert.equal(state.player1.energy, 100);
+    assert.equal(state.roundTimerFrames, 3600);
+
+    state.player1.health = 1;
+    api.refillTraining('health');
+    assert.equal(api.getState().player1.health, 100);
+});
+
+test('debug overlay is opt-in and seeded simulation is reproducible', () => {
+    const first = loadGame({ search: '?debug=1&seed=42' });
+    const second = loadGame({ search: '?seed=42' });
+
+    first.api.initGame();
+    second.api.initGame();
+    first.api.skipVsIntro();
+    second.api.skipVsIntro();
+    for (let i = 0; i < 30; i++) {
+        first.api.update();
+        second.api.update();
+    }
+
+    assert.equal(first.api.getDebugData().enabled, true);
+    assert.equal(first.api.getState().matchSeed, 42);
+    assert.equal(first.api.getState().player2.x, second.api.getState().player2.x);
+    assert.equal(first.api.getState().player2.aiAction, second.api.getState().player2.aiAction);
+    first.api.draw();
+    assert(first.api.getState().ctxCalls.includes('strokeRect'));
+});
+
+test('first-run onboarding persists its skip decision', () => {
+    const { api, context } = loadGame();
+
+    api.showOnboardingIfNeeded();
+    assert.equal(api.getState().onboardingScreenDisplay, 'flex');
+    api.completeOnboarding(false);
+    assert.equal(context.window.localStorage.getItem('glitchDuelOnboardingSeen'), '1');
+    assert.equal(api.getState().onboardingScreenDisplay, 'none');
 });
 
 test('special attack consumes full energy and deals heavy damage', () => {
