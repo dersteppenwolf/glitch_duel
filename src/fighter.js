@@ -9,6 +9,8 @@ class Fighter {
         this.labelKey = isPlayer1 ? 'human' : 'cpu';
         this.accentColor = isPlayer1 ? '#1f6feb' : '#d22';
         this.visualRole = isPlayer1 ? 'human' : 'cpu';
+        this.rivalKey = isPlayer1 ? '' : 'nullPointer';
+        this.rivalDetail = isPlayer1 ? '' : 'pointer';
         this.health = 100;
         this.displayHealth = 100;
         this.energy = 0;
@@ -64,6 +66,17 @@ class Fighter {
         this.energyModifier = style.energy;
         this.health = Math.round(100 * style.health);
         this.displayHealth = this.health;
+    }
+
+    applyRival(rivalKey) {
+        if (this.isPlayer1) return;
+
+        const rival = CPU_RIVALS[rivalKey] || CPU_RIVALS.nullPointer;
+        this.rivalKey = CPU_RIVALS[rivalKey] ? rivalKey : 'nullPointer';
+        this.labelKey = rival.labelKey;
+        this.label = rival.labelKey;
+        this.accentColor = rival.accentColor;
+        this.rivalDetail = rival.detail;
     }
 
     update(keys, opponent) {

@@ -40,6 +40,12 @@ const FIGHTER_STYLES = {
     heavy: { labelKey: 'styleHeavy', moveSpeed: 0.88, damage: 1.14, energy: 1, health: 1 },
     technical: { labelKey: 'styleTechnical', moveSpeed: 1, damage: 0.94, energy: 1.25, health: 0.92 }
 };
+const CPU_RIVALS = {
+    nullPointer: { labelKey: 'rivalNullPointer', introKey: 'rivalNullPointerIntro', accentColor: '#7c3aed', detail: 'pointer' },
+    lagSpike: { labelKey: 'rivalLagSpike', introKey: 'rivalLagSpikeIntro', accentColor: '#0891b2', detail: 'lag' },
+    mergeConflict: { labelKey: 'rivalMergeConflict', introKey: 'rivalMergeConflictIntro', accentColor: '#d97706', detail: 'merge' },
+    boss500: { labelKey: 'rivalBoss500', introKey: 'rivalBoss500Intro', accentColor: '#dc2626', detail: 'boss' }
+};
 const DIFFICULTIES = {
     easy: {
         decisionMin: 22,

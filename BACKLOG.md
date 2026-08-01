@@ -110,6 +110,7 @@ AI changes stay inside the current rule-based architecture. Each stage must incl
 | 56 | Completed | Difficulty personality visuals | CPU appearance already varies by difficulty and is covered by tests. |
 | 67 | Completed | Pages validation quality gate | Pull requests and pushes validate all JavaScript and unit tests; Pages deploy depends on the successful gate. |
 | 70 | Merged | Documentation/configuration inventory | README now says eight arenas; remaining automatic inventory checks moved into `#68`. |
+| 71 | Completed | Visual CPU rival roster | Four selectable rivals provide localized badge, color, VS phrase, HUD identity, and Canvas detail without changing difficulty or AI behavior. |
 | 37 | Completed | Arena readability pass | Eight arenas retain readable fighters, HUD, corners, peripheral foreground, and reduced-motion behavior. |
 | 68 | Completed | Static HTML integration contract | Tests protect required IDs, local resources, classic script order, and HTML/config/i18n arena inventory. |
 | 10 | Completed | Developer visual debug overlay | `?debug=1` or backtick shows combat boxes, state, timers, AI, render FPS, simulation ticks, and seed. |

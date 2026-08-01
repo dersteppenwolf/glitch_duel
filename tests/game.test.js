@@ -186,6 +186,7 @@ function loadGame(options = {}) {
             t,
             I18N,
             ARENAS,
+            CPU_RIVALS,
             setLanguage,
             getLanguage,
             chooseAIAction,
@@ -217,6 +218,9 @@ function loadGame(options = {}) {
             setupKeyboardControls,
             setDifficulty,
             setFighterStyle,
+            setRival,
+            getRivalConfig,
+            getRivalLabel,
             setRoundTimerFrames,
             setRoundTimeMs,
             skipVsIntro,
@@ -255,6 +259,7 @@ function loadGame(options = {}) {
                 debugOverlayEnabled,
                 selectedDifficulty,
                 selectedFighterStyle,
+                selectedRival,
                 statusMessage,
                 statusTimer,
                 currentRound,
@@ -802,13 +807,13 @@ test('touch controls are native buttons with stable accessible IDs', () => {
 
 test('static HTML contract preserves local assets, script order, controls, and arena inventory', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.html'), 'utf8');
-    const requiredIds = ['game', 'main-menu', 'help-screen', 'pause-screen', 'onboarding-screen', 'training-panel', 'start-button', 'training-button', 'arena-select'];
+    const requiredIds = ['game', 'main-menu', 'help-screen', 'pause-screen', 'onboarding-screen', 'training-panel', 'start-button', 'training-button', 'arena-select', 'rival-select'];
     const scripts = ['i18n.js', 'config.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'arena_render.js', 'hud_render.js', 'game.js'];
     const { api } = loadGame();
 
     requiredIds.forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260801">/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260802">/);
     Object.keys(api.ARENAS).forEach((arena) => {
         assert.match(html, new RegExp(`<option value="${arena}"`));
         const key = `arena${arena.charAt(0).toUpperCase()}${arena.slice(1)}`;
@@ -818,6 +823,48 @@ test('static HTML contract preserves local assets, script order, controls, and a
         assert.ok(api.I18N.es[previewKey]);
         assert.ok(api.I18N.en[previewKey]);
     });
+    Object.entries(api.CPU_RIVALS).forEach(([rival, config]) => {
+        assert.match(html, new RegExp(`<option value="${rival}"`));
+        assert.ok(api.I18N.es[config.labelKey]);
+        assert.ok(api.I18N.en[config.labelKey]);
+        assert.ok(api.I18N.es[config.introKey]);
+        assert.ok(api.I18N.en[config.introKey]);
+    });
+});
+
+test('visual rival selection applies identity without changing CPU combat tuning', () => {
+    const { api } = loadGame();
+
+    api.setRival('lagSpike');
+    startPlayingGame(api);
+    const cpu = api.getState().player2;
+
+    assert.equal(api.getState().selectedRival, 'lagSpike');
+    assert.equal(cpu.rivalKey, 'lagSpike');
+    assert.equal(cpu.rivalDetail, 'lag');
+    assert.equal(cpu.accentColor, '#0891b2');
+    assert.equal(cpu.health, 100);
+    assert.equal(cpu.moveSpeedModifier, 1);
+    assert.equal(cpu.damageModifier, 1);
+    assert.equal(api.getRivalLabel(), 'LAG SPIKE');
+
+    api.setRival('missing');
+    assert.equal(api.getState().selectedRival, 'nullPointer');
+});
+
+test('CPU rival details render alongside difficulty visuals', () => {
+    const { api } = loadGame();
+
+    Object.keys(api.CPU_RIVALS).forEach((rival) => {
+        api.setRival(rival);
+        api.initGame();
+        api.getState().player2.draw();
+    });
+
+    const state = api.getState();
+    assert(state.ctxCalls.includes('arc'));
+    assert(state.ctxCalls.includes('strokeRect'));
+    assert(state.textCalls.includes('NULL POINTER') || state.textCalls.includes('BOSS 500'));
 });
 
 test('training mode reuses fighters with configurable CPU, reset, timer, health, and energy', () => {
@@ -1061,7 +1108,8 @@ test('arcade VS intro freezes simulation and renders match summary', () => {
     assert.equal(state.vsIntroTimer, 89);
     assert.equal(state.roundTimeMs, 60000);
     assert.equal(state.player1.x, before.player1.x);
-    assert(state.textCalls.includes('P1  VS  AI'));
+    assert(state.textCalls.includes('P1  VS  NULL POINTER'));
+    assert(state.textCalls.includes('Referencia nula: no hay margen de error.'));
     assert(state.textCalls.includes('DIFICIL | SERVIDOR CAIDO'));
 });
 

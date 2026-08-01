@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GLITCH DUEL - Arcade VS AI</title>
-    <link rel="stylesheet" href="styles.css?v=20260801">
+    <link rel="stylesheet" href="styles.css?v=20260802">
 </head>
 <body>
     <div id="game-container">
@@ -74,6 +74,16 @@
                             <option value="fast" data-i18n="styleFast">RAPIDO</option>
                             <option value="heavy" data-i18n="styleHeavy">PESADO</option>
                             <option value="technical" data-i18n="styleTechnical">TECNICO</option>
+                        </select>
+                    </label>
+
+                    <label class="difficulty-picker" for="rival-select">
+                        <span data-i18n="rival">Rival</span>
+                        <select id="rival-select">
+                            <option value="nullPointer" data-i18n="rivalNullPointer">NULL POINTER</option>
+                            <option value="lagSpike" data-i18n="rivalLagSpike">LAG SPIKE</option>
+                            <option value="mergeConflict" data-i18n="rivalMergeConflict">MERGE CONFLICT</option>
+                            <option value="boss500" data-i18n="rivalBoss500">BOSS 500</option>
                         </select>
                     </label>
 
@@ -232,15 +242,15 @@
         </div>
     </div>
 
-    <script src="i18n.js?v=20260801"></script>
-    <script src="config.js?v=20260801"></script>
-    <script src="audio.js?v=20260801"></script>
-    <script src="effects.js?v=20260801"></script>
-    <script src="ai.js?v=20260801"></script>
-    <script src="fighter_render.js?v=20260801"></script>
-    <script src="fighter.js?v=20260801"></script>
-    <script src="arena_render.js?v=20260801"></script>
-    <script src="hud_render.js?v=20260801"></script>
-    <script src="game.js?v=20260801"></script>
+    <script src="i18n.js?v=20260802"></script>
+    <script src="config.js?v=20260802"></script>
+    <script src="audio.js?v=20260802"></script>
+    <script src="effects.js?v=20260802"></script>
+    <script src="ai.js?v=20260802"></script>
+    <script src="fighter_render.js?v=20260802"></script>
+    <script src="fighter.js?v=20260802"></script>
+    <script src="arena_render.js?v=20260802"></script>
+    <script src="hud_render.js?v=20260802"></script>
+    <script src="game.js?v=20260802"></script>
 </body>
 </html>

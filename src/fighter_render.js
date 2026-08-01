@@ -200,14 +200,15 @@ function drawFighter(fighter) {
 function drawFighterIdentityMarker(fighter, baseX, baseY, accentColor) {
     const tag = fighter.isPlayer1 ? 'P1' : 'AI';
     const label = fighter.labelKey ? t(fighter.labelKey) : (fighter.label || (fighter.isPlayer1 ? t('human') : t('cpu')));
-    const badgeX = baseX - 28;
+    const badgeWidth = fighter.isPlayer1 ? 56 : Math.max(76, label.length * 7 + 16);
+    const badgeX = baseX - badgeWidth / 2;
     const badgeY = baseY - 150;
 
     ctx.fillStyle = accentColor;
-    ctx.fillRect(badgeX, badgeY, 56, 24);
+    ctx.fillRect(badgeX, badgeY, badgeWidth, 24);
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 3;
-    ctx.strokeRect(badgeX, badgeY, 56, 24);
+    ctx.strokeRect(badgeX, badgeY, badgeWidth, 24);
 
     ctx.font = `bold 17px ${GAME_FONT_FAMILY}`;
     ctx.textAlign = 'center';
@@ -356,6 +357,8 @@ function drawFighterFaceAndDetail(fighter, baseX, baseY, headY, accentColor) {
             ctx.stroke();
         }
 
+        drawCpuRivalDetail(fighter, baseX, headY, accentColor);
+
         ctx.fillStyle = accentColor;
         ctx.fillRect(baseX - (cpuMode === 'easy' ? 9 : 12), headY - 8, cpuMode === 'easy' ? 18 : 24, 9);
         ctx.strokeStyle = '#111';
@@ -408,6 +411,38 @@ function drawFighterFaceAndDetail(fighter, baseX, baseY, headY, accentColor) {
     ctx.beginPath();
     ctx.arc(baseX + 6, headY - 3, 3, 0, Math.PI * 2);
     ctx.fill();
+}
+
+function drawCpuRivalDetail(fighter, baseX, headY, accentColor) {
+    if (fighter.rivalDetail === 'pointer') {
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(baseX - 25, headY - 28);
+        ctx.lineTo(baseX - 12, headY - 8);
+        ctx.lineTo(baseX - 20, headY - 8);
+        ctx.lineTo(baseX - 16, headY + 2);
+        ctx.stroke();
+    } else if (fighter.rivalDetail === 'lag') {
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 3;
+        [-18, -12, 14, 20].forEach((offset) => ctx.strokeRect(baseX + offset, headY - 13, 4, 3));
+    } else if (fighter.rivalDetail === 'merge') {
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(baseX - 20, headY - 31);
+        ctx.lineTo(baseX + 20, headY - 17);
+        ctx.moveTo(baseX + 20, headY - 31);
+        ctx.lineTo(baseX - 20, headY - 17);
+        ctx.stroke();
+    } else if (fighter.rivalDetail === 'boss') {
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(baseX, headY, 31, 0, Math.PI * 2);
+        ctx.stroke();
+    }
 }
 
 function getCpuVisualMode() {

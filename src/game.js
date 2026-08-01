@@ -25,6 +25,7 @@ let roundTimerFrames = ROUND_TIMER_FRAMES;
 let roundTimeMs = ROUND_TIME_MS;
 let selectedArena = 'notebook';
 let selectedFighterStyle = 'balanced';
+let selectedRival = 'nullPointer';
 let stats = loadStats();
 let reducedMotionEnabled = loadReducedMotionPreference();
 let lastFrameTimestamp = null;
@@ -172,6 +173,19 @@ function setFighterStyle(value) {
     selectedFighterStyle = FIGHTER_STYLES[value] ? value : 'balanced';
     if (matchStats) matchStats.fighterStyle = selectedFighterStyle;
     renderStylePreference();
+}
+
+function setRival(value) {
+    selectedRival = CPU_RIVALS[value] ? value : 'nullPointer';
+    renderRivalPreference();
+}
+
+function getRivalConfig() {
+    return CPU_RIVALS[selectedRival] || CPU_RIVALS.nullPointer;
+}
+
+function getRivalLabel() {
+    return t(getRivalConfig().labelKey);
 }
 
 function getArenaLabel() {
@@ -338,6 +352,11 @@ function renderStylePreference() {
     if (select) select.value = selectedFighterStyle;
 }
 
+function renderRivalPreference() {
+    const select = document.getElementById('rival-select');
+    if (select) select.value = selectedRival;
+}
+
 function renderLanguagePreference() {
     const select = document.getElementById('language-select');
     if (select) select.value = getLanguage();
@@ -393,6 +412,7 @@ function renderLanguage() {
     setElementAria('btn-special', 'specialButtonLabel');
     renderLanguagePreference();
     renderStylePreference();
+    renderRivalPreference();
     renderStats();
     renderArenaPreview();
     renderPauseSummary();
@@ -415,6 +435,7 @@ function renderGameOverText() {
     const score = document.createElement('div');
     const difficulty = document.createElement('div');
     const arena = document.createElement('div');
+    const rival = document.createElement('div');
     const streak = document.createElement('div');
     const phraseElement = document.createElement('p');
 
@@ -427,9 +448,10 @@ function renderGameOverText() {
     score.textContent = `${t('finalScore')}: ${playerRounds}-${cpuRounds}`;
     difficulty.textContent = `${t('finalDifficulty')}: ${getDifficultyLabel()}`;
     arena.textContent = `${t('finalArena')}: ${getArenaLabel()}`;
+    rival.textContent = `${t('finalRival')}: ${getRivalLabel()}`;
     streak.textContent = `${t('finalStreak')}: ${stats.currentStreak} | ${t('finalBest')}: ${stats.bestStreak}`;
     phraseElement.textContent = phrase;
-    summary.append(score, difficulty, arena, streak, phraseElement);
+    summary.append(score, difficulty, arena, rival, streak, phraseElement);
     winText.replaceChildren(result, medalElement, summary);
 }
 
@@ -446,7 +468,8 @@ function renderPauseSummary() {
         score: `${playerRounds}-${cpuRounds}`,
         seconds,
         difficulty,
-        arena
+        arena,
+        rival: getRivalLabel()
     });
 }
 
@@ -512,6 +535,7 @@ function startRound() {
     player2 = new Fighter(750, false);
     player1.applyStyle(selectedFighterStyle);
     player2.applyStyle('balanced');
+    player2.applyRival(selectedRival);
     floatingTexts = [];
     impactParticles = [];
     clearActiveInput();
@@ -1127,6 +1151,10 @@ function setupMainMenu() {
     document.getElementById('style-select').addEventListener('change', (e) => {
         playUISound('select');
         setFighterStyle(e.target.value);
+    });
+    document.getElementById('rival-select').addEventListener('change', (e) => {
+        playUISound('select');
+        setRival(e.target.value);
     });
     document.getElementById('reduce-motion-toggle').addEventListener('change', (e) => {
         playUISound('select');

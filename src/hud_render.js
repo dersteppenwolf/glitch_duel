@@ -11,7 +11,7 @@ function drawHealthBars() {
     drawEnergyBar(52, 62, player1.energy, false, player1.accentColor);
     ctx.fillStyle = '#000';
     ctx.textAlign = 'right';
-    ctx.fillText(`${t('cpuAI')}: ${player2.health}%`, WIDTH - 50, 23);
+    ctx.fillText(`${player2.labelKey ? t(player2.labelKey) : t('cpuAI')}: ${player2.health}%`, WIDTH - 50, 23);
     drawEnergyBar(WIDTH - 252, 62, player2.energy, true, player2.accentColor);
     ctx.fillStyle = '#000';
 
@@ -177,15 +177,18 @@ function drawVsIntro() {
     ctx.font = `bold 34px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#111';
     ctx.fillText(`${t('round')} ${currentRound}`, WIDTH / 2, 155);
-    ctx.font = `bold 58px ${GAME_FONT_FAMILY}`;
+    const rivalLabel = getRivalLabel();
+    ctx.font = `bold ${rivalLabel.length > 13 ? 42 : 54}px ${GAME_FONT_FAMILY}`;
     ctx.lineWidth = 8;
     ctx.strokeStyle = '#000';
-    ctx.strokeText('P1  VS  AI', WIDTH / 2, 235);
-    ctx.fillStyle = '#ffcc00';
-    ctx.fillText('P1  VS  AI', WIDTH / 2, 235);
+    ctx.strokeText(`P1  VS  ${rivalLabel}`, WIDTH / 2, 235);
+    ctx.fillStyle = player2.accentColor;
+    ctx.fillText(`P1  VS  ${rivalLabel}`, WIDTH / 2, 235);
     ctx.font = `bold 20px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#111';
     ctx.fillText(`${getDifficultyLabel()} | ${getArenaLabel()}`, WIDTH / 2, 285);
+    ctx.font = `bold 14px ${GAME_FONT_FAMILY}`;
+    ctx.fillText(t(getRivalConfig().introKey), WIDTH / 2, 312);
     ctx.restore();
 }
 

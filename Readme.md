@@ -190,6 +190,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Special attack on `L` with full energy and stronger visual feedback.
 - Fighter styles: balanced, fast, heavy, and technical.
 - AI with difficulty-based reactions, range-aware attacks, tactical specials, counter windows, attack-type spam memory, zone-aware pattern memory, and wall-aware defense.
+- Visual CPU rivals: `NULL POINTER`, `LAG SPIKE`, `MERGE CONFLICT`, and `BOSS 500`. Rival selection changes presentation only; difficulty remains responsible for CPU behavior.
 
 ### UI/UX
 
@@ -199,6 +200,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Difficulty selector.
 - Arena selector with visual preview and description.
 - Fighter style selector.
+- Rival selector with localized VS introduction and HUD identity.
 - Arcade `VS` intro with difficulty and arena before each round.
 - `Reducir movimiento` option persisted in `glitchDuelReducedMotion`, with fallback reads from `xkcdKombatReducedMotion`.
 - Pause screen with round, score, time, difficulty, arena, and controls summary.
@@ -368,6 +370,7 @@ node --test tests\game.test.js
 - The language selector switches Spanish/English and persists after reload.
 - The arena selector changes the background.
 - The fighter style selector changes player tuning.
+- The rival selector changes CPU name, badge, color, VS phrase, and head detail without changing difficulty behavior.
 - `Reducir movimiento` persists and reduces shake/hit-stop/particles.
 - Human and CPU are visually distinct.
 - The eight arenas look different, with foreground props that do not block fighters, HUD, or combat feedback.
