@@ -124,9 +124,11 @@ function loadOnboardingSeen() {
 
 function renderOnboarding() {
     const step = onboardingStep + 1;
+    setElementText('onboarding-kicker', 'onboardingKicker');
     setElementText('onboarding-title', `onboardingTitle${step}`);
     setElementText('onboarding-text', `onboardingText${step}`);
     setElementText('onboarding-next-button', step === 3 ? 'onboardingStart' : 'onboardingNext');
+    setElementText('onboarding-skip-button', 'onboardingSkip');
 }
 
 function completeOnboarding(startGame = false) {

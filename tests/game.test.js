@@ -807,8 +807,8 @@ test('static HTML contract preserves local assets, script order, controls, and a
     const { api } = loadGame();
 
     requiredIds.forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
-    assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css">/);
+    assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260801">/);
     Object.keys(api.ARENAS).forEach((arena) => {
         assert.match(html, new RegExp(`<option value="${arena}"`));
         const key = `arena${arena.charAt(0).toUpperCase()}${arena.slice(1)}`;
