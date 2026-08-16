@@ -200,8 +200,10 @@ function drawFighter(fighter) {
 function drawFighterIdentityMarker(fighter, baseX, baseY, accentColor) {
     const tag = fighter.isPlayer1 ? 'P1' : 'AI';
     const label = fighter.labelKey ? t(fighter.labelKey) : (fighter.label || (fighter.isPlayer1 ? t('human') : t('cpu')));
-    const badgeWidth = fighter.isPlayer1 ? 56 : Math.max(76, label.length * 7 + 16);
-    const badgeX = baseX - badgeWidth / 2;
+    const measuredLabelWidth = typeof ctx.measureText === 'function' ? ctx.measureText(label).width : label.length * 7;
+    const badgeWidth = fighter.isPlayer1 ? 56 : Math.max(76, measuredLabelWidth + 16);
+    const badgeCenter = Math.max(16 + badgeWidth / 2, Math.min(WIDTH - 16 - badgeWidth / 2, baseX));
+    const badgeX = badgeCenter - badgeWidth / 2;
     const badgeY = baseY - 150;
 
     ctx.fillStyle = accentColor;
@@ -214,34 +216,35 @@ function drawFighterIdentityMarker(fighter, baseX, baseY, accentColor) {
     ctx.textAlign = 'center';
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#000';
-    ctx.strokeText(tag, baseX, baseY - 132);
+    ctx.strokeText(tag, badgeCenter, baseY - 132);
     ctx.fillStyle = '#fff';
-    ctx.fillText(tag, baseX, baseY - 132);
+    ctx.fillText(tag, badgeCenter, baseY - 132);
 
     ctx.font = `bold 10px ${GAME_FONT_FAMILY}`;
-    ctx.strokeText(label, baseX, baseY - 115);
-    ctx.fillText(label, baseX, baseY - 115);
+    ctx.strokeText(label, badgeCenter, baseY - 115);
+    ctx.fillText(label, badgeCenter, baseY - 115);
 }
 
 function drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor) {
     if (fighter.energy < MAX_ENERGY || fighter.state === 'special') return;
 
     const y = baseY - 176;
+    const indicatorCenter = Math.max(78, Math.min(WIDTH - 78, baseX));
     ctx.strokeStyle = accentColor;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(baseX, baseY - 74, 34 + Math.sin(fighter.frame / 5) * 3, 0, Math.PI * 2);
+    ctx.arc(indicatorCenter, baseY - 74, 34 + Math.sin(fighter.frame / 5) * 3, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.fillStyle = '#fffdf2';
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 3;
-    ctx.fillRect(baseX - 62, y - 18, 124, 24);
-    ctx.strokeRect(baseX - 62, y - 18, 124, 24);
+    ctx.fillRect(indicatorCenter - 62, y - 18, 124, 24);
+    ctx.strokeRect(indicatorCenter - 62, y - 18, 124, 24);
     ctx.font = `bold 12px ${GAME_FONT_FAMILY}`;
     ctx.textAlign = 'center';
     ctx.fillStyle = accentColor;
-    ctx.fillText(t('specialReady'), baseX, y - 2);
+    ctx.fillText(t('specialReady'), indicatorCenter, y - 2);
 }
 
 function drawVictoryPose(fighter, baseX, baseY, accentColor) {

@@ -194,7 +194,8 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 
 ### UI/UX
 
-- Main menu.
+- Main menu with a primary start action, grouped duel settings, arena preview, style/rival summary, compact stats, and responsive two-column desktop layout.
+- Duel settings can collapse on narrow screens so starting a match stays discoverable.
 - Help screen.
 - Persistent language selector.
 - Difficulty selector.
@@ -202,11 +203,12 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Fighter style selector.
 - Rival selector with localized VS introduction and HUD identity.
 - Arcade `VS` intro with difficulty and arena before each round.
-- `Reducir movimiento` option persisted in `glitchDuelReducedMotion`, with fallback reads from `xkcdKombatReducedMotion`.
+- `Reducir movimiento` option persisted in `glitchDuelReducedMotion`, with fallback reads from `xkcdKombatReducedMotion`; the system `prefers-reduced-motion` value is used only when no manual choice exists.
 - Pause screen with round, score, time, difficulty, arena, and controls summary.
 - Game over screen with final summary, post-match medal, `REINICIAR` / `RESTART`, and `MENU`.
 - Local stats with wins, losses, current streak, and best streak, persisted in `glitchDuelStats` with fallback reads from `xkcdKombatStats`.
-- Visible focus and ARIA labels on main controls.
+- Visible focus and ARIA labels on main controls, with modal focus entry, focus containment, focus restoration, and inert background surfaces for help, onboarding, pause, and game over.
+- Browser zoom remains available; combat events expose short, non-per-frame announcements through an ARIA live region.
 - Native button-based touch controls with Pointer Events, safe areas, prioritized landscape view, and degraded portrait layout with orientation warning.
 - Active matches pause when the page becomes hidden and require an explicit resume.
 - Training mode with position, CPU, timer, reset, health, and energy controls.
@@ -220,6 +222,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - High-contrast energy bars with a visual marker when the special is ready.
 - `ESPECIAL LISTO` indicator above the character when energy is full.
 - Monospace typography based on `JetBrains Mono`, with local fallbacks and no external dependencies.
+- HUD uses paper plates for stable contrast over all arenas, with a central timer, secondary round score, and aligned mode/pause toolbar.
 - HUD and impact feedback tied to character color so attacks are easier to read.
 - Victory and defeat poses when rounds or matches end.
 - Post-match medals such as `Bug Exterminator`, `Firewall Humano`, `Combo Goblin`, and `404 Survivor`.
@@ -229,6 +232,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Stylized shake, hit-stop, and impact particles.
 - Themed arena backgrounds with light animations and layered background, midground, and peripheral foreground props that respect `Reducir movimiento`.
 - All eight arenas are reviewed for HUD, fighter, corner, foreground, and reduced-motion readability.
+- Rival badges, special-ready labels, and floating combat text stay inside safe canvas margins near either corner.
 - Audio generated with the Web Audio API, with distinct sounds for attacks, impact, block, combo, special, and UI.
 
 ### Technical
@@ -349,6 +353,7 @@ node --test tests\game.test.js
 - `AYUDA` / `HELP` opens help.
 - `VOLVER` / `BACK` returns to the menu.
 - `P` / `Esc` pauses and resumes.
+- `Esc` closes Help, resumes Pause, and does not dismiss onboarding or game over implicitly.
 - `REINICIAR` / `RESTART` restarts after game over.
 - `MENU` returns to the main menu.
 
@@ -367,17 +372,22 @@ node --test tests\game.test.js
 ### Visual And Accessibility Smoke
 
 - `Tab` shows visible focus.
+- Help, onboarding, pause, and game over move focus into the dialog, contain it, and restore it when the flow closes.
+- Browser zoom at 200% keeps the menu and overlay actions usable without horizontal overflow.
 - The language selector switches Spanish/English and persists after reload.
 - The arena selector changes the background.
 - The fighter style selector changes player tuning.
 - The rival selector changes CPU name, badge, color, VS phrase, and head detail without changing difficulty behavior.
 - `Reducir movimiento` persists and reduces shake/hit-stop/particles.
+- With no saved choice, the system reduced-motion preference initializes the toggle; a saved choice takes precedence.
 - Human and CPU are visually distinct.
 - The eight arenas look different, with foreground props that do not block fighters, HUD, or combat feedback.
 - On mobile landscape, HUD, pause, arena, and touch controls are visible without critical overlaps.
 - Touch controls are native buttons: holding two controls works, and cancelling or leaving a control does not retain input.
 - On portrait phones, the orientation hint appears and the arena remains usable above the controls.
 - On low-height screens, menu, help, pause, and game over can show all buttons with internal scroll when needed.
+- The mode label and pause control share a toolbar aligned with the canvas.
+- HUD text remains legible over light and dark arenas; long rival badges and feedback text stay within the canvas at both corners.
 - The canvas keeps its proportion after resize.
 
 ## Architecture
@@ -451,6 +461,7 @@ The tests cover, among other points:
 - Arenas, fallback, and background rendering.
 - Detected language, manual change, and persistence.
 - Pause, help, stats, rounds, timer, and game over.
+- Modal focus, inert background surfaces, system reduced-motion preference precedence, menu contracts, and localized style/rival descriptors.
 - Fixed-step combat equivalence, posture-specific pushbox resolution, interrupted input recovery, hidden-page pause, and native Pointer Event controls.
 - Visual identity for human/CPU.
 - Enriched final summary, post-match medals, UI sounds, and arcade-style messages.

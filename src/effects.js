@@ -17,11 +17,17 @@ class FloatingText {
         ctx.save();
         ctx.globalAlpha = this.life / 60;
         ctx.font = `bold 24px ${GAME_FONT_FAMILY}`;
+        ctx.textAlign = 'center';
+        const textWidth = typeof ctx.measureText === 'function' ? ctx.measureText(this.text).width : this.text.length * 14;
+        const margin = 16;
+        const drawX = Math.max(margin + textWidth / 2, Math.min(WIDTH - margin - textWidth / 2, this.x));
+        const safeTop = typeof HUD_SAFE_BOTTOM === 'number' ? HUD_SAFE_BOTTOM + 22 : 134;
+        const drawY = Math.max(safeTop, Math.min(HEIGHT - 24, this.y));
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 4;
-        ctx.strokeText(this.text, this.x, this.y);
+        ctx.strokeText(this.text, drawX, drawY);
         ctx.fillStyle = this.color;
-        ctx.fillText(this.text, this.x, this.y);
+        ctx.fillText(this.text, drawX, drawY);
         ctx.restore();
     }
 }

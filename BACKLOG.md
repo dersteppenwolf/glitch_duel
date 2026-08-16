@@ -57,7 +57,7 @@ Next recommended improvement: `#4 Action-based input, gamepad, and remapping`.
 | 4 | Medium | Ready | L | - | Action-based input, gamepad, and remapping | Introduce one action mapping layer, then add Gamepad API and persistent keyboard mappings. Absorbs former `#5`. |
 | 12 | Medium | Ready | S | - | Fullscreen and wake lock | Use capability detection, release wake lock outside play, and preserve current layout fallback. |
 | 24 | Medium | Ready | M | - | More visual help | Add diagrams for keyboard, touch, combos, and special after onboarding structure exists. |
-| 25 | Medium | Ready | L | - | Advanced accessibility preferences | Add contrast/color preferences, richer announcements, dialog focus entry/restore, focus containment, and inert hidden overlays. |
+| 25 | Medium | Partial | L | - | Advanced accessibility preferences | Dialog focus entry/restore, focus containment, inert hidden overlays, system reduced-motion fallback, and discrete announcements delivered; contrast/color preferences remain. |
 | 26 | Medium | Ready | M | - | Colorblind-safe combat feedback | Differentiate hit, block, special, and danger using shape, text, pattern, and motion rather than color alone. |
 | 29 | Medium | Ready | S | - | Haptic feedback | Add optional capability-detected vibration for hits, blocks, special, and match events. |
 | 30 | Medium | Ready | M | - | Separate audio controls | Add persisted combat/UI volume controls; do not invent ambient or voice channels until those sounds exist. |

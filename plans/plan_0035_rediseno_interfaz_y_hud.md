@@ -261,4 +261,23 @@ Se cargo y aplico `karpathy-guidelines` antes de finalizar este plan.
 
 ## Estado De Implementacion
 
-Pendiente.
+Implementado localmente el 2026-08-15.
+
+- Completado: menu responsive con CTA dominante, configuracion agrupada/colapsable en movil, preview de arena, resumen de estilo/rival, stats compactas y resumen de controles.
+- Completado: viewport ampliable, foco inicial/restaurado, containment de Tab, `inert` para superficies de fondo y reglas de `Escape` para ayuda, onboarding, pausa y game over.
+- Completado: fallback inicial a `prefers-reduced-motion`, prioridad de elecciones persistidas, CSS reduced-motion y anuncios discretos de ronda, especial y resultado.
+- Completado: toolbar HTML alineada con canvas, HUD con placas de contraste, reloj central y separacion segura para mensajes.
+- Completado: clamp visual de badges, indicador de especial y textos flotantes dentro de los limites del canvas.
+- Completado: pruebas de contrato, foco modal, movimiento reducido del sistema, descriptores localizados y regresiones existentes.
+- Completado: `Readme.md`, `AGENTS.md` y `BACKLOG.md` reflejan el comportamiento; `#25` permanece parcial porque contraste/color configurable sigue pendiente.
+
+Validacion local ejecutada:
+
+- `node --check` para todos los archivos `src\*.js`: correcto.
+- `node --test tests\game.test.js`: 87 pruebas superadas.
+- `git diff --check`: correcto.
+- Smoke visual en navegador: menu desktop a 1440x900, menu portrait a 390x844 con configuracion colapsada, partida desktop con HUD/toolbar y pause; no se observaron errores de pagina.
+
+Riesgo residual aceptado:
+
+- Falta una comprobacion manual con dispositivo tactil fisico y un viewport landscape movil dedicado; los contratos existentes de Pointer Events/resize y las comprobaciones previas de `0022`/`0032` siguen cubriendo esas rutas.

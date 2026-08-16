@@ -27,6 +27,7 @@ function createMockContext() {
         scale() { this.calls.push('scale'); },
         strokeText(text) { this.calls.push('strokeText'); this.textCalls.push(text); },
         fillText(text) { this.calls.push('fillText'); this.textCalls.push(text); },
+        measureText(text) { return { width: String(text).length * 7 }; },
         setTransform(a, b, c, d, e, f) {
             this.calls.push('setTransform');
             this.lastTransform = [a, b, c, d, e, f];
@@ -65,6 +66,7 @@ function loadGame(options = {}) {
     const ctx = createMockContext();
     const audioEvents = [];
     const elements = new Map();
+    let activeElement = null;
     const canvas = {
         width: 1000,
         height: 500,
@@ -88,8 +90,16 @@ function loadGame(options = {}) {
             children: [],
             listeners: {},
             attributes: {},
+            hidden: false,
+            inert: false,
+            focused: false,
             addEventListener(type, handler) {
                 this.listeners[type] = handler;
+            },
+            focus() {
+                elements.forEach((element) => { element.focused = false; });
+                this.focused = true;
+                activeElement = this;
             },
             setPointerCapture(pointerId) {
                 capturedPointers.add(pointerId);
@@ -105,6 +115,9 @@ function loadGame(options = {}) {
             },
             getAttribute(name) {
                 return this.attributes[name];
+            },
+            getBoundingClientRect() {
+                return { height: 0 };
             },
             append(...children) {
                 this.children.push(...children);
@@ -141,9 +154,10 @@ function loadGame(options = {}) {
         },
         requestAnimationFrame() {},
         navigator: navigatorMock,
-        document: {
-            documentElement: {},
-            hidden: false,
+            document: {
+                documentElement: {},
+                get activeElement() { return activeElement; },
+                hidden: false,
             createElement,
             getElementById: getElement,
             addEventListener(type, handler) {
@@ -165,6 +179,9 @@ function loadGame(options = {}) {
             navigator: navigatorMock,
             addEventListener(type, handler) {
                 windowListeners[type] = handler;
+            },
+            matchMedia() {
+                return { matches: options.reducedMotionSystem === true };
             }
         }
     };
@@ -231,6 +248,7 @@ function loadGame(options = {}) {
             drawBackground,
             drawArenaForeground,
             setReducedMotion,
+            renderMotionPreference,
             renderLanguage,
             recordMatchResult,
             recordPlayerCombo,
@@ -294,8 +312,17 @@ function loadGame(options = {}) {
                 pauseSummaryText: document.getElementById('pause-summary').textContent,
                 startButtonText: document.getElementById('start-button').textContent,
                 helpButtonText: document.getElementById('help-button').textContent,
-                statsSummaryText: document.getElementById('stats-summary').textContent,
-                arenaPreviewClass: document.getElementById('arena-preview').className,
+                 statsSummaryText: document.getElementById('stats-summary').textContent,
+                 stylePreviewTitle: document.getElementById('style-preview-title').textContent,
+                 stylePreviewText: document.getElementById('style-preview-text').textContent,
+                 rivalPreviewTitle: document.getElementById('rival-preview-title').textContent,
+                 rivalPreviewText: document.getElementById('rival-preview-text').textContent,
+                 announcerText: document.getElementById('game-announcer').textContent,
+                 modalId: activeDialog ? activeDialog.id : null,
+                 arenaShellInert: document.getElementById('arena-shell').inert,
+                 mainMenuInert: document.getElementById('main-menu').inert,
+                 helpScreenInert: document.getElementById('help-screen').inert,
+                 arenaPreviewClass: document.getElementById('arena-preview').className,
                 arenaPreviewTitle: document.getElementById('arena-preview-title').textContent,
                 arenaPreviewText: document.getElementById('arena-preview-text').textContent,
                 languageSelectValue: document.getElementById('language-select').value,
@@ -814,6 +841,11 @@ test('static HTML contract preserves local assets, script order, controls, and a
     requiredIds.forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
     assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260802">/);
+    assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
+    assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
+    ['arena-shell', 'game-toolbar', 'game-announcer', 'duel-settings', 'selection-summary'].forEach((id) => {
+        assert.match(html, new RegExp(`id="${id}"`));
+    });
     Object.keys(api.ARENAS).forEach((arena) => {
         assert.match(html, new RegExp(`<option value="${arena}"`));
         const key = `arena${arena.charAt(0).toUpperCase()}${arena.slice(1)}`;
@@ -830,6 +862,86 @@ test('static HTML contract preserves local assets, script order, controls, and a
         assert.ok(api.I18N.es[config.introKey]);
         assert.ok(api.I18N.en[config.introKey]);
     });
+});
+
+test('modal dialogs contain focus and restore the originating control', () => {
+    const { api, elements } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+
+    api.showMainMenu();
+    assert.equal(api.getState().modalId, 'main-menu');
+    assert.equal(elements.get('start-button').focused, true);
+    assert.equal(api.getState().arenaShellInert, true);
+    assert.equal(api.getState().mainMenuInert, false);
+
+    api.showHelpScreen();
+    assert.equal(api.getState().modalId, 'help-screen');
+    assert.equal(elements.get('back-button').focused, true);
+    assert.equal(api.getState().helpScreenInert, false);
+
+    api.hideHelpScreen();
+    assert.equal(api.getState().modalId, 'main-menu');
+    assert.equal(elements.get('help-button').focused, true);
+
+    api.initGame();
+    api.skipVsIntro();
+    api.pauseGame();
+    assert.equal(api.getState().modalId, 'pause-screen');
+    assert.equal(elements.get('resume-button').focused, true);
+
+    api.resumeGame();
+    assert.equal(api.getState().modalId, null);
+    assert.equal(elements.get('pause-button').focused, true);
+    assert.equal(api.getState().arenaShellInert, false);
+});
+
+test('escape closes help but does not escape game over or onboarding dialogs', () => {
+    const { api, windowListeners } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    const event = { key: 'Escape', preventDefault() { this.prevented = true; } };
+
+    api.setupKeyboardControls();
+    api.showMainMenu();
+    api.showHelpScreen();
+    windowListeners.keydown(event);
+    assert.equal(api.getState().helpScreenDisplay, 'none');
+    assert.equal(api.getState().mainMenuDisplay, 'flex');
+    assert.equal(event.prevented, true);
+
+    const onboarding = loadGame();
+    onboarding.api.setupKeyboardControls();
+    onboarding.api.showOnboardingIfNeeded();
+    onboarding.windowListeners.keydown({ key: 'Escape', preventDefault() {} });
+    assert.equal(onboarding.api.getState().onboardingScreenDisplay, 'flex');
+});
+
+test('system reduced motion is the initial preference until the player chooses one', () => {
+    const system = loadGame({ reducedMotionSystem: true });
+    system.api.renderMotionPreference();
+    assert.equal(system.api.getState().reducedMotionEnabled, true);
+    assert.equal(system.api.getState().reducedMotionToggleChecked, true);
+
+    const saved = loadGame({ reducedMotionSystem: true, storage: { glitchDuelReducedMotion: 'false' } });
+    saved.api.renderMotionPreference();
+    assert.equal(saved.api.getState().reducedMotionEnabled, false);
+    assert.equal(saved.api.getState().reducedMotionToggleChecked, false);
+});
+
+test('selection summary localizes style and rival descriptors', () => {
+    const { api } = loadGame();
+
+    api.setFighterStyle('fast');
+    api.setRival('mergeConflict');
+    let state = api.getState();
+    assert.equal(state.stylePreviewTitle, 'RAPIDO');
+    assert.match(state.stylePreviewText, /Movilidad/);
+    assert.equal(state.rivalPreviewTitle, 'MERGE CONFLICT');
+    assert.match(state.rivalPreviewText, /ramas/);
+
+    api.setLanguage('en');
+    state = api.getState();
+    assert.equal(state.stylePreviewTitle, 'FAST');
+    assert.match(state.stylePreviewText, /mobility/i);
+    assert.equal(state.rivalPreviewTitle, 'MERGE CONFLICT');
+    assert.match(state.rivalPreviewText, /branches/i);
 });
 
 test('visual rival selection applies identity without changing CPU combat tuning', () => {

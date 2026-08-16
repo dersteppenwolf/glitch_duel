@@ -45,7 +45,17 @@ let debugTimestamp = null;
 let debugFps = 0;
 let debugTicksPerSecond = 0;
 let onboardingStep = 0;
+let activeDialog = null;
+let dialogReturnFocus = null;
+let specialReadyAnnounced = false;
 const VS_INTRO_FRAMES = 90;
+const MODAL_SURFACE_IDS = ['arena-shell', 'orientation-warning', 'main-menu', 'help-screen', 'onboarding-screen', 'pause-screen', 'controls', 'training-panel', 'game-over'];
+const STYLE_DESCRIPTION_KEYS = {
+    balanced: 'styleBalancedDescription',
+    fast: 'styleFastDescription',
+    heavy: 'styleHeavyDescription',
+    technical: 'styleTechnicalDescription'
+};
 
 function getDifficultyConfig() {
     return DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.normal;
@@ -138,7 +148,7 @@ function completeOnboarding(startGame = false) {
     } catch (_) {
         // localStorage can be unavailable in private browsing or tests.
     }
-    document.getElementById('onboarding-screen').style.display = 'none';
+    closeModalDialog('onboarding-screen', !startGame);
     if (startGame) initGame();
 }
 
@@ -148,6 +158,7 @@ function showOnboardingIfNeeded() {
     onboardingStep = 0;
     renderOnboarding();
     screen.style.display = 'flex';
+    openModalDialog('onboarding-screen', 'onboarding-next-button', document.getElementById('start-button'));
 }
 
 function clearActiveInput() {
@@ -158,6 +169,91 @@ function clearActiveInput() {
     });
     activePointers.clear();
     keys = {};
+}
+
+function getFocusableElements(dialog) {
+    if (!dialog || typeof dialog.querySelectorAll !== 'function') return [];
+
+    const selector = 'button:not([disabled]), [href], select:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    return Array.from(dialog.querySelectorAll(selector)).filter((element) => {
+        if (element.hidden || element.getAttribute('aria-hidden') === 'true') return false;
+        if (typeof window.getComputedStyle !== 'function') return true;
+        const style = window.getComputedStyle(element);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+    });
+}
+
+function setModalInert(activeId = null) {
+    MODAL_SURFACE_IDS.forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) element.inert = activeId ? id !== activeId : false;
+    });
+}
+
+function clearModalState() {
+    setModalInert(null);
+    activeDialog = null;
+    dialogReturnFocus = null;
+}
+
+function focusDialog(dialog, preferredId) {
+    const preferred = preferredId && document.getElementById(preferredId);
+    const focusables = getFocusableElements(dialog);
+    const target = preferred || focusables[0] || dialog;
+
+    if (target && typeof target.focus === 'function') target.focus();
+}
+
+function openModalDialog(id, preferredId, returnFocus = null) {
+    const dialog = document.getElementById(id);
+    if (!dialog) return;
+
+    const currentFocus = returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
+    activeDialog = dialog;
+    dialogReturnFocus = currentFocus;
+    setModalInert(id);
+    focusDialog(dialog, preferredId);
+}
+
+function closeModalDialog(id, restoreFocus = true) {
+    const dialog = document.getElementById(id);
+    if (dialog) dialog.style.display = 'none';
+    if (!activeDialog || activeDialog.id !== id) return;
+
+    const returnFocus = dialogReturnFocus;
+    clearModalState();
+    if (restoreFocus && returnFocus && typeof returnFocus.focus === 'function') returnFocus.focus();
+}
+
+function closeAllModalDialogs() {
+    ['main-menu', 'help-screen', 'onboarding-screen', 'pause-screen', 'game-over'].forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) element.style.display = 'none';
+    });
+    clearModalState();
+}
+
+function trapDialogFocus(event) {
+    if (!activeDialog || event.key !== 'Tab') return false;
+
+    const focusables = getFocusableElements(activeDialog);
+    if (!focusables.length) {
+        event.preventDefault();
+        focusDialog(activeDialog);
+        return true;
+    }
+
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
+
+    return true;
 }
 
 function skipVsIntro() {
@@ -173,11 +269,13 @@ function setFighterStyle(value) {
     selectedFighterStyle = FIGHTER_STYLES[value] ? value : 'balanced';
     if (matchStats) matchStats.fighterStyle = selectedFighterStyle;
     renderStylePreference();
+    renderSelectionSummary();
 }
 
 function setRival(value) {
     selectedRival = CPU_RIVALS[value] ? value : 'nullPointer';
     renderRivalPreference();
+    renderSelectionSummary();
 }
 
 function getRivalConfig() {
@@ -252,8 +350,21 @@ function getPostMatchPhrase(playerWon) {
 }
 
 function loadReducedMotionPreference() {
+    let savedValue = null;
+
     try {
-        return window.localStorage && (window.localStorage.getItem(REDUCED_MOTION_STORAGE_KEY) || window.localStorage.getItem(LEGACY_REDUCED_MOTION_STORAGE_KEY)) === 'true';
+        if (window.localStorage) {
+            const saved = window.localStorage.getItem(REDUCED_MOTION_STORAGE_KEY) || window.localStorage.getItem(LEGACY_REDUCED_MOTION_STORAGE_KEY);
+            if (saved !== null) savedValue = saved === 'true';
+        }
+    } catch (_) {
+        savedValue = null;
+    }
+
+    if (savedValue !== null) return savedValue;
+
+    try {
+        return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     } catch (_) {
         return false;
     }
@@ -276,6 +387,38 @@ function setReducedMotion(value) {
 function renderMotionPreference() {
     const toggle = document.getElementById('reduce-motion-toggle');
     if (toggle) toggle.checked = reducedMotionEnabled;
+}
+
+function announce(message) {
+    const announcer = document.getElementById('game-announcer');
+    if (!announcer) return;
+
+    announcer.textContent = '';
+    announcer.textContent = message;
+}
+
+function getStyleDescription() {
+    return t(STYLE_DESCRIPTION_KEYS[selectedFighterStyle] || STYLE_DESCRIPTION_KEYS.balanced);
+}
+
+function renderSelectionSummary() {
+    const styleTitle = document.getElementById('style-preview-title');
+    const styleText = document.getElementById('style-preview-text');
+    const rivalTitle = document.getElementById('rival-preview-title');
+    const rivalText = document.getElementById('rival-preview-text');
+
+    if (styleTitle) styleTitle.textContent = t(FIGHTER_STYLES[selectedFighterStyle].labelKey);
+    if (styleText) styleText.textContent = getStyleDescription();
+    if (rivalTitle) rivalTitle.textContent = getRivalLabel();
+    if (rivalText) rivalText.textContent = t(getRivalConfig().introKey);
+}
+
+function syncDuelSettingsLayout() {
+    const settings = document.getElementById('duel-settings');
+    if (!settings) return;
+
+    const viewportWidth = window.visualViewport && window.visualViewport.width ? window.visualViewport.width : window.innerWidth;
+    settings.open = viewportWidth > 760;
 }
 
 function getArenaConfig() {
@@ -415,6 +558,7 @@ function renderLanguage() {
     renderRivalPreference();
     renderStats();
     renderArenaPreview();
+    renderSelectionSummary();
     renderPauseSummary();
 
     if (gameState === 'gameOver') renderGameOverText();
@@ -498,8 +642,12 @@ function resizeCanvas() {
     const topReserve = isPortraitPhone && isPlayingTouch ? 38 : 0;
     const bottomReserve = isPlayingTouch ? (isPortraitPhone ? 180 : 68) : 0;
     const canvasBorderReserve = 8;
+    const toolbar = document.getElementById('game-toolbar');
+    const toolbarHeight = toolbar && typeof toolbar.getBoundingClientRect === 'function' && toolbar.style.display !== 'none'
+        ? Math.ceil(toolbar.getBoundingClientRect().height)
+        : 0;
     const maxDisplayWidth = Math.max(160, viewport.width - horizontalPadding);
-    const availableHeight = viewport.height - topReserve - bottomReserve - canvasBorderReserve;
+    const availableHeight = viewport.height - topReserve - bottomReserve - canvasBorderReserve - toolbarHeight;
     const maxDisplayHeight = Math.max(120, Math.min(viewport.height * heightRatio, availableHeight));
     const displayWidth = Math.floor(Math.min(maxDisplayWidth, maxDisplayHeight * aspectRatio));
     const displayHeight = Math.floor(displayWidth / aspectRatio);
@@ -511,6 +659,8 @@ function resizeCanvas() {
     canvas.style.height = `${displayHeight}px`;
     canvas.style.marginTop = topReserve ? `${topReserve}px` : '';
     canvas.style.marginBottom = bottomReserve ? `${bottomReserve}px` : '';
+    const arenaShell = document.getElementById('arena-shell');
+    if (arenaShell) arenaShell.style.width = `${displayWidth + canvasBorderReserve}px`;
 
     if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
         canvas.width = backingWidth;
@@ -531,6 +681,7 @@ function updateOrientationWarning() {
 }
 
 function startRound() {
+    closeAllModalDialogs();
     player1 = new Fighter(250, true);
     player2 = new Fighter(750, false);
     player1.applyStyle(selectedFighterStyle);
@@ -543,6 +694,7 @@ function startRound() {
     hitStopFrames = 0;
     impactFlash = null;
     specialFlash = null;
+    specialReadyAnnounced = false;
     roundTimerFrames = ROUND_TIMER_FRAMES;
     roundTimeMs = ROUND_TIME_MS;
     if (gameMode === 'training') resetTraining();
@@ -550,10 +702,7 @@ function startRound() {
     resetSimulationClock();
     gameState = 'playing';
     showStatusMessage(`${t('round')} ${currentRound}`, 75);
-    document.getElementById('game-over').style.display = 'none';
-    document.getElementById('main-menu').style.display = 'none';
-    document.getElementById('help-screen').style.display = 'none';
-    document.getElementById('pause-screen').style.display = 'none';
+    announce(t('roundAnnounce', { round: currentRound, rival: getRivalLabel() }));
     updateControlsVisibility();
 }
 
@@ -627,6 +776,7 @@ function refillTraining(type) {
 }
 
 function showMainMenu() {
+    closeAllModalDialogs();
     player1 = new Fighter(250, true);
     player2 = new Fighter(750, false);
     floatingTexts = [];
@@ -647,29 +797,26 @@ function showMainMenu() {
     vsIntroTimer = 0;
     resetSimulationClock();
     gameState = 'menu';
-    document.getElementById('game-over').style.display = 'none';
     document.getElementById('main-menu').style.display = 'flex';
-    document.getElementById('help-screen').style.display = 'none';
-    document.getElementById('pause-screen').style.display = 'none';
+    openModalDialog('main-menu', 'start-button');
     renderStats();
     updateControlsVisibility();
     showOnboardingIfNeeded();
 }
 
 function showHelpScreen() {
+    closeAllModalDialogs();
     gameState = 'menu';
-    document.getElementById('game-over').style.display = 'none';
-    document.getElementById('main-menu').style.display = 'none';
     document.getElementById('help-screen').style.display = 'flex';
-    document.getElementById('pause-screen').style.display = 'none';
+    openModalDialog('help-screen', 'back-button', document.getElementById('help-button'));
     updateControlsVisibility();
 }
 
 function hideHelpScreen() {
-    document.getElementById('help-screen').style.display = 'none';
+    closeAllModalDialogs();
     document.getElementById('main-menu').style.display = 'flex';
-    document.getElementById('pause-screen').style.display = 'none';
     gameState = 'menu';
+    openModalDialog('main-menu', 'help-button');
     updateControlsVisibility();
 }
 
@@ -683,6 +830,7 @@ function pauseGame(silent = false) {
     renderPauseSummary();
     document.getElementById('pause-screen').style.display = 'flex';
     updateControlsVisibility();
+    openModalDialog('pause-screen', 'resume-button', document.getElementById('pause-button'));
 }
 
 function resumeGame() {
@@ -694,6 +842,7 @@ function resumeGame() {
     gameState = 'playing';
     document.getElementById('pause-screen').style.display = 'none';
     updateControlsVisibility();
+    closeModalDialog('pause-screen');
 }
 
 function togglePause() {
@@ -779,12 +928,15 @@ function finishRound(playerWon) {
         renderGameOverText();
         document.getElementById('game-over').style.display = 'block';
         updateControlsVisibility();
+        announce(t('finalAnnounce', { result: playerWon ? t('playerWins') : t('cpuWins') }));
+        openModalDialog('game-over', 'restart-button');
         return;
     }
 
     gameState = 'roundOver';
     const roundMessage = playerWon === null ? t('tie') : (playerWon ? t('roundHuman') : t('roundCpu'));
     showStatusMessage(roundMessage, 90);
+    announce(roundMessage);
     updateControlsVisibility();
     setTimeout(() => {
         currentRound++;
@@ -842,6 +994,13 @@ function updateStatusMessage() {
 function updateEffects() {
     updateStatusMessage();
     updateHealthAnimations();
+
+    if (player1 && player1.energy >= MAX_ENERGY && !specialReadyAnnounced) {
+        specialReadyAnnounced = true;
+        announce(t('specialAnnounce'));
+    } else if (player1 && player1.energy < MAX_ENERGY) {
+        specialReadyAnnounced = false;
+    }
 
     for (let i = floatingTexts.length - 1; i >= 0; i--) {
         floatingTexts[i].update();
@@ -976,6 +1135,8 @@ function drawDebugOverlay() {
 
 function updateControlsVisibility() {
     document.getElementById('controls').style.display = mobileControlsEnabled && gameState === 'playing' ? 'block' : 'none';
+    const toolbar = document.getElementById('game-toolbar');
+    if (toolbar) toolbar.style.display = gameState === 'playing' ? 'flex' : 'none';
     document.getElementById('pause-button').style.display = gameState === 'playing' ? 'block' : 'none';
     const trainingPanel = document.getElementById('training-panel');
     if (trainingPanel) trainingPanel.style.display = gameMode === 'training' && gameState === 'playing' ? 'block' : 'none';
@@ -1077,6 +1238,16 @@ function setupMobileControls() {
 function setupKeyboardControls() {
     window.addEventListener('keydown', (e) => {
         const key = e.key.toLowerCase();
+
+        if (activeDialog) {
+            if (trapDialogFocus(e)) return;
+            if (key === 'escape') {
+                if (e.preventDefault) e.preventDefault();
+                if (activeDialog.id === 'help-screen') hideHelpScreen();
+                else if (activeDialog.id === 'pause-screen') resumeGame();
+                return;
+            }
+        }
 
         if (key === 'p' || key === 'escape') {
             if (e.preventDefault) e.preventDefault();
@@ -1188,6 +1359,7 @@ window.addEventListener('load', () => {
     renderLanguage();
     renderStats();
     renderMotionPreference();
+    syncDuelSettingsLayout();
     showMainMenu();
     setupMobileControls();
     setupKeyboardControls();

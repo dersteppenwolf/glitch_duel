@@ -1,22 +1,46 @@
+const HUD_SAFE_BOTTOM = 112;
+
 function drawHealthBars() {
     if (!player1 || !player2) return;
 
-    drawHealthBar(50, 30, player1.health, player1.displayHealth, false, player1.accentColor);
-    drawHealthBar(WIDTH - 354, 30, player2.health, player2.displayHealth, true, player2.accentColor);
+    drawHudPlate(34, 8, 340, 84, player1.accentColor);
+    drawHudPlate(WIDTH - 374, 8, 340, 84, player2.accentColor);
+    drawHudPlate(WIDTH / 2 - 92, 8, 184, 84, '#111');
 
-    ctx.font = `bold 20px ${GAME_FONT_FAMILY}`;
+    drawHealthBar(50, 34, player1.health, player1.displayHealth, false, player1.accentColor);
+    drawHealthBar(WIDTH - 354, 34, player2.health, player2.displayHealth, true, player2.accentColor);
+
+    ctx.font = `bold 18px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#000';
     ctx.textAlign = 'left';
-    ctx.fillText(`${t('human')}: ${player1.health}%`, 50, 23);
-    drawEnergyBar(52, 62, player1.energy, false, player1.accentColor);
+    ctx.fillText(`${t('human')}: ${player1.health}%`, 50, 26);
+    drawEnergyBar(52, 67, player1.energy, false, player1.accentColor);
     ctx.fillStyle = '#000';
     ctx.textAlign = 'right';
-    ctx.fillText(`${player2.labelKey ? t(player2.labelKey) : t('cpuAI')}: ${player2.health}%`, WIDTH - 50, 23);
-    drawEnergyBar(WIDTH - 252, 62, player2.energy, true, player2.accentColor);
-    ctx.fillStyle = '#000';
+    ctx.fillText(`${player2.labelKey ? t(player2.labelKey) : t('cpuAI')}: ${player2.health}%`, WIDTH - 50, 26);
+    drawEnergyBar(WIDTH - 252, 67, player2.energy, true, player2.accentColor);
 
     ctx.textAlign = 'center';
-    ctx.fillText(`${t('round')} ${currentRound}  ${playerRounds}-${cpuRounds}  ${Math.ceil(roundTimeMs / 1000)}`, WIDTH / 2, 23);
+    ctx.font = `bold 13px ${GAME_FONT_FAMILY}`;
+    ctx.fillStyle = '#000';
+    ctx.fillText(`${t('round')} ${currentRound}`, WIDTH / 2, 26);
+    ctx.font = `bold 14px ${GAME_FONT_FAMILY}`;
+    ctx.fillText(`${playerRounds}-${cpuRounds}`, WIDTH / 2, 47);
+    ctx.font = `bold 28px ${GAME_FONT_FAMILY}`;
+    ctx.fillText(`${Math.ceil(roundTimeMs / 1000)}`, WIDTH / 2, 77);
+}
+
+function drawHudPlate(x, y, width, height, accentColor) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    ctx.fillRect(x + 6, y + 6, width, height);
+    ctx.fillStyle = '#fffdf5';
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(x, y, width, height);
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 7, y + 7, width - 14, height - 14);
 }
 
 function drawHealthBar(x, y, health, displayHealth, alignRight, accentColor = '#000') {
@@ -95,7 +119,7 @@ function drawEnergyBar(x, y, energy, alignRight, accentColor = '#000') {
     }
 
     if (full) {
-        ctx.font = `bold 10px ${GAME_FONT_FAMILY}`;
+        ctx.font = `bold 12px ${GAME_FONT_FAMILY}`;
         ctx.fillStyle = '#000';
         ctx.textAlign = 'center';
         ctx.fillText('SPECIAL', x + width / 2, y + 10);
@@ -110,7 +134,7 @@ function drawStatusMessage() {
     const panelWidth = Math.min(620, Math.max(260, statusMessage.length * 34));
     const panelHeight = 86;
     const x = WIDTH / 2 - panelWidth / 2;
-    const y = 84;
+    const y = HUD_SAFE_BOTTOM + 10;
 
     ctx.save();
     ctx.globalAlpha = alpha;
