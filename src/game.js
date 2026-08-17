@@ -201,7 +201,7 @@ function focusDialog(dialog, preferredId) {
     const focusables = getFocusableElements(dialog);
     const target = preferred || focusables[0] || dialog;
 
-    if (target && typeof target.focus === 'function') target.focus();
+    if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
 }
 
 function openModalDialog(id, preferredId, returnFocus = null) {
@@ -411,14 +411,6 @@ function renderSelectionSummary() {
     if (styleText) styleText.textContent = getStyleDescription();
     if (rivalTitle) rivalTitle.textContent = getRivalLabel();
     if (rivalText) rivalText.textContent = t(getRivalConfig().introKey);
-}
-
-function syncDuelSettingsLayout() {
-    const settings = document.getElementById('duel-settings');
-    if (!settings) return;
-
-    const viewportWidth = window.visualViewport && window.visualViewport.width ? window.visualViewport.width : window.innerWidth;
-    settings.open = viewportWidth > 760;
 }
 
 function getArenaConfig() {
@@ -1359,7 +1351,6 @@ window.addEventListener('load', () => {
     renderLanguage();
     renderStats();
     renderMotionPreference();
-    syncDuelSettingsLayout();
     showMainMenu();
     setupMobileControls();
     setupKeyboardControls();

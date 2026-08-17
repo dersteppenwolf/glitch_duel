@@ -96,9 +96,10 @@ function loadGame(options = {}) {
             addEventListener(type, handler) {
                 this.listeners[type] = handler;
             },
-            focus() {
+            focus(options) {
                 elements.forEach((element) => { element.focused = false; });
                 this.focused = true;
+                this.focusOptions = options;
                 activeElement = this;
             },
             setPointerCapture(pointerId) {
@@ -846,6 +847,7 @@ test('static HTML contract preserves local assets, script order, controls, and a
     ['arena-shell', 'game-toolbar', 'game-announcer', 'duel-settings', 'selection-summary'].forEach((id) => {
         assert.match(html, new RegExp(`id="${id}"`));
     });
+    assert.match(html, /<details id="duel-settings" class="duel-settings" open>/);
     Object.keys(api.ARENAS).forEach((arena) => {
         assert.match(html, new RegExp(`<option value="${arena}"`));
         const key = `arena${arena.charAt(0).toUpperCase()}${arena.slice(1)}`;
@@ -870,6 +872,7 @@ test('modal dialogs contain focus and restore the originating control', () => {
     api.showMainMenu();
     assert.equal(api.getState().modalId, 'main-menu');
     assert.equal(elements.get('start-button').focused, true);
+    assert.equal(elements.get('start-button').focusOptions.preventScroll, true);
     assert.equal(api.getState().arenaShellInert, true);
     assert.equal(api.getState().mainMenuInert, false);
 
