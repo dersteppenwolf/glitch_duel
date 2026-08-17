@@ -38,10 +38,10 @@ Next recommended improvement: `#12 Fullscreen and wake lock`.
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
 | 9 | Medium | Ready | M | - | Combo trials | Build objective-based sequences on training reset, positioning, and success-detection infrastructure. |
-| 7 | Medium | Blocked | M | 14 | Daily/local quick missions | Offer bounded local challenges using the shared match-event model. |
-| 8 | Medium | Blocked | L | 14 | Arcade ladder run | Add a five-fight escalating run with deterministic progression and a final summary. |
-| 13 | Medium | Blocked | M | 14 | Local achievements | Add first win, blocking, combo, and special goals through the shared local event model. |
-| 14 | Medium | Ready | M | - | Local match history | Define a bounded versioned record for difficulty, arena, style, duration, medal, and notable events. |
+| 7 | Medium | Ready | M | 14 | Daily/local quick missions | Offer bounded local challenges using the shared match-event model. |
+| 8 | Medium | Completed | L | 14 | Arcade ladder run | Add a five-fight escalating run with deterministic progression and a final summary. |
+| 13 | Medium | Ready | M | 14 | Local achievements | Add first win, blocking, combo, and special goals through the shared local event model. |
+| 14 | Medium | Completed | M | - | Local match history | Define a bounded versioned record for difficulty, arena, style, duration, medal, and notable events. |
 | 21 | Medium | Ready | S | - | Persist difficulty and arena | Validate saved values against current configuration and preserve safe fallbacks. |
 | 22 | Medium | Ready | S | - | Visible local-data reset | Reset stats and future local progression through UI without clearing unrelated preferences. |
 | 28 | Medium | Partial | S | 14 | Perfect and comeback conditions | Extend the existing medal/phrase system only with perfect, comeback, and no-special result conditions. |

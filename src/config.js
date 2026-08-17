@@ -46,6 +46,13 @@ const CPU_RIVALS = {
     mergeConflict: { labelKey: 'rivalMergeConflict', introKey: 'rivalMergeConflictIntro', accentColor: '#d97706', detail: 'merge' },
     boss500: { labelKey: 'rivalBoss500', introKey: 'rivalBoss500Intro', accentColor: '#dc2626', detail: 'boss' }
 };
+const ARCADE_RUN_FIGHTS = [
+    { rival: 'nullPointer', arena: 'notebook', difficulty: 'easy' },
+    { rival: 'lagSpike', arena: 'cafeteria', difficulty: 'normal' },
+    { rival: 'mergeConflict', arena: 'remoteMeeting', difficulty: 'normal' },
+    { rival: 'lagSpike', arena: 'serverDown', difficulty: 'hard' },
+    { rival: 'boss500', arena: 'geekConvention', difficulty: 'hard' }
+];
 const DIFFICULTIES = {
     easy: {
         decisionMin: 22,
@@ -54,7 +61,7 @@ const DIFFICULTIES = {
         blockReaction: 0.35,
         approachLong: 0.65,
         approachMid: 0.45,
-        retreatMid: 0.75,
+        retreatMid: 0.65,
         jumpMid: 0.88,
         punchClose: 0.25,
         kickMid: 0.12,
@@ -67,6 +74,7 @@ const DIFFICULTIES = {
         counterChance: 0.25,
         comebackSpecialChance: 0.14,
         comebackSpecialGap: 28,
+        maxBlockReaction: 0.55,
         patternMemoryGain: 10,
         patternMemoryDecay: 2,
         patternBlockBonus: 0.10,
@@ -95,6 +103,7 @@ const DIFFICULTIES = {
         counterChance: 0.45,
         comebackSpecialChance: 0.28,
         comebackSpecialGap: 22,
+        maxBlockReaction: 0.80,
         patternMemoryGain: 12,
         patternMemoryDecay: 2,
         patternBlockBonus: 0.16,
@@ -123,6 +132,7 @@ const DIFFICULTIES = {
         counterChance: 0.65,
         comebackSpecialChance: 0.42,
         comebackSpecialGap: 16,
+        maxBlockReaction: 0.90,
         patternMemoryGain: 14,
         patternMemoryDecay: 2,
         patternBlockBonus: 0.22,

@@ -206,6 +206,8 @@ function loadGame(options = {}) {
             I18N,
             ARENAS,
             CPU_RIVALS,
+            DIFFICULTIES,
+            ARCADE_RUN_FIGHTS,
             setLanguage,
             getLanguage,
             chooseAIAction,
@@ -213,6 +215,9 @@ function loadGame(options = {}) {
             draw,
             resizeCanvas,
             initGame,
+            startArcadeRun,
+            continueArcadeRun,
+            retryArcadeRun,
             startRound,
             showMainMenu,
             showHelpScreen,
@@ -268,6 +273,9 @@ function loadGame(options = {}) {
             renderMotionPreference,
             renderLanguage,
             recordMatchResult,
+            getMatchHistory,
+            appendMatchHistory,
+            getVsIntroTitle,
             recordPlayerCombo,
             recordPlayerBlock,
             recordPlayerSpecial,
@@ -290,6 +298,13 @@ function loadGame(options = {}) {
                 impactParticles,
                 gameState,
                 gameMode,
+                arcadeRun: arcadeRun ? {
+                    ...arcadeRun,
+                    results: arcadeRun.results.map((record) => ({ ...record, events: { ...record.events } })),
+                    menuSelection: { ...arcadeRun.menuSelection }
+                } : null,
+                matchHistory: getMatchHistory(),
+                matchElapsedFrames,
                 trainingConfig: { ...trainingConfig },
                 matchSeed,
                 debugOverlayEnabled,
@@ -943,10 +958,10 @@ test('static HTML contract preserves local assets, script order, controls, and a
 
     requiredIds.forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260817-compact">/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260817-arcade">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
-    ['arena-shell', 'game-toolbar', 'game-announcer', 'duel-settings', 'selection-summary', 'menu-footer'].forEach((id) => {
+    ['arena-shell', 'game-toolbar', 'game-announcer', 'duel-settings', 'selection-summary', 'menu-footer', 'arcade-run-button'].forEach((id) => {
         assert.match(html, new RegExp(`id="${id}"`));
     });
     assert.match(html, /<details id="duel-settings" class="duel-settings" open>/);
@@ -975,6 +990,61 @@ test('static HTML contract preserves local assets, script order, controls, and a
         assert.ok(api.I18N.es[config.introKey]);
         assert.ok(api.I18N.en[config.introKey]);
     });
+});
+
+test('arcade route and difficulty caps are declarative and valid', () => {
+    const { api } = loadGame();
+
+    assert.equal(api.ARCADE_RUN_FIGHTS.length, 5);
+    api.ARCADE_RUN_FIGHTS.forEach((fight) => {
+        assert.ok(api.CPU_RIVALS[fight.rival]);
+        assert.ok(api.ARENAS[fight.arena]);
+        assert.ok(api.DIFFICULTIES[fight.difficulty]);
+    });
+    assert.equal(api.ARCADE_RUN_FIGHTS[4].rival, 'boss500');
+    assert.equal(api.ARCADE_RUN_FIGHTS[4].difficulty, 'hard');
+    assert.deepEqual(
+        Object.fromEntries(Object.entries(api.DIFFICULTIES).map(([key, config]) => [key, config.maxBlockReaction])),
+        { easy: 0.55, normal: 0.80, hard: 0.90 }
+    );
+    assert.equal(api.DIFFICULTIES.easy.retreatMid, 0.65);
+});
+
+test('match history uses a bounded versioned record and excludes training', () => {
+    const { api, context } = loadGame({ storage: {
+        glitchDuelMatchHistory: JSON.stringify({
+            version: 1,
+            matches: [{ mode: 'invalid' }]
+        })
+    } });
+
+    assert.equal(api.getMatchHistory().length, 0);
+    api.startTraining();
+    api.skipVsIntro();
+    api.getState().player2.health = 0;
+    api.update();
+    assert.equal(api.getMatchHistory().length, 0);
+
+    api.initGame();
+    api.skipVsIntro();
+    api.getState().player2.health = 0;
+    api.update();
+    api.skipVsIntro();
+    api.getState().player2.health = 0;
+    api.update();
+
+    const history = api.getMatchHistory();
+    assert.equal(history.length, 1);
+    assert.equal(history[0].mode, 'versus');
+    assert.equal(history[0].fight, 0);
+    assert.equal(history[0].result, 'win');
+    assert.equal(history[0].medal, 'bug');
+    assert.ok(history[0].durationFrames > 0);
+    assert.equal(JSON.parse(context.window.localStorage.getItem('glitchDuelMatchHistory')).version, 1);
+
+    const sample = { mode: 'versus', fight: 0, result: 'loss', playerRounds: 0, cpuRounds: 2, difficulty: 'easy', arena: 'notebook', style: 'balanced', rival: 'nullPointer', durationFrames: 1, medal: 'machine', events: { combos: 0, blocks: 0, specials: 0, airAttacks: 0 } };
+    for (let i = 0; i < 30; i++) api.appendMatchHistory(sample);
+    assert.equal(api.getMatchHistory().length, 25);
 });
 
 test('modal dialogs contain focus and restore the originating control', () => {
@@ -1977,6 +2047,113 @@ test('round system advances rounds and ends match at two wins', () => {
     assert.match(state.winnerTextText, /Arena: CUADERNO/);
     assert.match(state.winnerTextText, /Racha: 1 \| Mejor: 1/);
     assert.match(state.winnerTextText, /Bug eliminado/);
+});
+
+test('arcade run advances one match at a time with deterministic stages', () => {
+    const { api, elements } = loadGame();
+
+    api.setDifficulty('hard');
+    api.setArena('lab');
+    api.setRival('boss500');
+    api.startArcadeRun();
+
+    let state = api.getState();
+    assert.equal(state.gameMode, 'arcade');
+    assert.equal(state.gameState, 'playing');
+    assert.equal(state.arcadeRun.fightIndex, 0);
+    assert.deepEqual({ selectedDifficulty: state.selectedDifficulty, selectedArena: state.selectedArena, selectedRival: state.selectedRival }, {
+        selectedDifficulty: 'easy',
+        selectedArena: 'notebook',
+        selectedRival: 'nullPointer'
+    });
+
+    api.skipVsIntro();
+    state.player2.health = 0;
+    api.update();
+    api.skipVsIntro();
+    api.getState().player2.health = 0;
+    api.update();
+
+    state = api.getState();
+    assert.equal(state.gameState, 'gameOver');
+    assert.equal(state.arcadeRun.results.length, 1);
+    assert.equal(state.arcadeRun.awaitingNext, true);
+    const runSeed = state.matchSeed;
+    assert.match(state.winnerTextText, /1\/5/);
+    assert.equal(elements.get('restart-button').textContent, 'SIGUIENTE COMBATE');
+
+    api.continueArcadeRun();
+    state = api.getState();
+    assert.equal(state.gameState, 'playing');
+    assert.equal(state.arcadeRun.fightIndex, 1);
+    assert.equal(state.selectedDifficulty, 'normal');
+    assert.equal(state.selectedArena, 'cafeteria');
+    assert.equal(state.selectedRival, 'lagSpike');
+    assert.equal(state.matchSeed, runSeed);
+    assert.equal(state.playerRounds, 0);
+    assert.equal(state.cpuRounds, 0);
+});
+
+test('arcade loss ends the run and retry restores menu selection', () => {
+    const { api } = loadGame();
+
+    api.setDifficulty('hard');
+    api.setArena('lab');
+    api.setRival('boss500');
+    api.startArcadeRun();
+    api.skipVsIntro();
+    api.getState().player1.health = 0;
+    assert.equal(api.getState().player1.health, 0);
+    api.update();
+    api.skipVsIntro();
+    api.getState().player1.health = 0;
+    api.update();
+
+    let state = api.getState();
+    assert.equal(state.gameState, 'gameOver');
+    assert.equal(state.arcadeRun.results.length, 1);
+    assert.equal(state.arcadeRun.awaitingNext, false);
+    assert.match(state.winnerTextText, /CARRERA TERMINADA/);
+
+    api.retryArcadeRun();
+    state = api.getState();
+    assert.equal(state.gameMode, 'arcade');
+    assert.equal(state.arcadeRun.fightIndex, 0);
+    assert.equal(state.selectedDifficulty, 'easy');
+
+    api.showMainMenu();
+    state = api.getState();
+    assert.equal(state.gameMode, 'versus');
+    assert.equal(state.selectedDifficulty, 'hard');
+    assert.equal(state.selectedArena, 'lab');
+    assert.equal(state.selectedRival, 'boss500');
+});
+
+test('arcade can complete five matches without adding a separate run win', () => {
+    const { api } = loadGame();
+
+    api.startArcadeRun();
+    for (let fight = 0; fight < 5; fight++) {
+        api.skipVsIntro();
+        api.getState().player2.health = 0;
+        api.update();
+        api.skipVsIntro();
+        api.getState().player2.health = 0;
+        api.update();
+
+        if (fight < 4) api.continueArcadeRun();
+    }
+
+    const state = api.getState();
+    assert.equal(state.gameState, 'gameOver');
+    assert.equal(state.arcadeRun.results.length, 5);
+    assert.equal(state.arcadeRun.awaitingNext, false);
+    assert.match(state.winnerTextText, /5\/5/);
+    assert.equal(state.stats.wins, 5);
+    assert.equal(state.matchHistory.length, 5);
+
+    api.setLanguage('en');
+    assert.match(api.getState().winnerTextText, /RUN COMPLETE/);
 });
 
 test('post-match medals use simple match stats', () => {

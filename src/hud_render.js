@@ -200,7 +200,7 @@ function drawVsIntro() {
     ctx.textAlign = 'center';
     ctx.font = `bold 34px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#111';
-    ctx.fillText(`${t('round')} ${currentRound}`, WIDTH / 2, 155);
+    ctx.fillText(getVsIntroTitle(), WIDTH / 2, 155);
     const rivalLabel = getRivalLabel();
     ctx.font = `bold ${rivalLabel.length > 13 ? 42 : 54}px ${GAME_FONT_FAMILY}`;
     ctx.lineWidth = 8;

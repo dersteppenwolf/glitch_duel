@@ -32,7 +32,7 @@ function chooseAIAction({
     const retreatBlocked = (x < opponentX && nearLeftWall) || (x > opponentX && nearRightWall);
     const typeAttackBias = Math.max(opponentPunchBias, opponentKickBias, opponentSpecialBias, opponentAirBias);
     const blockReaction = Math.min(
-        0.96,
+        difficulty.maxBlockReaction ?? 0.96,
         (difficulty.blockReaction ?? 1) +
             opponentAttackBias * (difficulty.patternBlockBonus ?? 0) +
             typeAttackBias * (difficulty.patternTypeBlockBonus ?? 0) +

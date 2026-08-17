@@ -389,4 +389,26 @@ Se cargo y aplico `karpathy-guidelines` antes de finalizar este plan.
 
 ## Estado De Implementacion
 
-Pendiente.
+Implementado localmente el 2026-08-17.
+
+- Completado: historial local version `1` bajo `glitchDuelMatchHistory`, validacion defensiva, limite de 25 registros y exclusion de entrenamiento.
+- Completado: registros por match con modo, combate, resultado, score, dificultad, arena, estilo, rival, duracion, medalla y eventos notables.
+- Completado: ruta fija de cinco combates `easy -> normal -> normal -> hard -> hard`, con `BOSS 500` como etapa final y sin RNG para elegir etapas.
+- Completado: modo `arcade`, una semilla por carrera, intermisiones reutilizando `gameOver`, avance manual, derrota definitiva, reintento y resumen `N/5`.
+- Completado: restauracion de dificultad, arena y rival seleccionados al volver al menu o reintentar.
+- Completado: intro VS muestra `COMBATE N/5` en carrera y el menu responsive incorpora `CARRERA ARCADE`.
+- Completado: limites `maxBlockReaction` para Easy/Normal/Hard y reduccion de `easy.retreatMid` a `0.65`.
+- Completado: textos ES/EN, filas compactas de resultados, contratos HTML y documentacion de README/AGENTS/BACKLOG.
+- No implementado deliberadamente: pantalla de historial, reset visible, guardado parcial/reanudacion, recompensas, nuevos rivales, buffs de jefe, nueva dificultad, adaptacion de IA y telemetria.
+
+Validacion local ejecutada:
+
+- `node --check` para todos los archivos `src\*.js`: correcto.
+- `node --test tests\game.test.js`: 98 pruebas superadas.
+- `git diff --check`: correcto; solo se reportaron advertencias de normalizacion LF/CRLF de Git.
+- Smoke navegador: `CARRERA ARCADE` aparece y comienza el combate; pausa muestra resumen de la etapa; `MENU` restaura selecciones; menu movil a `390x844` conserva scroll vertical y no muestra overflow horizontal en el snapshot.
+- Pruebas automatizadas de flujo: versus normal, entrenamiento, derrota arcade, avance entre etapas y cinco victorias con `5/5` e historial de cinco matches.
+
+Riesgo residual aceptado:
+
+- El recorrido completo se cubre con pruebas de estado; la comprobacion visual del navegador cubre entrada, pausa, salida al menu y responsive. El combate manual prolongado queda fuera del smoke automatizado porque requiere jugar cada match.

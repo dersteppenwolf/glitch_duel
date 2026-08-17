@@ -2,6 +2,9 @@ const REDUCED_MOTION_STORAGE_KEY = 'glitchDuelReducedMotion';
 const LEGACY_REDUCED_MOTION_STORAGE_KEY = 'xkcdKombatReducedMotion';
 const STATS_STORAGE_KEY = 'glitchDuelStats';
 const LEGACY_STATS_STORAGE_KEY = 'xkcdKombatStats';
+const MATCH_HISTORY_STORAGE_KEY = 'glitchDuelMatchHistory';
+const MATCH_HISTORY_VERSION = 1;
+const MATCH_HISTORY_LIMIT = 25;
 const ONBOARDING_STORAGE_KEY = 'glitchDuelOnboardingSeen';
 const MAX_STAT_VALUE = 1000000;
 
@@ -27,6 +30,7 @@ let selectedArena = 'notebook';
 let selectedFighterStyle = 'balanced';
 let selectedRival = 'nullPointer';
 let stats = loadStats();
+let matchHistory = loadMatchHistory();
 let reducedMotionEnabled = loadReducedMotionPreference();
 let lastFrameTimestamp = null;
 let simulationAccumulator = 0;
@@ -36,8 +40,10 @@ let matchStats = createMatchStats();
 let vsIntroTimer = 0;
 let specialFlash = null;
 let gameMode = 'versus';
+let arcadeRun = null;
 let trainingConfig = { position: 'mid', cpu: 'idle', timer: false };
 let matchSeed = 0;
+let matchElapsedFrames = 0;
 let debugOverlayEnabled = getDebugQueryEnabled();
 let debugFrameCount = 0;
 let debugStepCount = 0;
@@ -339,11 +345,11 @@ function recordPlayerAirAttack() {
 }
 
 function getPostMatchMedal(playerWon) {
-    if (!playerWon) return { title: t('medalMachine'), detail: t('medalMachineDetail') };
-    if (matchStats.playerCombos > 0) return { title: t('medalCombo'), detail: t('medalComboDetail') };
-    if (matchStats.playerBlocks >= 2) return { title: t('medalFirewall'), detail: t('medalFirewallDetail') };
-    if (player1 && player1.health <= 25) return { title: t('medalSurvivor'), detail: t('medalSurvivorDetail') };
-    return { title: t('medalBug'), detail: t('medalBugDetail') };
+    if (!playerWon) return { id: 'machine', title: t('medalMachine'), detail: t('medalMachineDetail') };
+    if (matchStats.playerCombos > 0) return { id: 'combo', title: t('medalCombo'), detail: t('medalComboDetail') };
+    if (matchStats.playerBlocks >= 2) return { id: 'firewall', title: t('medalFirewall'), detail: t('medalFirewallDetail') };
+    if (player1 && player1.health <= 25) return { id: 'survivor', title: t('medalSurvivor'), detail: t('medalSurvivorDetail') };
+    return { id: 'bug', title: t('medalBug'), detail: t('medalBugDetail') };
 }
 
 function getPostMatchPhrase(playerWon) {
@@ -450,6 +456,90 @@ function loadStats() {
     }
 }
 
+function normalizeHistoryCount(value) {
+    return Number.isSafeInteger(value) && value >= 0 && value <= MAX_STAT_VALUE ? value : null;
+}
+
+function normalizeMatchHistoryRecord(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+
+    const events = value.events;
+    const playerRounds = normalizeHistoryCount(value.playerRounds);
+    const cpuRounds = normalizeHistoryCount(value.cpuRounds);
+    const durationFrames = normalizeHistoryCount(value.durationFrames);
+    const fight = normalizeHistoryCount(value.fight);
+    if (!['versus', 'arcade'].includes(value.mode) || !['win', 'loss'].includes(value.result)) return null;
+    if (fight === null || fight < 0 || fight > ARCADE_RUN_FIGHTS.length) return null;
+    if ((value.mode === 'versus' && fight !== 0) || (value.mode === 'arcade' && fight === 0)) return null;
+    if (playerRounds === null || playerRounds > ROUNDS_TO_WIN || cpuRounds === null || cpuRounds > ROUNDS_TO_WIN) return null;
+    if (!DIFFICULTIES[value.difficulty] || !ARENAS[value.arena] || !FIGHTER_STYLES[value.style] || !CPU_RIVALS[value.rival]) return null;
+    if (durationFrames === null || !['bug', 'firewall', 'combo', 'survivor', 'machine'].includes(value.medal)) return null;
+    if (!events || typeof events !== 'object' || Array.isArray(events)) return null;
+
+    const normalizedEvents = {};
+    for (const key of ['combos', 'blocks', 'specials', 'airAttacks']) {
+        normalizedEvents[key] = normalizeHistoryCount(events[key]);
+        if (normalizedEvents[key] === null) return null;
+    }
+
+    return {
+        mode: value.mode,
+        fight,
+        result: value.result,
+        playerRounds,
+        cpuRounds,
+        difficulty: value.difficulty,
+        arena: value.arena,
+        style: value.style,
+        rival: value.rival,
+        durationFrames,
+        medal: value.medal,
+        events: normalizedEvents
+    };
+}
+
+function loadMatchHistory() {
+    try {
+        const raw = window.localStorage && window.localStorage.getItem(MATCH_HISTORY_STORAGE_KEY);
+        if (!raw) return [];
+
+        const saved = JSON.parse(raw);
+        if (!saved || saved.version !== MATCH_HISTORY_VERSION || !Array.isArray(saved.matches)) return [];
+        return saved.matches.map(normalizeMatchHistoryRecord).filter(Boolean).slice(-MATCH_HISTORY_LIMIT);
+    } catch (_) {
+        return [];
+    }
+}
+
+function saveMatchHistory() {
+    try {
+        if (window.localStorage) {
+            window.localStorage.setItem(MATCH_HISTORY_STORAGE_KEY, JSON.stringify({
+                version: MATCH_HISTORY_VERSION,
+                matches: matchHistory.slice(-MATCH_HISTORY_LIMIT)
+            }));
+        }
+    } catch (_) {
+        // localStorage can be unavailable in private browsing or tests.
+    }
+}
+
+function appendMatchHistory(record) {
+    const normalized = normalizeMatchHistoryRecord(record);
+    if (!normalized) return false;
+
+    matchHistory = [...matchHistory, normalized].slice(-MATCH_HISTORY_LIMIT);
+    saveMatchHistory();
+    return true;
+}
+
+function getMatchHistory() {
+    return matchHistory.map((record) => ({
+        ...record,
+        events: { ...record.events }
+    }));
+}
+
 function saveStats() {
     try {
         if (window.localStorage) window.localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(stats));
@@ -477,6 +567,56 @@ function renderStats() {
     if (!statsSummary) return;
 
     statsSummary.textContent = t('stats', stats);
+}
+
+function resetMatchProgress() {
+    currentRound = 1;
+    playerRounds = 0;
+    cpuRounds = 0;
+    matchStats = createMatchStats();
+    matchElapsedFrames = 0;
+}
+
+function getArcadeFight() {
+    return arcadeRun && ARCADE_RUN_FIGHTS[arcadeRun.fightIndex];
+}
+
+function getArcadeFightNumber() {
+    return arcadeRun ? arcadeRun.fightIndex + 1 : 0;
+}
+
+function getArcadeProgressText() {
+    return t('arcadeProgress', { completed: arcadeRun ? arcadeRun.results.length : 0 });
+}
+
+function getVsIntroTitle() {
+    if (gameMode === 'arcade' && arcadeRun) {
+        return `${t('arcadeFight', { fight: getArcadeFightNumber() })} · ${t('round')} ${currentRound}`;
+    }
+    return `${t('round')} ${currentRound}`;
+}
+
+function createMatchHistoryRecord(playerWon) {
+    const medal = getPostMatchMedal(playerWon);
+    return {
+        mode: gameMode === 'arcade' ? 'arcade' : 'versus',
+        fight: gameMode === 'arcade' ? getArcadeFightNumber() : 0,
+        result: playerWon ? 'win' : 'loss',
+        playerRounds,
+        cpuRounds,
+        difficulty: selectedDifficulty,
+        arena: selectedArena,
+        style: selectedFighterStyle,
+        rival: selectedRival,
+        durationFrames: matchElapsedFrames,
+        medal: medal.id,
+        events: {
+            combos: matchStats.playerCombos,
+            blocks: matchStats.playerBlocks,
+            specials: matchStats.playerSpecials,
+            airAttacks: matchStats.playerAirAttacks
+        }
+    };
 }
 
 function renderArenaPreview() {
@@ -581,6 +721,7 @@ function renderLanguage() {
     setElementText('orientation-warning', 'orientationWarning');
     setElementText('pause-button', 'pauseButton');
     setElementText('start-button', 'start');
+    setElementText('arcade-run-button', 'arcadeRun');
     setElementText('help-button', 'help');
     setElementText('help-title', 'help');
     setElementText('back-button', 'back');
@@ -608,12 +749,100 @@ function renderLanguage() {
     renderInputBindings();
     renderPauseSummary();
 
+    renderGameOverActions();
     if (gameState === 'gameOver') renderGameOverText();
+}
+
+function getDifficultyLabelFor(key) {
+    const normalized = DIFFICULTIES[key] ? key : 'normal';
+    return t(`difficulty${normalized.charAt(0).toUpperCase()}${normalized.slice(1)}`);
+}
+
+function getArenaLabelFor(key) {
+    const arena = ARENAS[key] || ARENAS.notebook;
+    return t(arena.labelKey || arena.label);
+}
+
+function getRivalLabelFor(key) {
+    const rival = CPU_RIVALS[key] || CPU_RIVALS.nullPointer;
+    return t(rival.labelKey);
+}
+
+function renderGameOverActions() {
+    const restartButton = document.getElementById('restart-button');
+    if (!restartButton) return;
+
+    if (gameMode !== 'arcade' || !arcadeRun) {
+        restartButton.textContent = t('restart');
+    } else if (arcadeRun.awaitingNext) {
+        restartButton.textContent = t('arcadeNextFight');
+    } else {
+        restartButton.textContent = t('arcadeRetry');
+    }
+}
+
+function renderArcadeRunSummary(winText) {
+    const result = document.createElement('div');
+    const medalElement = document.createElement('div');
+    const medalTitle = document.createElement('span');
+    const medalDetail = document.createElement('small');
+    const summary = document.createElement('div');
+    const progress = document.createElement('div');
+    const results = document.createElement('div');
+    const phraseElement = document.createElement('p');
+    const lastResult = arcadeRun.results[arcadeRun.results.length - 1];
+    const runComplete = arcadeRun.results.length === ARCADE_RUN_FIGHTS.length && lastResult && lastResult.result === 'win';
+    const playerWon = lastResult && lastResult.result === 'win';
+    const medal = getPostMatchMedal(!!playerWon);
+
+    result.textContent = runComplete ? t('arcadeComplete') : (arcadeRun.awaitingNext ? t('playerWins') : t('arcadeOver'));
+    medalElement.className = 'post-match-medal';
+    medalTitle.textContent = medal.title;
+    medalDetail.textContent = medal.detail;
+    medalElement.append(medalTitle, medalDetail);
+    summary.className = 'post-match-summary arcade-run-summary';
+    progress.textContent = getArcadeProgressText();
+    results.className = 'arcade-run-results';
+
+    arcadeRun.results.forEach((record) => {
+        const row = document.createElement('div');
+        row.textContent = t('arcadeResult', {
+            fight: record.fight,
+            rival: getRivalLabelFor(record.rival),
+            difficulty: getDifficultyLabelFor(record.difficulty),
+            arena: getArenaLabelFor(record.arena),
+            score: `${record.playerRounds}-${record.cpuRounds}`,
+            result: record.result === 'win' ? t('arcadeWin') : t('arcadeLoss')
+        });
+        results.append(row);
+    });
+
+    if (arcadeRun.awaitingNext) {
+        const next = getArcadeFight();
+        const nextText = document.createElement('div');
+        nextText.className = 'arcade-next-fight';
+        nextText.textContent = t('arcadeNext', {
+            rival: getRivalLabelFor(next.rival),
+            difficulty: getDifficultyLabelFor(next.difficulty),
+            arena: getArenaLabelFor(next.arena)
+        });
+        summary.append(progress, results, nextText);
+    } else {
+        phraseElement.textContent = getPostMatchPhrase(!!playerWon);
+        summary.append(progress, results, phraseElement);
+    }
+
+    winText.replaceChildren(result, medalElement, summary);
 }
 
 function renderGameOverText() {
     const winText = document.getElementById('winner-text');
     if (!winText) return;
+
+    if (gameMode === 'arcade' && arcadeRun) {
+        renderArcadeRunSummary(winText);
+        return;
+    }
 
     const playerWon = playerRounds >= ROUNDS_TO_WIN;
     const medal = getPostMatchMedal(playerWon);
@@ -754,23 +983,77 @@ function startRound() {
     updateControlsVisibility();
 }
 
+function startArcadeFight() {
+    const fight = getArcadeFight();
+    if (!fight) return;
+
+    selectedDifficulty = fight.difficulty;
+    selectedArena = fight.arena;
+    selectedRival = fight.rival;
+    resetMatchProgress();
+    startRound();
+}
+
+function startArcadeRun() {
+    gameMode = 'arcade';
+    arcadeRun = {
+        fightIndex: 0,
+        results: [],
+        awaitingNext: false,
+        menuSelection: {
+            difficulty: selectedDifficulty,
+            arena: selectedArena,
+            rival: selectedRival
+        }
+    };
+    initializeMatchSeed();
+    startArcadeFight();
+}
+
+function continueArcadeRun() {
+    if (gameMode !== 'arcade' || !arcadeRun || !arcadeRun.awaitingNext) return;
+
+    arcadeRun.fightIndex++;
+    arcadeRun.awaitingNext = false;
+    startArcadeFight();
+}
+
+function restoreArcadeMenuSelection() {
+    if (!arcadeRun) return;
+
+    selectedDifficulty = arcadeRun.menuSelection.difficulty;
+    selectedArena = arcadeRun.menuSelection.arena;
+    selectedRival = arcadeRun.menuSelection.rival;
+    arcadeRun = null;
+    gameMode = 'versus';
+    renderLanguagePreference();
+    renderStylePreference();
+    renderRivalPreference();
+    renderArenaPreview();
+    renderSelectionSummary();
+}
+
+function retryArcadeRun() {
+    if (arcadeRun) {
+        selectedDifficulty = arcadeRun.menuSelection.difficulty;
+        selectedArena = arcadeRun.menuSelection.arena;
+        selectedRival = arcadeRun.menuSelection.rival;
+    }
+    arcadeRun = null;
+    startArcadeRun();
+}
+
 function initGame() {
     gameMode = 'versus';
     initializeMatchSeed();
-    currentRound = 1;
-    playerRounds = 0;
-    cpuRounds = 0;
-    matchStats = createMatchStats();
+    resetMatchProgress();
     startRound();
 }
 
 function startTraining() {
     gameMode = 'training';
     initializeMatchSeed();
-    currentRound = 1;
-    playerRounds = 0;
-    cpuRounds = 0;
-    matchStats = createMatchStats();
+    resetMatchProgress();
     startRound();
 }
 
@@ -824,6 +1107,7 @@ function refillTraining(type) {
 }
 
 function showMainMenu() {
+    restoreArcadeMenuSelection();
     closeAllModalDialogs();
     player1 = new Fighter(250, true);
     player2 = new Fighter(750, false);
@@ -836,10 +1120,7 @@ function showMainMenu() {
     specialFlash = null;
     statusMessage = '';
     statusTimer = 0;
-    currentRound = 1;
-    playerRounds = 0;
-    cpuRounds = 0;
-    matchStats = createMatchStats();
+    resetMatchProgress();
     roundTimerFrames = ROUND_TIMER_FRAMES;
     roundTimeMs = ROUND_TIME_MS;
     vsIntroTimer = 0;
@@ -951,6 +1232,8 @@ function update() {
         return;
     }
 
+    matchElapsedFrames++;
+
     if (hitStopFrames > 0) {
         hitStopFrames--;
         updateEffects();
@@ -989,14 +1272,7 @@ function finishRound(playerWon) {
     setFinishPoses(playerWon);
 
     if (playerRounds >= ROUNDS_TO_WIN || cpuRounds >= ROUNDS_TO_WIN) {
-        gameState = 'gameOver';
-        showStatusMessage(t('ko'), 180);
-        recordMatchResult(playerRounds >= ROUNDS_TO_WIN);
-        renderGameOverText();
-        document.getElementById('game-over').style.display = 'block';
-        updateControlsVisibility();
-        announce(t('finalAnnounce', { result: playerWon ? t('playerWins') : t('cpuWins') }));
-        openModalDialog('game-over', 'restart-button');
+        finishMatch(playerRounds >= ROUNDS_TO_WIN);
         return;
     }
 
@@ -1005,7 +1281,9 @@ function finishRound(playerWon) {
     showStatusMessage(roundMessage, 90);
     announce(roundMessage);
     updateControlsVisibility();
+    const roundMode = gameMode;
     setTimeout(() => {
+        if (gameState !== 'roundOver' || gameMode !== roundMode) return;
         currentRound++;
         startRound();
     }, 1400);
@@ -1209,6 +1487,28 @@ function updateControlsVisibility() {
     if (trainingPanel) trainingPanel.style.display = gameMode === 'training' && gameState === 'playing' ? 'block' : 'none';
     resizeCanvas();
     updateOrientationWarning();
+}
+
+function finishMatch(playerWon) {
+    if (gameState !== 'playing') return;
+
+    const record = createMatchHistoryRecord(playerWon);
+    gameState = 'gameOver';
+    showStatusMessage(t('ko'), 180);
+    recordMatchResult(playerWon);
+    appendMatchHistory(record);
+
+    if (gameMode === 'arcade' && arcadeRun) {
+        arcadeRun.results.push(record);
+        arcadeRun.awaitingNext = playerWon && arcadeRun.fightIndex < ARCADE_RUN_FIGHTS.length - 1;
+    }
+
+    renderGameOverActions();
+    renderGameOverText();
+    document.getElementById('game-over').style.display = 'block';
+    updateControlsVisibility();
+    announce(t('finalAnnounce', { result: playerWon ? t('playerWins') : t('cpuWins') }));
+    openModalDialog('game-over', 'restart-button');
 }
 
 function moveDialogFocus(direction) {
@@ -1474,7 +1774,12 @@ function renderInputBindingsDialog(result = null) {
 function setupRestartButton() {
     document.getElementById('restart-button').addEventListener('click', () => {
         playUISound('start');
-        initGame();
+        if (gameMode === 'arcade') {
+            if (arcadeRun && arcadeRun.awaitingNext) continueArcadeRun();
+            else retryArcadeRun();
+        } else {
+            initGame();
+        }
     });
     document.getElementById('menu-button').addEventListener('click', () => {
         playUISound('menu');
@@ -1504,6 +1809,10 @@ function setupMainMenu() {
     document.getElementById('training-button').addEventListener('click', () => {
         playUISound('start');
         startTraining();
+    });
+    document.getElementById('arcade-run-button').addEventListener('click', () => {
+        playUISound('start');
+        startArcadeRun();
     });
     document.getElementById('back-button').addEventListener('click', () => {
         playUISound('menu');

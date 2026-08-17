@@ -98,6 +98,8 @@ No `npm install`, `package.json`, bundler, or backend server is required.
 4. Win rounds by reducing the CPU health to `0%` or having more health when time runs out.
 5. Win 2 rounds to finish the match.
 
+`CARRERA ARCADE / ARCADE RUN` plays five fixed matches, each best-of-three. The route escalates through `FACIL`, `NORMAL`, `NORMAL`, `DIFICIL`, and `DIFICIL`, ending with `BOSS 500`. Losing any match ends the run; winning all five shows a `5/5` summary. Runs are not saved or resumable, and each completed match contributes one local result.
+
 ## Controls
 
 | Action | Keyboard | Touch | Note |
@@ -225,7 +227,9 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - `Reducir movimiento` option persisted in `glitchDuelReducedMotion`, with fallback reads from `xkcdKombatReducedMotion`; the system `prefers-reduced-motion` value is used only when no manual choice exists.
 - Pause screen with round, score, time, difficulty, arena, and controls summary.
 - Game over screen with final summary, post-match medal, `REINICIAR` / `RESTART`, and `MENU`.
+- Arcade Run with five deterministic matches, click-to-continue intermissions, fixed difficulty progression, and a localized final summary.
 - Local stats with wins, losses, current streak, and best streak, persisted in `glitchDuelStats` with fallback reads from `xkcdKombatStats`.
+- Bounded local match history, version `1`, stores up to 25 completed versus or arcade matches under `glitchDuelMatchHistory`; training matches are excluded.
 - Visible focus and ARIA labels on main controls, with modal focus entry, focus containment, focus restoration, and inert background surfaces for help, onboarding, pause, and game over.
 - Browser zoom remains available; combat events expose short, non-per-frame announcements through an ARIA live region.
 - Native button-based touch controls with Pointer Events, safe areas, prioritized landscape view, and degraded portrait layout with orientation warning.
@@ -237,6 +241,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 
 - Differentiated characters: human with blue `P1` badge and band; CPU with red `AI` badge, visor, and antenna.
 - CPU visual details vary by difficulty.
+- Difficulty keeps attack windows readable: Easy retreats less and all profiles cap reactive blocking.
 - Animated high-contrast health bars with threshold colors.
 - High-contrast energy bars with a visual marker when the special is ready.
 - `ESPECIAL LISTO` indicator above the character when energy is full.
