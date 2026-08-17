@@ -943,13 +943,21 @@ test('static HTML contract preserves local assets, script order, controls, and a
 
     requiredIds.forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260817">/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260817-compact">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
-    ['arena-shell', 'game-toolbar', 'game-announcer', 'duel-settings', 'selection-summary'].forEach((id) => {
+    ['arena-shell', 'game-toolbar', 'game-announcer', 'duel-settings', 'selection-summary', 'menu-footer'].forEach((id) => {
         assert.match(html, new RegExp(`id="${id}"`));
     });
     assert.match(html, /<details id="duel-settings" class="duel-settings" open>/);
+    assert.match(html, /id="arena-select" aria-describedby="arena-preview-text"/);
+    assert.match(html, /id="style-select" aria-describedby="style-preview-text"/);
+    assert.match(html, /id="rival-select" aria-describedby="rival-preview-text"/);
+    assert.doesNotMatch(html, /id="arena-preview"[^>]*aria-live=/);
+    assert.doesNotMatch(html, /id="selection-summary"[^>]*aria-live=/);
+    assert.equal((html.match(/class="menu-footer"/g) || []).length, 1);
+    assert.equal((html.match(/id="controls-summary"/g) || []).length, 1);
+    assert.equal((html.match(/class="github-link"/g) || []).length, 1);
     assert.doesNotMatch(html, /PUNCH<br>\(J\)|KICK<br>\(K\)|SPECIAL<br>\(L\)/);
     Object.keys(api.ARENAS).forEach((arena) => {
         assert.match(html, new RegExp(`<option value="${arena}"`));

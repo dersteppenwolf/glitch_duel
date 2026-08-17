@@ -211,7 +211,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 
 ### UI/UX
 
-- Main menu with a primary start action, grouped duel settings, arena preview, style/rival summary, compact stats, and responsive two-column desktop layout.
+- Compact main menu with a dominant start action, grouped duel settings, a shorter arena preview, parallel style/rival summary, one-row secondary actions on wide screens, compact stats, and a responsive two-column desktop layout.
 - Action-based input with persistent keyboard remapping, standard gamepad combat/UI input, and source-safe keyboard/touch/gamepad release handling.
 - Dedicated controls dialog with localized action rows, conflict/reserved-key feedback, reset-to-defaults, visible focus, and internal scrolling on short screens.
 - Duel settings can collapse on narrow screens so starting a match stays discoverable.

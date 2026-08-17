@@ -1047,11 +1047,11 @@ summary:active {
 }
 
 #main-menu .main-menu-card {
-    width: min(920px, calc(100vw - 32px));
+    width: min(820px, calc(100vw - 32px));
     max-height: calc(100dvh - 24px);
-    padding: 24px 28px;
+    padding: 12px 22px;
     background: var(--paper-1);
-    box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.36);
+    box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.36);
 }
 
 .menu-header {
@@ -1082,17 +1082,20 @@ summary:active {
 }
 
 #main-menu .menu-card h1 {
-    margin-top: 16px;
+    margin: 8px 0 6px;
+    font-size: clamp(38px, 6vw, 52px);
 }
 
 #main-menu .menu-intro {
-    margin-bottom: 18px !important;
+    margin-bottom: 10px !important;
+    font-size: 14px;
+    line-height: 1.2;
 }
 
 .menu-layout {
     display: grid;
-    grid-template-columns: minmax(280px, 1fr) minmax(260px, 0.85fr);
-    gap: 14px;
+    grid-template-columns: minmax(300px, 1fr) minmax(290px, 0.95fr);
+    gap: 12px;
     align-items: start;
     text-align: left;
 }
@@ -1107,9 +1110,9 @@ summary:active {
 }
 
 .duel-settings summary {
-    min-height: 42px;
+    min-height: 36px;
     box-sizing: border-box;
-    padding: 10px 12px;
+    padding: 8px 10px;
     cursor: pointer;
     background: var(--ink-900);
     color: var(--paper-0);
@@ -1125,26 +1128,26 @@ summary:active {
 
 #main-menu .menu-settings {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 4px;
     max-width: none;
     margin: 0;
-    padding: 10px;
+    padding: 4px;
 }
 
 #main-menu .difficulty-picker {
-    padding: 8px 10px;
+    padding: 4px 8px;
     font-size: 13px;
 }
 
 #main-menu .difficulty-picker select {
-    min-height: 32px;
+    min-height: 38px;
     font-size: 13px;
 }
 
 #main-menu .motion-picker {
-    min-height: 38px;
+    min-height: 40px;
     box-sizing: border-box;
-    padding: 6px 8px;
+    padding: 5px 8px;
     font-size: 12px;
 }
 
@@ -1153,33 +1156,36 @@ summary:active {
     width: auto;
     max-width: none;
     margin: 0;
-    padding: 10px;
+    padding: 8px;
     background: var(--paper-0);
 }
 
 #main-menu .arena-preview-stage {
-    height: 104px;
+    height: 74px;
 }
 
 #main-menu .arena-preview-copy strong {
-    font-size: 17px;
+    font-size: 15px;
 }
 
 #main-menu .arena-preview-copy span {
-    font-size: 13px;
+    font-size: 12px;
+    line-height: 1.2;
 }
 
 .selection-summary {
     display: grid;
-    gap: 8px;
-    margin-top: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 6px;
 }
 
 .selection-summary > div {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 2px 8px;
-    padding: 8px 10px;
+    gap: 2px 6px;
+    min-width: 0;
+    padding: 6px 8px;
     background: var(--paper-0);
     border: 2px solid var(--ink-900);
 }
@@ -1196,19 +1202,25 @@ summary:active {
 }
 
 .selection-summary strong {
-    font-size: 14px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 13px;
 }
 
 .selection-summary span:last-child {
     color: var(--graphite-600);
-    font-size: 12px;
+    min-width: 0;
+    font-size: 11px;
     font-weight: bold;
     line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 
 #main-menu .stats-summary {
     max-width: none;
-    margin-top: 12px;
+    margin-top: 8px;
+    padding: 6px 8px;
+    line-height: 1.2;
     background: var(--paper-0);
     border: var(--line-strong) solid var(--ink-900);
     font-size: 13px;
@@ -1220,7 +1232,7 @@ summary:active {
 
 #main-menu .menu-actions--primary {
     display: block;
-    margin-top: 14px;
+    margin-top: 10px;
 }
 
 #main-menu .menu-actions--primary button {
@@ -1236,13 +1248,9 @@ summary:active {
 }
 
 #main-menu .menu-actions--secondary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     max-width: none;
-    margin-top: 8px;
-}
-
-#main-menu .menu-actions--secondary button:last-child {
-    grid-column: 1 / -1;
+    margin-top: 6px;
 }
 
 #main-menu .menu-actions--secondary button {
@@ -1252,18 +1260,31 @@ summary:active {
 }
 
 .menu-controls-compact {
-    margin-top: 12px;
-    padding: 8px 10px;
-    border-top: 2px solid var(--ink-900);
+    min-width: 0;
+    margin-top: 0;
+    padding: 0;
+    border-top: 0;
     color: var(--graphite-600);
     font-size: 12px;
     font-weight: bold;
     line-height: 1.35;
-    text-align: center;
+    text-align: left;
+}
+
+#main-menu .menu-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+    padding-top: 4px;
+    border-top: 2px solid var(--ink-900);
 }
 
 #main-menu .github-link {
-    margin-top: 8px;
+    min-height: 44px;
+    box-sizing: border-box;
+    margin-top: 0;
     padding: 5px 9px;
     border: 0;
     box-shadow: none;
@@ -1284,7 +1305,7 @@ summary:active {
 
 @media (max-width: 760px) {
     #main-menu .main-menu-card {
-        padding: 18px;
+        padding: 16px;
     }
 
     .menu-header {
@@ -1303,7 +1324,7 @@ summary:active {
     }
 
     #main-menu .menu-settings {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     #main-menu .motion-picker {
@@ -1320,6 +1341,15 @@ summary:active {
 
     #main-menu .menu-actions--secondary button:last-child {
         grid-column: 1 / -1;
+    }
+
+    #main-menu .menu-footer {
+        grid-template-columns: 1fr;
+        justify-items: stretch;
+    }
+
+    #main-menu .github-link {
+        justify-self: start;
     }
 
     .binding-row {
@@ -1340,6 +1370,32 @@ summary:active {
     #pause-button {
         padding: 6px 9px;
         font-size: 11px;
+    }
+}
+
+@media (min-width: 620px) and (max-width: 760px) {
+    #main-menu .menu-actions--secondary {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    #main-menu .menu-actions--secondary button:last-child {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 559px) {
+    #main-menu .menu-settings,
+    .selection-summary,
+    #main-menu .menu-actions--secondary {
+        grid-template-columns: 1fr;
+    }
+
+    #main-menu .menu-actions--secondary button:last-child {
+        grid-column: auto;
+    }
+
+    .menu-controls-compact {
+        text-align: center;
     }
 }
 
