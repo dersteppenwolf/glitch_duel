@@ -124,9 +124,9 @@ class Fighter {
         this.frame++;
     }
 
-    updatePlayerControls(keys, opponent) {
-        const blockPressed = !!(keys.s || keys.i || keys.block);
-        const crouchPressed = !!(keys.c || keys.arrowdown || keys.crouch);
+    updatePlayerControls(actions, opponent) {
+        const blockPressed = !!actions.block;
+        const crouchPressed = !!actions.crouch;
 
         if (blockPressed) {
             this.state = 'block';
@@ -135,26 +135,26 @@ class Fighter {
             this.state = 'crouch';
             this.velX = 0;
         } else {
-            if (keys.a || keys.arrowleft || keys.left) {
+            if (actions.left) {
                 this.velX = -5 * this.moveSpeedModifier;
                 if (this.onGround && this.attackCooldown === 0) this.state = 'walk';
             }
 
-            if (keys.d || keys.arrowright || keys.right) {
+            if (actions.right) {
                 this.velX = 5 * this.moveSpeedModifier;
                 if (this.onGround && this.attackCooldown === 0) this.state = 'walk';
             }
 
-            if ((keys.w || keys.arrowup || keys.jump) && this.onGround) {
+            if (actions.jump && this.onGround) {
                 this.velY = -18;
                 this.onGround = false;
                 this.state = 'jump';
             }
         }
 
-        const punchPressed = !!(keys.j || keys.punch);
-        const kickPressed = !!(keys.k || keys.kick);
-        const specialPressed = !!(keys.l || keys.special);
+        const punchPressed = !!actions.punch;
+        const kickPressed = !!actions.kick;
+        const specialPressed = !!actions.special;
 
         if (specialPressed && !this.prevSpecialPressed) this.attack('special', opponent);
         if (punchPressed && !this.prevPunchPressed) this.handleAttackCommand(this.onGround ? 'punch' : 'airPunch', opponent);
@@ -211,7 +211,7 @@ class Fighter {
     }
 
     showComboHint(input) {
-        this.comboHintText = input === 'punch' ? 'J...' : 'K...';
+        this.comboHintText = input === 'punch' ? `${t('punch')}...` : `${t('kick')}...`;
         this.comboHintTimer = Math.min(COMBO_WINDOW_FRAMES, 24);
     }
 

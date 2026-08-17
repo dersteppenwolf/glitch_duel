@@ -361,6 +361,66 @@ input:focus-visible,
     padding: 22px;
 }
 
+.controls-card {
+    width: min(620px, calc(100vw - 32px));
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+}
+
+.bindings-list {
+    display: grid;
+    gap: 7px;
+    margin: 14px auto;
+    text-align: left;
+}
+
+.binding-row {
+    display: grid;
+    grid-template-columns: minmax(110px, 0.8fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 10px;
+    padding: 7px 9px;
+    border: 2px solid var(--ink-900, #111);
+    background: var(--paper-0, #fffdf5);
+}
+
+.binding-action {
+    font-size: 13px;
+}
+
+.binding-values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.binding-button {
+    min-width: 52px;
+    min-height: 34px;
+    padding: 5px 8px;
+    border: 2px solid #000;
+    background: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.binding-button--add {
+    min-width: 34px;
+    background: var(--arcade-yellow, #ffd447);
+}
+
+.binding-status {
+    min-height: 22px;
+    color: var(--graphite-600, #62605a);
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.controls-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .help-card h1 {
     margin: 10px 0 6px;
     font-size: clamp(34px, 7vw, 54px);
@@ -1181,6 +1241,10 @@ summary:active {
     margin-top: 8px;
 }
 
+#main-menu .menu-actions--secondary button:last-child {
+    grid-column: 1 / -1;
+}
+
 #main-menu .menu-actions--secondary button {
     min-height: 44px;
     padding: 10px 12px;
@@ -1252,6 +1316,15 @@ summary:active {
 
     #main-menu .menu-actions--secondary {
         grid-template-columns: 1fr 1fr;
+    }
+
+    #main-menu .menu-actions--secondary button:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .binding-row {
+        grid-template-columns: 1fr;
+        gap: 5px;
     }
 
     #game-toolbar {

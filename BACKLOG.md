@@ -18,9 +18,9 @@ Modern browser APIs must use capability detection, preserve graceful fallbacks, 
 
 | Order | # | Improvement | Why now |
 | --- | --- | --- | --- |
-| 1 | 4 | Action-based input, gamepad, and remapping | Builds on the stabilized input lifecycle and touch controls. |
+| 1 | 12 | Fullscreen and wake lock | Small capability-detected accessibility/distribution improvement with no gameplay dependency. |
 
-Next recommended improvement: `#4 Action-based input, gamepad, and remapping`.
+Next recommended improvement: `#12 Fullscreen and wake lock`.
 
 ## Correctness And Release Safety
 
@@ -54,7 +54,7 @@ Next recommended improvement: `#4 Action-based input, gamepad, and remapping`.
 
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
-| 4 | Medium | Ready | L | - | Action-based input, gamepad, and remapping | Introduce one action mapping layer, then add Gamepad API and persistent keyboard mappings. Absorbs former `#5`. |
+| 4 | Medium | Completed | L | - | Action-based input, gamepad, and remapping | Canonical action layer, standard Gamepad API input, source-safe lifecycle cleanup, and persistent physical-key mappings with accessible remapping UI. Absorbs former `#5`. |
 | 12 | Medium | Ready | S | - | Fullscreen and wake lock | Use capability detection, release wake lock outside play, and preserve current layout fallback. |
 | 24 | Medium | Ready | M | - | More visual help | Add diagrams for keyboard, touch, combos, and special after onboarding structure exists. |
 | 25 | Medium | Partial | L | - | Advanced accessibility preferences | Dialog focus entry/restore, focus containment, inert hidden overlays, system reduced-motion fallback, and discrete announcements delivered; contrast/color preferences remain. |
@@ -99,6 +99,7 @@ AI changes stay inside the current rule-based architecture. Each stage must incl
 | --- | --- | --- | --- |
 | 2 | Merged | Optional visual debug | Consolidated with `#10` as one developer overlay item. |
 | 5 | Merged | Remappable controls | Consolidated into `#4` behind an action-based input abstraction. |
+| 4 | Completed | Action-based input, gamepad, and remapping | Canonical keyboard/touch/gamepad actions, validated persistent physical-key remapping, standard controller UI navigation, and interruption-safe source aggregation delivered in plan 0037. |
 | 11 | Merged | Collision regression tests | Consolidated into `#63` so the collision fix cannot land without posture and corner regression coverage. |
 | 62 | Completed | Frame-rate-independent combat simulation | Bounded fixed 60 Hz combat steps keep movement, combat timers, AI, and round time equivalent at 30/60/120 FPS. |
 | 63 | Completed | Posture-specific pushboxes and collision regressions | Fighter separation uses `getPushBox()` with standing, crouch, air, facing, and corner coverage. |

@@ -2,7 +2,7 @@
 
 **May the glitch be with you.**
 
-Line-art arcade fighting web game built with plain HTML, CSS, and JavaScript on Canvas. The human player fights a CPU in best-of-3 rounds with combos, air attacks, fighter styles, blocking, a special attack, themed arenas, touch controls, and a Spanish/English interface.
+Line-art arcade fighting web game built with plain HTML, CSS, and JavaScript on Canvas. The human player fights a CPU in best-of-3 rounds with combos, air attacks, fighter styles, blocking, a special attack, themed arenas, keyboard remapping, standard gamepad support, touch controls, and a Spanish/English interface.
 
 Play online: [https://dersteppenwolf.github.io/glitch_duel/](https://dersteppenwolf.github.io/glitch_duel/)
 
@@ -113,6 +113,23 @@ No `npm install`, `package.json`, bundler, or backend server is required.
 | Special | L | SPECIAL | Requires full energy and consumes the full bar. |
 | Pause / resume | P / Esc | PAUSA | Shows the match summary. |
 
+Keyboard bindings use physical `KeyboardEvent.code` values and can be changed from `CONTROLES / CONTROLS` in the main menu. Valid mappings persist locally under `glitchDuelKeyboardBindings`; invalid data safely falls back to defaults. `Escape`, `Tab`, debug backtick, browser shortcuts, and modifier combinations remain reserved.
+
+Standard gamepad defaults:
+
+| Action | Gamepad |
+| --- | --- |
+| Move left/right | Left stick or D-pad |
+| Jump | A / button 0 or D-pad up |
+| Crouch | D-pad down |
+| Punch | X / button 2 |
+| Kick | B / button 1 |
+| Special | Y / button 3 |
+| Block | Left/right bumper |
+| Pause | Start / button 9 |
+
+Gamepad remapping is not included. Unsupported or non-standard mappings are ignored without blocking keyboard or touch play. A gamepad may not unlock Web Audio until the browser receives a keyboard or pointer gesture.
+
 Available combos:
 
 | Combo | Result |
@@ -123,7 +140,7 @@ Available combos:
 
 The second combo key must be pressed within the combo window. If you wait too long, the normal attack for the pressed key comes out instead.
 
-Energy charges when hitting, taking damage, or blocking. `L` is not a normal strike: it only activates the special when the bar is full.
+Energy charges when hitting, taking damage, or blocking. The special binding is not a normal strike: it only activates the special when the bar is full.
 
 ## Fighter Styles
 
@@ -195,6 +212,8 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 ### UI/UX
 
 - Main menu with a primary start action, grouped duel settings, arena preview, style/rival summary, compact stats, and responsive two-column desktop layout.
+- Action-based input with persistent keyboard remapping, standard gamepad combat/UI input, and source-safe keyboard/touch/gamepad release handling.
+- Dedicated controls dialog with localized action rows, conflict/reserved-key feedback, reset-to-defaults, visible focus, and internal scrolling on short screens.
 - Duel settings can collapse on narrow screens so starting a match stays discoverable.
 - Help screen.
 - Persistent language selector.
@@ -247,6 +266,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - i18n is separated in `src/i18n.js`.
 - Unit tests use `node:test` with DOM/canvas/audio mocks.
 - Use `?debug=1` or `` ` `` during a match to show developer combat diagnostics; use `?seed=<uint32>` to reproduce simulation randomness.
+- `src/input.js` owns canonical actions, physical keyboard bindings, pointer/gamepad sources, axis hysteresis, persistence, and input lifecycle cleanup.
 
 ## Run
 
@@ -349,6 +369,7 @@ node --test tests\game.test.js
 ### Basic Smoke
 
 - The main menu loads.
+- `CONTROLES` / `CONTROLS` opens remapping; a valid key change persists after reload and reset restores defaults.
 - `INICIAR JUEGO` / `START GAME` starts a match.
 - `AYUDA` / `HELP` opens help.
 - `VOLVER` / `BACK` returns to the menu.
@@ -360,6 +381,7 @@ node --test tests\game.test.js
 ### Combat Smoke
 
 - `A/D/W` and arrow keys move/jump.
+- A standard gamepad can move, jump, crouch, block, punch, kick, use special, pause, and confirm menu actions.
 - `C` and down arrow crouch.
 - `S` and `I` block.
 - `J`, `K`, and `L` work according to energy/cooldown.
@@ -384,6 +406,7 @@ node --test tests\game.test.js
 - The eight arenas look different, with foreground props that do not block fighters, HUD, or combat feedback.
 - On mobile landscape, HUD, pause, arena, and touch controls are visible without critical overlaps.
 - Touch controls are native buttons: holding two controls works, and cancelling or leaving a control does not retain input.
+- Keyboard, touch, and gamepad can hold the same action without one source releasing another; blur, hidden pages, pause, and controller disconnect release all sources.
 - On portrait phones, the orientation hint appears and the arena remains usable above the controls.
 - On low-height screens, menu, help, pause, and game over can show all buttons with internal scroll when needed.
 - The mode label and pause control share a toolbar aligned with the canvas.
@@ -400,6 +423,7 @@ node --test tests\game.test.js
 | `src/styles.css` | Layout, responsive behavior, visible focus, overlays, and touch controls. |
 | `src/i18n.js` | `es`/`en` dictionary, language detection, persistence, and `t(...)`. |
 | `src/config.js` | Canvas, logical dimensions, attacks, difficulty, and arenas. |
+| `src/input.js` | Canonical actions, keyboard bindings, pointer/gamepad sources, persistence, and polling. |
 | `src/audio.js` | Web Audio initialization and code-generated sounds. |
 | `src/effects.js` | Floating text and impact particles. |
 | `src/ai.js` | Testable CPU decision logic. |
@@ -417,6 +441,7 @@ node --test tests\game.test.js
 ```html
 <script src="i18n.js"></script>
 <script src="config.js"></script>
+<script src="input.js"></script>
 <script src="audio.js"></script>
 <script src="effects.js"></script>
 <script src="ai.js"></script>
@@ -451,6 +476,7 @@ The tests cover, among other points:
 
 - Responsive resize and DPR backing store.
 - Keyboard, touch, and arrow controls.
+- Canonical action aggregation, physical-code keyboard remapping, persistence validation, standard gamepad mapping, axis hysteresis, and modal cancel routing.
 - Blocking with `S` and `I`.
 - Crouch and block precedence.
 - Strikes, combos, special, energy, and cooldowns.
@@ -481,6 +507,7 @@ Test limitations:
 | Public URL loads without styles | Confirm the workflow publishes `src/` and not the repository root. |
 | Scripts do not load locally | Serve from the root with `python -m http.server 8000` and open `http://localhost:8000/src/`. |
 | Audio does not play | Click or press a key first; Web Audio initializes after user interaction. |
+| Gamepad audio does not start | Perform one keyboard, mouse, or touch gesture; browsers do not consistently treat gamepad polling as user activation. |
 | Touch controls do not appear | They only show during `playing` and on touch devices or browsers that expose touch. |
 | Tests fail because of syntax | Run `node --check` on the files in `src/` to find the exact file. |
 
@@ -515,4 +542,5 @@ Test limitations:
 | Arena preview | Initial menu with mini-preview, name, and description per arena. |
 | Arcade VS intro | `P1 VS AI` overlay with round, difficulty, and arena before each round. |
 | i18n | Spanish/English with autodetection and persistence. |
+| Input architecture | Canonical actions, persistent keyboard remapping, standard gamepad input, and source-safe lifecycle cleanup. |
 | Technical architecture | AI/render/i18n split and tests with `node:test`. |

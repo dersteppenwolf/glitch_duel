@@ -144,7 +144,8 @@ function loadGame(options = {}) {
     const navigatorMock = {
         maxTouchPoints: 0,
         language: options.language,
-        languages: options.languages
+        languages: options.languages,
+        getGamepads: options.getGamepads || (() => options.gamepads || [])
     };
     const context = {
         console,
@@ -189,7 +190,7 @@ function loadGame(options = {}) {
 
     context.globalThis = context;
 
-    const sourceFiles = ['i18n.js', 'config.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'arena_render.js', 'hud_render.js', 'game.js'];
+    const sourceFiles = ['i18n.js', 'config.js', 'input.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'arena_render.js', 'hud_render.js', 'game.js'];
     const source = sourceFiles
         .map((file) => fs.readFileSync(path.join(__dirname, '..', 'src', file), 'utf8'))
         .join('\n');
@@ -232,6 +233,21 @@ function loadGame(options = {}) {
             showOnboardingIfNeeded,
             completeOnboarding,
             clearActiveInput,
+            getInputBindings,
+            resetInputBindings,
+            setInputBinding,
+            setInputSource,
+            clearInputSource,
+            clearAllInputSources,
+            getInputSnapshot,
+            getInputActionForCode,
+            pollInputGamepads,
+            beginInputBindingCapture,
+            captureInputBinding,
+            renderInputBindingsDialog,
+            handleGamepadEvents,
+            showControlsScreen,
+            hideControlsScreen,
             setupMobileControls,
             setupKeyboardControls,
             setDifficulty,
@@ -268,6 +284,7 @@ function loadGame(options = {}) {
                 player1,
                 player2,
                 keys: { ...keys },
+                 inputSnapshot: getInputSnapshot(),
                 activePointerCount: activePointers.size,
                 floatingTexts,
                 impactParticles,
@@ -430,7 +447,7 @@ test('J triggers punch damage when opponent is in range', () => {
     const { api } = loadGame();
     const { player, opponent } = createFighters(api, 100, 170);
 
-    player.updatePlayerControls({ j: true }, opponent);
+    player.updatePlayerControls({ punch: true }, opponent);
 
     assert.equal(player.state, 'punch');
     assert.equal(player.attackCooldown, 12);
@@ -442,7 +459,7 @@ test('K triggers kick damage when opponent is in range', () => {
     const { api } = loadGame();
     const { player, opponent } = createFighters(api, 100, 220);
 
-    player.updatePlayerControls({ k: true }, opponent);
+    player.updatePlayerControls({ kick: true }, opponent);
 
     assert.equal(player.state, 'kick');
     assert.equal(player.attackCooldown, 24);
@@ -456,7 +473,7 @@ test('air attacks use punch and kick inputs once per jump', () => {
 
     player.onGround = false;
     player.y = 320;
-    player.updatePlayerControls({ j: true }, opponent);
+    player.updatePlayerControls({ punch: true }, opponent);
 
     assert.equal(player.state, 'airPunch');
     assert.equal(player.airAttackUsed, true);
@@ -464,7 +481,7 @@ test('air attacks use punch and kick inputs once per jump', () => {
 
     player.attackCooldown = 0;
     player.prevKickPressed = false;
-    player.updatePlayerControls({ k: true }, opponent);
+    player.updatePlayerControls({ kick: true }, opponent);
 
     assert.equal(player.state, 'airPunch');
     assert.equal(opponent.health, 91);
@@ -484,7 +501,7 @@ test('fighter styles apply local movement damage energy and health tuning', () =
     const opponent = new api.Fighter(190, false);
 
     fast.applyStyle('fast');
-    fast.updatePlayerControls({ d: true }, opponent);
+    fast.updatePlayerControls({ right: true }, opponent);
     assert(Math.abs(fast.velX - 5.7) < 0.0001);
 
     heavy.applyStyle('heavy');
@@ -562,10 +579,10 @@ test('simple combos increase damage and cooldown', () => {
     const { api } = loadGame();
     const { player, opponent } = createFighters(api, 100, 170);
 
-    player.updatePlayerControls({ j: true }, opponent);
+    player.updatePlayerControls({ punch: true }, opponent);
     player.updatePlayerControls({}, opponent);
     player.attackCooldown = 0;
-    player.updatePlayerControls({ j: true }, opponent);
+    player.updatePlayerControls({ punch: true }, opponent);
 
     assert.equal(player.state, 'punch');
     assert.equal(player.attackCooldown, 18);
@@ -577,9 +594,9 @@ test('first combo input shows a brief combo hint without combo flash', () => {
     const player = new api.Fighter(100, true);
     const opponent = new api.Fighter(170, false);
 
-    player.updatePlayerControls({ j: true }, opponent);
+    player.updatePlayerControls({ punch: true }, opponent);
 
-    assert.equal(player.comboHintText, 'J...');
+    assert.equal(player.comboHintText, 'Punetazo...');
     assert.equal(player.comboHintTimer, 24);
     assert.equal(player.comboFlashTimer, 0);
     assert.equal(api.getState().floatingTexts.some((text) => text.text === 'COMBO x2'), false);
@@ -590,10 +607,10 @@ test('J,J combo creates combo-specific visual feedback', () => {
     const player = new api.Fighter(100, true);
     const opponent = new api.Fighter(170, false);
 
-    player.updatePlayerControls({ j: true }, opponent);
+    player.updatePlayerControls({ punch: true }, opponent);
     player.updatePlayerControls({}, opponent);
     player.attackCooldown = 0;
-    player.updatePlayerControls({ j: true }, opponent);
+    player.updatePlayerControls({ punch: true }, opponent);
 
     assert.equal(player.lastAttackType, 'comboPunch');
     assert.equal(player.comboFlashTimer, 18);
@@ -606,10 +623,10 @@ test('J,K combo creates punch kick visual feedback', () => {
     const player = new api.Fighter(100, true);
     const opponent = new api.Fighter(220, false);
 
-    player.updatePlayerControls({ j: true }, opponent);
+    player.updatePlayerControls({ punch: true }, opponent);
     player.updatePlayerControls({}, opponent);
     player.attackCooldown = 0;
-    player.updatePlayerControls({ k: true }, opponent);
+    player.updatePlayerControls({ kick: true }, opponent);
 
     assert.equal(player.lastAttackType, 'comboKick');
     assert.equal(player.comboFlashTimer, 18);
@@ -621,10 +638,10 @@ test('K,K triggers back kick combo damage and cooldown', () => {
     const player = new api.Fighter(100, true);
     const opponent = new api.Fighter(220, false);
 
-    player.updatePlayerControls({ k: true }, opponent);
+    player.updatePlayerControls({ kick: true }, opponent);
     player.updatePlayerControls({}, opponent);
     player.attackCooldown = 0;
-    player.updatePlayerControls({ k: true }, opponent);
+    player.updatePlayerControls({ kick: true }, opponent);
 
     assert.equal(player.state, 'kick');
     assert.equal(player.attackCooldown, 36);
@@ -639,17 +656,17 @@ test('arrow keys move and jump like WASD controls', () => {
     const player = new api.Fighter(100, true);
     const opponent = new api.Fighter(220, false);
 
-    player.updatePlayerControls({ arrowright: true }, opponent);
+    player.updatePlayerControls({ right: true }, opponent);
     assert.equal(player.velX, 5);
     assert.equal(player.state, 'walk');
 
     player.velX = 0;
     player.state = 'idle';
-    player.updatePlayerControls({ arrowleft: true }, opponent);
+    player.updatePlayerControls({ left: true }, opponent);
     assert.equal(player.velX, -5);
     assert.equal(player.state, 'walk');
 
-    player.updatePlayerControls({ arrowup: true }, opponent);
+    player.updatePlayerControls({ jump: true }, opponent);
     assert.equal(player.velY, -18);
     assert.equal(player.onGround, false);
     assert.equal(player.state, 'jump');
@@ -660,7 +677,7 @@ test('crouch stops movement and prevents attacks', () => {
     const player = new api.Fighter(100, true);
     const opponent = new api.Fighter(170, false);
 
-    player.updatePlayerControls({ c: true, arrowright: true, j: true }, opponent);
+    player.updatePlayerControls({ crouch: true, right: true, punch: true }, opponent);
 
     assert.equal(player.state, 'crouch');
     assert.equal(player.velX, 0);
@@ -673,7 +690,7 @@ test('block takes precedence over crouch', () => {
     const player = new api.Fighter(100, true);
     const opponent = new api.Fighter(170, false);
 
-    player.updatePlayerControls({ s: true, c: true }, opponent);
+    player.updatePlayerControls({ block: true, crouch: true }, opponent);
 
     assert.equal(player.state, 'block');
 });
@@ -683,7 +700,7 @@ test('I key blocks near attack controls', () => {
     const player = new api.Fighter(100, true);
     const opponent = new api.Fighter(170, false);
 
-    player.updatePlayerControls({ i: true }, opponent);
+    player.updatePlayerControls({ block: true }, opponent);
 
     assert.equal(player.state, 'block');
     assert.equal(player.velX, 0);
@@ -694,7 +711,7 @@ test('crouch lowers body box under punches but remains vulnerable to kicks', () 
     const attacker = new api.Fighter(100, true);
     const defender = new api.Fighter(220, false);
 
-    defender.updatePlayerControls({ arrowdown: true }, attacker);
+    defender.updatePlayerControls({ crouch: true }, attacker);
     const crouchBox = defender.getBodyBox();
 
     assert.equal(defender.state, 'crouch');
@@ -782,13 +799,13 @@ test('blur and hidden pages clear input and pause an active match without resumi
 
     api.setupKeyboardControls();
     startPlayingGame(api);
-    windowListeners.keydown({ key: 'd', preventDefault() {} });
-    assert.equal(api.getState().keys.d, true);
+    windowListeners.keydown({ key: 'd', code: 'KeyD', preventDefault() {} });
+    assert.equal(api.getState().keys.right, true);
 
     windowListeners.blur();
     assert.equal(Object.keys(api.getState().keys).length, 0);
 
-    windowListeners.keydown({ key: 'a', preventDefault() {} });
+    windowListeners.keydown({ key: 'a', code: 'KeyA', preventDefault() {} });
     context.document.hidden = true;
     documentListeners.visibilitychange();
     assert.equal(api.getState().gameState, 'paused');
@@ -823,6 +840,91 @@ test('pointer controls support simultaneous input and release cancellation safel
     assert.equal(api.getState().activePointerCount, 0);
 });
 
+test('canonical actions preserve held input across independent sources', () => {
+    const { api } = loadGame();
+
+    api.setInputSource('keyboard:KeyA', 'left', true);
+    api.setInputSource('pointer:1', 'left', true);
+    api.clearInputSource('pointer:1');
+    assert.equal(api.getInputSnapshot().left, true);
+
+    api.clearInputSource('keyboard:KeyA');
+    assert.equal(api.getInputSnapshot().left, false);
+});
+
+test('keyboard mappings use physical codes and persist safely', () => {
+    const first = loadGame();
+    assert.equal(first.api.getInputActionForCode('KeyJ'), 'punch');
+    assert.equal(first.api.setInputBinding('punch', 0, 'KeyQ').ok, true);
+    const saved = first.context.window.localStorage.getItem('glitchDuelKeyboardBindings');
+    const second = loadGame({ storage: { glitchDuelKeyboardBindings: saved } });
+    assert.equal(second.api.getInputActionForCode('KeyQ'), 'punch');
+    assert.equal(second.api.getInputActionForCode('KeyJ'), null);
+
+    const invalid = loadGame({ storage: { glitchDuelKeyboardBindings: '{broken' } });
+    assert.equal(invalid.api.getInputActionForCode('KeyJ'), 'punch');
+    assert.equal(invalid.api.setInputBinding('punch', 0, 'Escape').reason, 'reserved');
+    invalid.api.beginInputBindingCapture('punch', 0);
+    assert.equal(invalid.api.captureInputBinding({ code: 'KeyQ', ctrlKey: true }).reason, 'reserved');
+});
+
+test('keyboard events become canonical actions and release by source code', () => {
+    const { api, windowListeners } = loadGame();
+    api.setupKeyboardControls();
+    startPlayingGame(api);
+
+    windowListeners.keydown({ key: 'j', code: 'KeyJ', preventDefault() {} });
+    assert.equal(api.getInputSnapshot().punch, true);
+    windowListeners.keyup({ key: 'j', code: 'KeyJ' });
+    assert.equal(api.getInputSnapshot().punch, false);
+});
+
+test('localized control summaries reflect the current keyboard bindings', () => {
+    const { api, elements } = loadGame();
+    api.setInputBinding('punch', 0, 'KeyQ');
+    api.renderLanguage();
+    assert.match(elements.get('controls-summary').textContent, /Q/);
+    assert.doesNotMatch(elements.get('controls-summary').textContent, /J golpe/);
+});
+
+test('standard gamepad maps combat actions, UI edges, and neutralizes held input after clear', () => {
+    const buttons = Array.from({ length: 16 }, () => ({ pressed: false, value: 0 }));
+    const pad = { mapping: 'standard', buttons, axes: [0, 0] };
+    const { api } = loadGame({ getGamepads: () => [pad] });
+
+    api.pollInputGamepads();
+    buttons[2].pressed = true;
+    assert.equal(api.pollInputGamepads().confirm, false);
+    assert.equal(api.getInputSnapshot().punch, true);
+
+    api.clearAllInputSources();
+    assert.equal(api.pollInputGamepads().confirm, false);
+    assert.equal(api.getInputSnapshot().punch, false);
+    buttons[2].pressed = false;
+    api.pollInputGamepads();
+    buttons[2].pressed = true;
+    api.pollInputGamepads();
+    assert.equal(api.getInputSnapshot().punch, true);
+
+    buttons[2].pressed = false;
+    buttons[9].pressed = true;
+    assert.equal(api.pollInputGamepads().start, true);
+    assert.equal(api.pollInputGamepads().start, false);
+});
+
+test('gamepad cancel follows controls and help modal policy', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+
+    api.showControlsScreen();
+    assert.equal(api.getState().modalId, 'controls-screen');
+    api.handleGamepadEvents({ cancel: true });
+    assert.equal(api.getState().modalId, 'main-menu');
+
+    api.showHelpScreen();
+    api.handleGamepadEvents({ cancel: true });
+    assert.equal(api.getState().modalId, 'main-menu');
+});
+
 test('touch controls are native buttons with stable accessible IDs', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.html'), 'utf8');
     const controlIds = ['left', 'right', 'jump', 'crouch', 'block', 'punch', 'kick', 'special'];
@@ -835,19 +937,20 @@ test('touch controls are native buttons with stable accessible IDs', () => {
 
 test('static HTML contract preserves local assets, script order, controls, and arena inventory', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.html'), 'utf8');
-    const requiredIds = ['game', 'main-menu', 'help-screen', 'pause-screen', 'onboarding-screen', 'training-panel', 'start-button', 'training-button', 'arena-select', 'rival-select'];
-    const scripts = ['i18n.js', 'config.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'arena_render.js', 'hud_render.js', 'game.js'];
+    const requiredIds = ['game', 'main-menu', 'help-screen', 'controls-screen', 'pause-screen', 'onboarding-screen', 'training-panel', 'start-button', 'training-button', 'controls-button', 'arena-select', 'rival-select'];
+    const scripts = ['i18n.js', 'config.js', 'input.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'arena_render.js', 'hud_render.js', 'game.js'];
     const { api } = loadGame();
 
     requiredIds.forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260802">/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260817">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
     ['arena-shell', 'game-toolbar', 'game-announcer', 'duel-settings', 'selection-summary'].forEach((id) => {
         assert.match(html, new RegExp(`id="${id}"`));
     });
     assert.match(html, /<details id="duel-settings" class="duel-settings" open>/);
+    assert.doesNotMatch(html, /PUNCH<br>\(J\)|KICK<br>\(K\)|SPECIAL<br>\(L\)/);
     Object.keys(api.ARENAS).forEach((arena) => {
         assert.match(html, new RegExp(`<option value="${arena}"`));
         const key = `arena${arena.charAt(0).toUpperCase()}${arena.slice(1)}`;
@@ -1044,7 +1147,7 @@ test('special attack consumes full energy and deals heavy damage', () => {
     const { player, opponent } = createFighters(api, 100, 220);
     giveEnergy(player);
 
-    player.updatePlayerControls({ l: true }, opponent);
+    player.updatePlayerControls({ special: true }, opponent);
 
     assert.equal(player.state, 'special');
     assert.equal(player.energy, 0);
@@ -1071,7 +1174,7 @@ test('hitboxes prevent damage when opponent body is outside attack box', () => {
     const opponent = new api.Fighter(170, false);
     opponent.y = 160;
 
-    player.updatePlayerControls({ j: true }, opponent);
+    player.updatePlayerControls({ punch: true }, opponent);
 
     assert.equal(player.state, 'punch');
     assert.equal(opponent.health, 100);

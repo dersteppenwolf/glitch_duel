@@ -49,7 +49,7 @@ let activeDialog = null;
 let dialogReturnFocus = null;
 let specialReadyAnnounced = false;
 const VS_INTRO_FRAMES = 90;
-const MODAL_SURFACE_IDS = ['arena-shell', 'orientation-warning', 'main-menu', 'help-screen', 'onboarding-screen', 'pause-screen', 'controls', 'training-panel', 'game-over'];
+const MODAL_SURFACE_IDS = ['arena-shell', 'orientation-warning', 'main-menu', 'help-screen', 'controls-screen', 'onboarding-screen', 'pause-screen', 'controls', 'training-panel', 'game-over'];
 const STYLE_DESCRIPTION_KEYS = {
     balanced: 'styleBalancedDescription',
     fast: 'styleFastDescription',
@@ -137,7 +137,8 @@ function renderOnboarding() {
     const step = onboardingStep + 1;
     setElementText('onboarding-kicker', 'onboardingKicker');
     setElementText('onboarding-title', `onboardingTitle${step}`);
-    setElementText('onboarding-text', `onboardingText${step}`);
+    const onboardingText = document.getElementById('onboarding-text');
+    if (onboardingText) onboardingText.textContent = t(`onboardingText${step}`, getInputTextParams());
     setElementText('onboarding-next-button', step === 3 ? 'onboardingStart' : 'onboardingNext');
     setElementText('onboarding-skip-button', 'onboardingSkip');
 }
@@ -168,7 +169,13 @@ function clearActiveInput() {
         }
     });
     activePointers.clear();
+    clearAllInputSources();
     keys = {};
+}
+
+function refreshInputSnapshot() {
+    keys = getInputSnapshot();
+    return keys;
 }
 
 function getFocusableElements(dialog) {
@@ -226,10 +233,11 @@ function closeModalDialog(id, restoreFocus = true) {
 }
 
 function closeAllModalDialogs() {
-    ['main-menu', 'help-screen', 'onboarding-screen', 'pause-screen', 'game-over'].forEach((id) => {
+    ['main-menu', 'help-screen', 'controls-screen', 'onboarding-screen', 'pause-screen', 'game-over'].forEach((id) => {
         const element = document.getElementById(id);
         if (element) element.style.display = 'none';
     });
+    cancelInputBindingCapture();
     clearModalState();
 }
 
@@ -519,6 +527,52 @@ function setElementAria(id, key) {
     if (element && element.setAttribute) element.setAttribute('aria-label', t(key));
 }
 
+function getInputBindingText(action) {
+    return getInputBindingLabels(action).join(' / ');
+}
+
+function getInputTextParams() {
+    const left = getInputBindingText('left');
+    const right = getInputBindingText('right');
+    const punch = getInputBindingText('punch');
+    const kick = getInputBindingText('kick');
+    const special = getInputBindingText('special');
+    return {
+        left,
+        right,
+        move: `${left} / ${right}`,
+        jump: getInputBindingText('jump'),
+        crouch: getInputBindingText('crouch'),
+        block: getInputBindingText('block'),
+        punch,
+        kick,
+        air: `${punch} / ${kick}`,
+        special,
+        pause: `${getInputBindingText('pause')} / ESC`
+    };
+}
+
+function renderInputBindings() {
+    if (document.querySelectorAll) {
+        document.querySelectorAll('[data-input-binding]').forEach((element) => {
+            const actions = String(element.getAttribute('data-input-binding') || '').split(',').filter(Boolean);
+            element.textContent = actions.map(getInputBindingText).join(' / ');
+        });
+    }
+
+    const summary = document.getElementById('controls-summary');
+    if (summary) summary.textContent = t('controlsSummary', getInputTextParams());
+
+    const punchButton = document.getElementById('btn-punch');
+    const kickButton = document.getElementById('btn-kick');
+    const specialButton = document.getElementById('btn-special');
+    if (punchButton) punchButton.textContent = t('punch');
+    if (kickButton) kickButton.textContent = t('kick');
+    if (specialButton) specialButton.textContent = t('specialShort');
+
+    if (typeof renderInputBindingsDialog === 'function') renderInputBindingsDialog();
+}
+
 function renderLanguage() {
     if (document.documentElement) document.documentElement.lang = t('htmlLang');
 
@@ -551,6 +605,7 @@ function renderLanguage() {
     renderStats();
     renderArenaPreview();
     renderSelectionSummary();
+    renderInputBindings();
     renderPauseSummary();
 
     if (gameState === 'gameOver') renderGameOverText();
@@ -605,7 +660,8 @@ function renderPauseSummary() {
         seconds,
         difficulty,
         arena,
-        rival: getRivalLabel()
+        rival: getRivalLabel(),
+        controls: t('controlsSummary', getInputTextParams())
     });
 }
 
@@ -812,6 +868,24 @@ function hideHelpScreen() {
     updateControlsVisibility();
 }
 
+function showControlsScreen() {
+    closeAllModalDialogs();
+    gameState = 'menu';
+    document.getElementById('controls-screen').style.display = 'flex';
+    renderInputBindingsDialog();
+    openModalDialog('controls-screen', 'controls-back-button', document.getElementById('controls-button'));
+    updateControlsVisibility();
+}
+
+function hideControlsScreen() {
+    cancelInputBindingCapture();
+    closeAllModalDialogs();
+    document.getElementById('main-menu').style.display = 'flex';
+    gameState = 'menu';
+    openModalDialog('main-menu', 'controls-button');
+    updateControlsVisibility();
+}
+
 function pauseGame(silent = false) {
     if (gameState !== 'playing') return;
 
@@ -883,8 +957,9 @@ function update() {
         return;
     }
 
-    player1.update(keys, player2);
-    if (hitStopFrames === 0) player2.update(keys, player1);
+    const actions = refreshInputSnapshot();
+    player1.update(actions, player2);
+    if (hitStopFrames === 0) player2.update(actions, player1);
     if (hitStopFrames === 0) checkCollision();
     updateEffects();
 
@@ -1136,6 +1211,50 @@ function updateControlsVisibility() {
     updateOrientationWarning();
 }
 
+function moveDialogFocus(direction) {
+    if (!activeDialog) return;
+    const focusables = getFocusableElements(activeDialog);
+    if (!focusables.length) return;
+    const currentIndex = Math.max(0, focusables.indexOf(document.activeElement));
+    const nextIndex = (currentIndex + direction + focusables.length) % focusables.length;
+    focusables[nextIndex].focus({ preventScroll: true });
+}
+
+function adjustFocusedSelect(direction) {
+    const target = document.activeElement;
+    if (!target || String(target.tagName || '').toLowerCase() !== 'select' || !target.options || !target.options.length) return false;
+    const nextIndex = Math.min(target.options.length - 1, Math.max(0, (target.selectedIndex || 0) + direction));
+    if (nextIndex === target.selectedIndex) return true;
+    target.selectedIndex = nextIndex;
+    if (typeof target.dispatchEvent === 'function' && typeof Event === 'function') target.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+}
+
+function activateFocusedControl() {
+    const target = document.activeElement;
+    if (target && typeof target.click === 'function') target.click();
+}
+
+function handleGamepadEvents(events) {
+    if (!events) return;
+    if (events.start && (gameState === 'playing' || gameState === 'paused')) {
+        togglePause();
+        return;
+    }
+    if (!activeDialog) return;
+
+    if (events.up) moveDialogFocus(-1);
+    if (events.down) moveDialogFocus(1);
+    if (events.left) adjustFocusedSelect(-1);
+    if (events.right) adjustFocusedSelect(1);
+    if (events.confirm) activateFocusedControl();
+    if (events.cancel) {
+        if (activeDialog.id === 'help-screen') hideHelpScreen();
+        else if (activeDialog.id === 'controls-screen') hideControlsScreen();
+        else if (activeDialog.id === 'pause-screen') resumeGame();
+    }
+}
+
 function advanceSimulation(deltaMs) {
     if (gameState !== 'playing') return;
 
@@ -1157,6 +1276,8 @@ function gameLoop(timestamp = 0) {
     const deltaMs = lastFrameTimestamp === null ? 0 : Math.min(MAX_FRAME_DELTA_MS, Math.max(0, timestamp - lastFrameTimestamp));
     lastFrameTimestamp = timestamp;
 
+    handleGamepadEvents(pollInputGamepads());
+    refreshInputSnapshot();
     advanceSimulation(deltaMs);
     debugFrameCount++;
     if (debugTimestamp === null) debugTimestamp = timestamp;
@@ -1196,16 +1317,19 @@ function setupMobileControls() {
             if (!active) return;
 
             activePointers.delete(pointerId);
-            keys[active.key] = Array.from(activePointers.values()).some((pointer) => pointer.key === active.key);
+            clearInputSource(active.sourceId);
+            refreshInputSnapshot();
         };
 
         btn.addEventListener('pointerdown', (e) => {
             if (e.button !== undefined && e.button !== 0) return;
             if (e.preventDefault) e.preventDefault();
             initAudio();
-            activePointers.set(e.pointerId, { key, button: btn, pointerId: e.pointerId });
+            const sourceId = `pointer:${e.pointerId}`;
+            activePointers.set(e.pointerId, { key, sourceId, button: btn, pointerId: e.pointerId });
             if (btn.setPointerCapture) btn.setPointerCapture(e.pointerId);
-            keys[key] = true;
+            setInputSource(sourceId, key, true);
+            refreshInputSnapshot();
         });
 
         btn.addEventListener('pointerup', (e) => releasePointer(e.pointerId));
@@ -1214,12 +1338,14 @@ function setupMobileControls() {
         btn.addEventListener('keydown', (e) => {
             if (e.repeat || (e.key !== ' ' && e.key !== 'Enter')) return;
             if (e.preventDefault) e.preventDefault();
-            keys[key] = true;
+            setInputSource(`button:${key}:${e.key}`, key, true);
+            refreshInputSnapshot();
         });
         btn.addEventListener('keyup', (e) => {
             if (e.key !== ' ' && e.key !== 'Enter') return;
             if (e.preventDefault) e.preventDefault();
-            keys[key] = false;
+            clearInputSource(`button:${key}:${e.key}`);
+            refreshInputSnapshot();
         });
         btn.addEventListener('click', (e) => {
             if (e.preventDefault) e.preventDefault();
@@ -1229,40 +1355,120 @@ function setupMobileControls() {
 
 function setupKeyboardControls() {
     window.addEventListener('keydown', (e) => {
-        const key = e.key.toLowerCase();
+        const code = getInputKeyboardCode(e);
+
+        if (getInputBindingCapture()) {
+            if (e.preventDefault) e.preventDefault();
+            const result = captureInputBinding(e);
+            renderInputBindingsDialog(result);
+            return;
+        }
+
+        if (e.target && e.target.classList && e.target.classList.contains('btn')) return;
 
         if (activeDialog) {
             if (trapDialogFocus(e)) return;
-            if (key === 'escape') {
+            if (code === 'Escape') {
                 if (e.preventDefault) e.preventDefault();
                 if (activeDialog.id === 'help-screen') hideHelpScreen();
+                else if (activeDialog.id === 'controls-screen') hideControlsScreen();
                 else if (activeDialog.id === 'pause-screen') resumeGame();
                 return;
             }
         }
 
-        if (key === 'p' || key === 'escape') {
+        const action = getInputActionForCode(code);
+        if (action === 'pause' || code === 'Escape') {
             if (e.preventDefault) e.preventDefault();
-            togglePause();
+            if (!e.repeat || code === 'Escape') togglePause();
             return;
         }
 
-        if (key === '`' && (gameState === 'playing' || gameState === 'paused')) {
+        if (code === 'Backquote' && (gameState === 'playing' || gameState === 'paused')) {
             if (e.preventDefault) e.preventDefault();
             toggleDebugOverlay();
             return;
         }
 
-        if (gameState === 'playing' && key.startsWith('arrow') && e.preventDefault) {
-            e.preventDefault();
+        if (action && gameState === 'playing') {
+            if (e.preventDefault) e.preventDefault();
+            setInputSource(`keyboard:${code}`, action, true);
+            refreshInputSnapshot();
+            return;
         }
 
-        if (gameState === 'playing') keys[key] = true;
+        if (gameState === 'playing' && code.startsWith('Arrow') && e.preventDefault) {
+            e.preventDefault();
+        }
     });
 
     window.addEventListener('keyup', (e) => {
-        keys[e.key.toLowerCase()] = false;
+        clearInputSource(`keyboard:${getInputKeyboardCode(e)}`);
+        refreshInputSnapshot();
     });
+}
+
+function renderInputBindingsDialog(result = null) {
+    const list = document.getElementById('bindings-list');
+    const status = document.getElementById('binding-status');
+    const capture = getInputBindingCapture();
+    if (status) {
+        if (result && result.ok) status.textContent = t('bindingSaved');
+        else if (result && result.cancelled) status.textContent = t('bindingCaptureCancelled');
+        else if (result && result.reason === 'reserved') status.textContent = t('bindingReserved');
+        else if (result && result.reason === 'conflict') status.textContent = t('bindingConflict', { action: t(`inputAction${result.conflict.charAt(0).toUpperCase()}${result.conflict.slice(1)}`) });
+        else if (result && result.reason === 'invalid') status.textContent = t('bindingInvalid');
+        else if (capture) status.textContent = t('bindingPressKey');
+    }
+    if (!list || typeof document.createElement !== 'function') return;
+
+    list.replaceChildren();
+    const bindings = getInputBindings();
+    INPUT_REMAPPABLE_ACTIONS.forEach((action) => {
+        const row = document.createElement('div');
+        const label = document.createElement('strong');
+        const values = document.createElement('div');
+        row.className = 'binding-row';
+        label.className = 'binding-action';
+        values.className = 'binding-values';
+        label.textContent = t(`inputAction${action.charAt(0).toUpperCase()}${action.slice(1)}`);
+
+        bindings[action].forEach((code, slot) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'binding-button';
+            button.textContent = capture && capture.action === action && capture.slot === slot
+                ? t('bindingPressKey')
+                : inputBindingLabel(code);
+            button.addEventListener('click', () => {
+                beginInputBindingCapture(action, slot);
+                renderInputBindingsDialog();
+            });
+            values.append(button);
+        });
+
+        if (bindings[action].length < INPUT_MAX_BINDINGS_PER_ACTION) {
+            const addButton = document.createElement('button');
+            addButton.type = 'button';
+            addButton.className = 'binding-button binding-button--add';
+            addButton.textContent = '+';
+            addButton.setAttribute('aria-label', t('bindingAdd'));
+            addButton.addEventListener('click', () => {
+                beginInputBindingCapture(action, bindings[action].length);
+                renderInputBindingsDialog();
+            });
+            values.append(addButton);
+        }
+
+        row.append(label, values);
+        list.append(row);
+
+        if (capture && capture.action === action && values.children[capture.slot] && typeof values.children[capture.slot].focus === 'function') {
+            values.children[capture.slot].focus({ preventScroll: true });
+        }
+    });
+
+    if (result && status && typeof status.focus === 'function') status.focus({ preventScroll: true });
 }
 
 function setupRestartButton() {
@@ -1291,6 +1497,10 @@ function setupMainMenu() {
         playUISound('select');
         showHelpScreen();
     });
+    document.getElementById('controls-button').addEventListener('click', () => {
+        playUISound('select');
+        showControlsScreen();
+    });
     document.getElementById('training-button').addEventListener('click', () => {
         playUISound('start');
         startTraining();
@@ -1298,6 +1508,16 @@ function setupMainMenu() {
     document.getElementById('back-button').addEventListener('click', () => {
         playUISound('menu');
         hideHelpScreen();
+    });
+    document.getElementById('controls-back-button').addEventListener('click', () => {
+        playUISound('menu');
+        hideControlsScreen();
+    });
+    document.getElementById('reset-controls-button').addEventListener('click', () => {
+        playUISound('select');
+        resetInputBindings();
+        renderInputBindings();
+        renderInputBindingsDialog({ ok: true });
     });
     document.getElementById('language-select').addEventListener('change', (e) => {
         playUISound('select');
