@@ -6,7 +6,10 @@ Thumbs.db
 .vscode/
 .idea/
 .openchamber/
-.opencode/
+#.opencode/*
+!.opencode/agents/
+#.opencode/agents/*
+#!.opencode/agents/*.md
 
 # Local logs and temporary files
 *.log
