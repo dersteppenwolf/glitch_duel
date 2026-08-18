@@ -220,6 +220,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Dedicated controls dialog with localized action rows, conflict/reserved-key feedback, reset-to-defaults, visible focus, and internal scrolling on short screens.
 - Duel settings can collapse on narrow screens so starting a match stays discoverable.
 - Help screen.
+- Help and onboarding show localized keyboard, touch, and standard gamepad guides; the selected/recent guide is session-only and all alternatives remain available.
 - Persistent language selector.
 - Difficulty selector.
 - Arena selector with visual preview and description.

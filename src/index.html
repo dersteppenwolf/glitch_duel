@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GLITCH DUEL - Arcade VS AI</title>
-    <link rel="stylesheet" href="styles.css?v=20260818-trials2">
+    <link rel="stylesheet" href="styles.css?v=20260818-guidance">
 </head>
 <body>
     <div id="game-container">
@@ -169,6 +169,37 @@
                     <p data-i18n="objectiveText">Reduce la vida de la CPU a 0% antes de que la maquina haga lo mismo contigo.</p>
                 </div>
 
+                <div class="guidance-picker">
+                    <label for="help-guidance-select">
+                        <span data-i18n="guidanceLabel">Guia destacada</span>
+                        <select id="help-guidance-select">
+                            <option value="" data-i18n="guidanceAuto">TODAS LAS GUIAS</option>
+                            <option value="keyboard" data-i18n="inputMethodKeyboard">TECLADO</option>
+                            <option value="touch" data-i18n="inputMethodTouch">TOUCH</option>
+                            <option value="gamepad" data-i18n="inputMethodGamepad">GAMEPAD</option>
+                        </select>
+                    </label>
+                    <p id="help-guidance-status" class="guidance-status"></p>
+                </div>
+
+                <div class="input-guides" aria-label="Guias de entrada" data-i18n-aria="inputGuidesLabel">
+                    <section class="input-guide" id="help-guide-keyboard">
+                        <h2 data-i18n="inputMethodKeyboard">TECLADO</h2>
+                        <p id="help-guide-keyboard-text"></p>
+                        <span id="help-guide-keyboard-marker" class="guide-marker"></span>
+                    </section>
+                    <section class="input-guide" id="help-guide-touch">
+                        <h2 data-i18n="inputMethodTouch">TOUCH</h2>
+                        <p id="help-guide-touch-text"></p>
+                        <span id="help-guide-touch-marker" class="guide-marker"></span>
+                    </section>
+                    <section class="input-guide" id="help-guide-gamepad">
+                        <h2 data-i18n="inputMethodGamepad">GAMEPAD</h2>
+                        <p id="help-guide-gamepad-text"></p>
+                        <span id="help-guide-gamepad-marker" class="guide-marker"></span>
+                    </section>
+                </div>
+
                 <div class="help-columns">
                     <div class="help-section">
                         <h2 data-i18n="controls">Controles</h2>
@@ -228,8 +259,37 @@
         <div id="onboarding-screen" class="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
             <div class="menu-card onboarding-card" tabindex="-1">
                 <div id="onboarding-kicker" class="menu-kicker" data-i18n="onboardingKicker">PRIMER DUELO</div>
-                <h1 id="onboarding-title">MUEVETE</h1>
+                <h1 id="onboarding-title" class="dialog-focus-target" tabindex="-1">MUEVETE</h1>
                 <p id="onboarding-text"></p>
+                <div class="guidance-picker">
+                    <label for="onboarding-guidance-select">
+                        <span data-i18n="guidanceLabel">Guia destacada</span>
+                        <select id="onboarding-guidance-select">
+                            <option value="" data-i18n="guidanceAuto">TODAS LAS GUIAS</option>
+                            <option value="keyboard" data-i18n="inputMethodKeyboard">TECLADO</option>
+                            <option value="touch" data-i18n="inputMethodTouch">TOUCH</option>
+                            <option value="gamepad" data-i18n="inputMethodGamepad">GAMEPAD</option>
+                        </select>
+                    </label>
+                    <p id="onboarding-guidance-status" class="guidance-status"></p>
+                </div>
+                <div class="input-guides" aria-label="Guias de entrada" data-i18n-aria="inputGuidesLabel">
+                    <section class="input-guide" id="onboarding-guide-keyboard">
+                        <h2 data-i18n="inputMethodKeyboard">TECLADO</h2>
+                        <p id="onboarding-guide-keyboard-text"></p>
+                        <span id="onboarding-guide-keyboard-marker" class="guide-marker"></span>
+                    </section>
+                    <section class="input-guide" id="onboarding-guide-touch">
+                        <h2 data-i18n="inputMethodTouch">TOUCH</h2>
+                        <p id="onboarding-guide-touch-text"></p>
+                        <span id="onboarding-guide-touch-marker" class="guide-marker"></span>
+                    </section>
+                    <section class="input-guide" id="onboarding-guide-gamepad">
+                        <h2 data-i18n="inputMethodGamepad">GAMEPAD</h2>
+                        <p id="onboarding-guide-gamepad-text"></p>
+                        <span id="onboarding-guide-gamepad-marker" class="guide-marker"></span>
+                    </section>
+                </div>
                 <div class="menu-actions">
                     <button id="onboarding-next-button" type="button">SIGUIENTE</button>
                     <button id="onboarding-skip-button" type="button" data-i18n="onboardingSkip">OMITIR</button>
@@ -312,16 +372,16 @@
         </div>
     </div>
 
-    <script src="i18n.js?v=20260818-trials"></script>
-    <script src="config.js?v=20260818-trials"></script>
-    <script src="input.js?v=20260818-trials"></script>
-    <script src="audio.js?v=20260818-trials"></script>
-    <script src="effects.js?v=20260818-trials"></script>
-    <script src="ai.js?v=20260818-trials"></script>
-    <script src="fighter_render.js?v=20260818-trials"></script>
-    <script src="fighter.js?v=20260818-trials"></script>
-    <script src="arena_render.js?v=20260818-trials"></script>
-    <script src="hud_render.js?v=20260818-trials"></script>
-    <script src="game.js?v=20260818-trials"></script>
+    <script src="i18n.js?v=20260818-guidance"></script>
+    <script src="config.js?v=20260818-guidance"></script>
+    <script src="input.js?v=20260818-guidance"></script>
+    <script src="audio.js?v=20260818-guidance"></script>
+    <script src="effects.js?v=20260818-guidance"></script>
+    <script src="ai.js?v=20260818-guidance"></script>
+    <script src="fighter_render.js?v=20260818-guidance"></script>
+    <script src="fighter.js?v=20260818-guidance"></script>
+    <script src="arena_render.js?v=20260818-guidance"></script>
+    <script src="hud_render.js?v=20260818-guidance"></script>
+    <script src="game.js?v=20260818-guidance"></script>
 </body>
 </html>

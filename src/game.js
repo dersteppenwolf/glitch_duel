@@ -59,6 +59,9 @@ let debugTicksPerSecond = 0;
 const DEBUG_SAMPLE_LIMIT = 1200;
 let debugMetrics = createDebugMetrics();
 let onboardingStep = 0;
+let recentInputMethod = null;
+let guidanceInputMethod = null;
+let pendingStartMode = null;
 let activeDialog = null;
 let dialogReturnFocus = null;
 let specialReadyAnnounced = false;
@@ -231,25 +234,95 @@ function loadOnboardingSeen() {
     }
 }
 
-function renderOnboarding() {
+const INPUT_GUIDANCE_METHODS = ['keyboard', 'touch', 'gamepad'];
+
+function normalizeInputMethod(value) {
+    return INPUT_GUIDANCE_METHODS.includes(value) ? value : null;
+}
+
+function getInputMethodLabel(method) {
+    const normalized = normalizeInputMethod(method);
+    return normalized ? t(`inputMethod${normalized.charAt(0).toUpperCase()}${normalized.slice(1)}`) : t('guidanceAuto');
+}
+
+function getGuidanceContentMethod() {
+    return guidanceInputMethod || 'keyboard';
+}
+
+function renderInputGuidance(prefix) {
+    const selected = guidanceInputMethod;
+    const status = document.getElementById(`${prefix}-guidance-status`);
+    const statusParts = [];
+    if (selected) statusParts.push(t('guidanceSelected', { method: getInputMethodLabel(selected) }));
+    if (recentInputMethod) statusParts.push(t('guidanceRecent', { method: getInputMethodLabel(recentInputMethod) }));
+    if (status) status.textContent = statusParts.join(' · ') || t('guidanceNone');
+
+    INPUT_GUIDANCE_METHODS.forEach((method) => {
+        const marker = document.getElementById(`${prefix}-guide-${method}-marker`);
+        if (!marker) return;
+        const markers = [];
+        if (recentInputMethod === method) markers.push(t('guidanceRecentMarker'));
+        if (selected === method) markers.push(t('guidanceSelectedMarker'));
+        marker.textContent = markers.join(' · ');
+    });
+
+    const keyboardText = document.getElementById(`${prefix}-guide-keyboard-text`);
+    const touchText = document.getElementById(`${prefix}-guide-touch-text`);
+    const gamepadText = document.getElementById(`${prefix}-guide-gamepad-text`);
+    if (keyboardText) keyboardText.textContent = t('guideKeyboardText', getInputTextParams());
+    if (touchText) touchText.textContent = t('guideTouchText');
+    if (gamepadText) gamepadText.textContent = t('guideGamepadText');
+
+    const selector = document.getElementById(`${prefix}-guidance-select`);
+    if (selector) selector.value = selected || '';
+}
+
+function setGuidanceInputMethod(value) {
+    guidanceInputMethod = normalizeInputMethod(value);
+    renderInputGuidance('onboarding');
+    renderInputGuidance('help');
+    const onboarding = document.getElementById('onboarding-screen');
+    if (onboarding && onboarding.style.display === 'flex') renderOnboarding(false);
+}
+
+function recordRecentInputMethod(method) {
+    const normalized = normalizeInputMethod(method);
+    if (!normalized || recentInputMethod === normalized) return;
+    recentInputMethod = normalized;
+    renderInputGuidance('onboarding');
+    renderInputGuidance('help');
+}
+
+function getOnboardingTextKey(step, method) {
+    return method === 'keyboard' ? `onboardingText${step}` : `onboardingText${step}${method.charAt(0).toUpperCase()}${method.slice(1)}`;
+}
+
+function renderOnboarding(shouldFocus = true) {
     const step = onboardingStep + 1;
+    const method = getGuidanceContentMethod();
     setElementText('onboarding-kicker', 'onboardingKicker');
     setElementText('onboarding-title', `onboardingTitle${step}`);
     const onboardingText = document.getElementById('onboarding-text');
-    if (onboardingText) onboardingText.textContent = t(`onboardingText${step}`, getInputTextParams());
+    if (onboardingText) onboardingText.textContent = t(getOnboardingTextKey(step, method), method === 'keyboard' ? getInputTextParams() : undefined);
     setElementText('onboarding-next-button', step === 3 ? 'onboardingStart' : 'onboardingNext');
     setElementText('onboarding-skip-button', 'onboardingSkip');
+    renderInputGuidance('onboarding');
+    const screen = document.getElementById('onboarding-screen');
+    const title = document.getElementById('onboarding-title');
+    if (shouldFocus && screen && screen.style.display === 'flex' && activeDialog && activeDialog.id === 'onboarding-screen') focusDialogTarget(title);
 }
 
 function completeOnboarding(startGame = false) {
+    const requestedMode = pendingStartMode || (startGame ? 'versus' : null);
+    pendingStartMode = null;
     try {
         if (window.localStorage) window.localStorage.setItem(ONBOARDING_STORAGE_KEY, '1');
     } catch (_) {
         // localStorage can be unavailable in private browsing or tests.
     }
     closeModalDialog('onboarding-screen', false);
-    if (startGame) {
-        initGame();
+    if (requestedMode) {
+        startRequestedMode(requestedMode);
         return;
     }
 
@@ -260,11 +333,12 @@ function completeOnboarding(startGame = false) {
 
 function showOnboardingIfNeeded() {
     const screen = document.getElementById('onboarding-screen');
-    if (!screen || loadOnboardingSeen()) return;
+    if (!screen || loadOnboardingSeen()) return false;
     onboardingStep = 0;
     renderOnboarding();
     screen.style.display = 'flex';
-    openModalDialog('onboarding-screen', 'onboarding-next-button', document.getElementById('start-button'));
+    openModalDialog('onboarding-screen', 'onboarding-title', document.getElementById('start-button'));
+    return true;
 }
 
 function clearActiveInput() {
@@ -284,6 +358,22 @@ function getElementTagName(element) {
 
 function getElementParent(element) {
     return element && (element.parentElement || element.parentNode) || null;
+}
+
+function isTouchInputTarget(target) {
+    let current = target;
+    while (current) {
+        const tagName = getElementTagName(current);
+        if (tagName === 'button' || tagName === 'select' || tagName === 'summary' || tagName === 'a') return true;
+        current = getElementParent(current);
+    }
+    return false;
+}
+
+function recordTouchPointerdown(event, fallbackTarget = null) {
+    if (!event || event.pointerType !== 'touch') return;
+    const target = event.target || fallbackTarget;
+    if (isTouchInputTarget(target)) recordRecentInputMethod('touch');
 }
 
 function getKeyboardTargetPolicy(target) {
@@ -1456,6 +1546,8 @@ function renderLanguage() {
     renderArenaPreview();
     renderSelectionSummary();
     renderInputBindings();
+    renderInputGuidance('onboarding');
+    renderInputGuidance('help');
     modeContextCacheKey = null;
     touchSpecialStateCacheKey = null;
     pauseSummaryCacheKey = null;
@@ -1819,6 +1911,30 @@ function startTraining() {
     startRound();
 }
 
+function startRequestedMode(mode) {
+    if (mode === 'training') {
+        startTraining();
+    } else if (mode === 'arcade') {
+        startArcadeRun();
+    } else if (mode === 'versus') {
+        initGame();
+    }
+}
+
+function requestStartMode(mode) {
+    const requestedMode = ['versus', 'training', 'arcade'].includes(mode) ? mode : null;
+    if (!requestedMode) return;
+
+    if (loadOnboardingSeen() || !document.getElementById('onboarding-screen')) {
+        pendingStartMode = null;
+        startRequestedMode(requestedMode);
+        return;
+    }
+
+    pendingStartMode = requestedMode;
+    showOnboardingIfNeeded();
+}
+
 function resetTraining() {
     if (!player1 || !player2) return;
     resetTrainingFighters();
@@ -1877,6 +1993,7 @@ function refillTraining(type) {
 
 function showMainMenu() {
     restoreArcadeMenuSelection();
+    pendingStartMode = null;
     activeTrialId = 'free';
     trialState = null;
     trialTick = 0;
@@ -1904,13 +2021,14 @@ function showMainMenu() {
     openModalDialog('main-menu', 'start-button');
     renderStats();
     updateControlsVisibility();
-    showOnboardingIfNeeded();
 }
 
 function showHelpScreen() {
     closeAllModalDialogs();
     gameState = 'menu';
     document.getElementById('help-screen').style.display = 'flex';
+    renderInputBindings();
+    renderInputGuidance('help');
     openModalDialog('help-screen', 'help-title', document.getElementById('help-button'));
     updateControlsVisibility();
 }
@@ -2433,9 +2551,31 @@ function gameLoop(timestamp = 0) {
     requestAnimationFrame(gameLoop);
 }
 
+let touchInputTrackingSetup = false;
+
+function setupTouchInputTracking() {
+    const ids = [
+        'start-button', 'training-button', 'arcade-run-button', 'help-button', 'controls-button',
+        'back-button', 'controls-back-button', 'onboarding-next-button', 'onboarding-skip-button',
+        'guidance-input-select', 'onboarding-guidance-select', 'pause-button', 'resume-button',
+        'pause-menu-button', 'restart-button', 'menu-button', 'btn-left', 'btn-right', 'btn-jump',
+        'btn-crouch', 'btn-block', 'btn-punch', 'btn-kick', 'btn-special'
+    ];
+    ids.forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) element.addEventListener('pointerdown', (event) => recordTouchPointerdown(event, element));
+    });
+
+    if (!touchInputTrackingSetup && document.addEventListener) {
+        document.addEventListener('pointerdown', (event) => recordTouchPointerdown(event));
+        touchInputTrackingSetup = true;
+    }
+}
+
 function setupMobileControls() {
     mobileControlsEnabled = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     updateControlsVisibility();
+    setupTouchInputTracking();
 
     const btns = {
         left: document.getElementById('btn-left'),
@@ -2464,6 +2604,7 @@ function setupMobileControls() {
         btn.addEventListener('pointerdown', (e) => {
             if (e.button !== undefined && e.button !== 0) return;
             if (key === 'special' && (!player1 || player1.energy < MAX_ENERGY)) return;
+            recordTouchPointerdown(e, btn);
             if (e.preventDefault) e.preventDefault();
             initAudio();
             const sourceId = `pointer:${e.pointerId}`;
@@ -2510,12 +2651,17 @@ function setupKeyboardControls() {
         }
 
         if (activeDialog) {
-            if (trapDialogFocus(e)) return;
+            if (trapDialogFocus(e)) {
+                recordRecentInputMethod('keyboard');
+                return;
+            }
             if (code === 'Escape') {
+                const dialogId = activeDialog.id;
                 if (e.preventDefault) e.preventDefault();
-                if (activeDialog.id === 'help-screen') hideHelpScreen();
-                else if (activeDialog.id === 'controls-screen') hideControlsScreen();
-                else if (activeDialog.id === 'pause-screen') resumeGame();
+                if (dialogId === 'help-screen') hideHelpScreen();
+                else if (dialogId === 'controls-screen') hideControlsScreen();
+                else if (dialogId === 'pause-screen') resumeGame();
+                if (dialogId === 'help-screen' || dialogId === 'controls-screen' || dialogId === 'pause-screen') recordRecentInputMethod('keyboard');
                 return;
             }
         }
@@ -2528,11 +2674,13 @@ function setupKeyboardControls() {
             if (!e.shiftKey && isElementWithin(activeElement, canvas)) {
                 if (e.preventDefault) e.preventDefault();
                 if (pauseButton && typeof pauseButton.focus === 'function') pauseButton.focus({ preventScroll: true });
+                recordRecentInputMethod('keyboard');
                 return;
             }
             if (e.shiftKey && isElementWithin(activeElement, pauseButton)) {
                 if (e.preventDefault) e.preventDefault();
                 focusGameplayCanvas();
+                recordRecentInputMethod('keyboard');
                 return;
             }
         }
@@ -2544,24 +2692,32 @@ function setupKeyboardControls() {
         const action = getInputActionForCode(code);
         if (action === 'status' && (gameState === 'playing' || gameState === 'paused') && isGameplayStatusFocus(activeElement)) {
             if (e.preventDefault) e.preventDefault();
-            if (!e.repeat) announceCombatStatus();
+            if (!e.repeat) {
+                announceCombatStatus();
+                recordRecentInputMethod('keyboard');
+            }
             return;
         }
         if (action === 'pause' && (gameState === 'playing' || gameState === 'paused')) {
             if (e.preventDefault) e.preventDefault();
-            if (!e.repeat) togglePause();
+            if (!e.repeat) {
+                togglePause();
+                recordRecentInputMethod('keyboard');
+            }
             return;
         }
 
         if (code === 'Escape' && (gameState === 'playing' || gameState === 'paused')) {
             if (e.preventDefault) e.preventDefault();
             if (!e.repeat || code === 'Escape') togglePause();
+            recordRecentInputMethod('keyboard');
             return;
         }
 
         if (code === 'Backquote' && (gameState === 'playing' || gameState === 'paused')) {
             if (e.preventDefault) e.preventDefault();
             toggleDebugOverlay();
+            recordRecentInputMethod('keyboard');
             return;
         }
 
@@ -2569,6 +2725,7 @@ function setupKeyboardControls() {
             if (e.preventDefault) e.preventDefault();
             setInputSource(`keyboard:${code}`, action, true);
             refreshInputSnapshot();
+            recordRecentInputMethod('keyboard');
             return;
         }
 
@@ -2729,9 +2886,10 @@ function setupRestartButton() {
 }
 
 function setupMainMenu() {
+    setupTouchInputTracking();
     document.getElementById('start-button').addEventListener('click', () => {
         playUISound('start');
-        initGame();
+        requestStartMode('versus');
     });
     document.getElementById('help-button').addEventListener('click', () => {
         playUISound('select');
@@ -2743,11 +2901,11 @@ function setupMainMenu() {
     });
     document.getElementById('training-button').addEventListener('click', () => {
         playUISound('start');
-        startTraining();
+        requestStartMode('training');
     });
     document.getElementById('arcade-run-button').addEventListener('click', () => {
         playUISound('start');
-        startArcadeRun();
+        requestStartMode('arcade');
     });
     document.getElementById('back-button').addEventListener('click', () => {
         playUISound('menu');
@@ -2787,6 +2945,8 @@ function setupMainMenu() {
         playUISound('select');
         setReducedMotion(e.target.checked);
     });
+    const helpGuidanceSelector = document.getElementById('help-guidance-select');
+    if (helpGuidanceSelector) helpGuidanceSelector.addEventListener('change', (e) => setGuidanceInputMethod(e.target.value));
 }
 
 function setupTrainingControls() {
@@ -2814,6 +2974,7 @@ function setupCombatStatus() {
 }
 
 function setupOnboarding() {
+    setupTouchInputTracking();
     document.getElementById('onboarding-next-button').addEventListener('click', () => {
         if (onboardingStep < 2) {
             onboardingStep++;
@@ -2823,6 +2984,8 @@ function setupOnboarding() {
         }
     });
     document.getElementById('onboarding-skip-button').addEventListener('click', () => completeOnboarding(false));
+    const selector = document.getElementById('onboarding-guidance-select');
+    if (selector) selector.addEventListener('change', (e) => setGuidanceInputMethod(e.target.value));
 }
 
 window.addEventListener('load', () => {

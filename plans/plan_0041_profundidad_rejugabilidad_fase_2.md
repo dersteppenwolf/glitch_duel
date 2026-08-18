@@ -668,12 +668,13 @@ Implementado en esta ejecucion:
 
 - `#74`: `<details>`/`<dl>` no-live, render cacheado de salud/energia/ronda/score/tiempo/rival, consulta por status key/gamepad 8/details, migracion de bindings v1 a v2 sin robar teclas, status sin tecla y thresholds deduplicados.
 - `#9`: selector de practica/trials dentro de Training, resultado canonico `attackResolved`, `energyReady`, cuatro reducers, cues/windows/retry fixed-step, progreso de sesion y exclusion de stats/historial.
+- `#24`: guia de teclado/touch/gamepad visible en Ayuda/onboarding, metodo reciente/manual efimero y pendingStartMode para conservar el modo solicitado.
 - Cache-busting de recursos en `src/index.html` para que el navegador no reutilice la version anterior de Fase 1.
 
 Validacion ejecutada:
 
 - Baseline antes del cambio: `115/115` pruebas y sintaxis completa.
-- Despues del cambio: `121/121` pruebas aprobadas, sintaxis completa y `git diff --check` correcto.
+- Despues del cambio: `125/125` pruebas aprobadas, sintaxis completa y `git diff --check` correcto.
 - Smoke navegador con cache-buster: estado cerrado `ESTADO · 60s`; al expandir se leen modo, vida, energia, ronda, marcador, tiempo, rival, direccion, distancia y ultimo evento.
 - Smoke navegador de Training: selector `PRACTICA LIBRE` y los cuatro trials aparecen; toolbar muestra `ENTRENAMIENTO · LIBRE`; objetivos, progreso y opciones libres son visibles.
 
@@ -681,8 +682,9 @@ Pendiente:
 
 - `#77`: se toma como ejecutado por supuesto explicito del usuario; no existe registro de cohortes en este repositorio y no se repitieron sesiones humanas.
 - `#9`: implementado y queda Partial hasta smoke fisico/comprension de trials.
-- `#24` y `#16`: no implementados.
+- `#24`: implementado y queda Partial hasta smoke fisico/AT/usuarios.
+- `#16`: no implementado.
 - `#17/#19`: permanecen bloqueados y sin codigo.
 - Validacion real de zoom 200%, low-height, touch/gamepad fisico, forced-colors y NVDA/Narrator/VoiceOver.
 
-Un fallo tecnico en primera sesion sigue bloqueando `#24/#16`; un fallo solo de comprension habilita correcciones acotadas de `#24/#9`. `#9` y `#74` quedan Partial hasta completar validacion manual/AT. `#16` queda bloqueado por el gate recurrente; GLITCH CANCEL sigue fuera de esta ejecucion.
+Un fallo tecnico en primera sesion sigue bloqueando la validacion final de `#24/#16`; un fallo solo de comprension habilita correcciones acotadas de `#24/#9`. `#9`, `#24` y `#74` quedan Partial hasta completar validacion manual/AT. `#16` queda bloqueado por el gate recurrente; GLITCH CANCEL sigue fuera de esta ejecucion.

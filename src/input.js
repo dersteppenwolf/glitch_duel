@@ -344,10 +344,13 @@ function pollInputGamepads() {
     const pads = navigator.getGamepads() || [];
     const seen = new Set();
     const suppressSources = inputGamepadNeutralRequired;
+    let hasRealEdge = false;
     pads.forEach((pad, index) => {
         if (!pad || (pad.mapping && pad.mapping !== 'standard')) return;
         seen.add(index);
-        const previous = inputPreviousGamepads.get(index) || { buttons: new Map(), axis: null };
+        const hasPrevious = inputPreviousGamepads.has(index);
+        const previous = inputPreviousGamepads.get(index) || { buttons: new Map(), axis: null, vertical: null, neutralObserved: false };
+        const edgeReady = hasPrevious && previous.neutralObserved && !suppressSources;
         const pressedButtons = new Map();
         for (let buttonIndex = 0; buttonIndex < (pad.buttons || []).length; buttonIndex++) {
             const pressed = inputButtonPressed(pad.buttons, buttonIndex);
@@ -355,7 +358,8 @@ function pollInputGamepads() {
             const sourceId = `gamepad:${index}:button:${buttonIndex}`;
             const action = { 0: 'jump', 1: 'kick', 2: 'punch', 3: 'special', 4: 'block', 5: 'block', 12: 'jump', 13: 'crouch', 14: 'left', 15: 'right' }[buttonIndex];
             if (action && !suppressSources) setInputSource(sourceId, action, pressed);
-            if (pressed && !previous.buttons.get(buttonIndex)) {
+            if (edgeReady && pressed && !previous.buttons.get(buttonIndex)) {
+                hasRealEdge = true;
                 if (buttonIndex === 0) events.confirm = true;
                 if (buttonIndex === 1) events.cancel = true;
                 if (buttonIndex === 8) events.status = true;
@@ -373,17 +377,29 @@ function pollInputGamepads() {
             setInputSource(`gamepad:${index}:axis:left`, 'left', axisDirection === 'left');
             setInputSource(`gamepad:${index}:axis:right`, 'right', axisDirection === 'right');
         }
-        if (axisDirection && axisDirection !== previous.axis) events[axisDirection] = true;
+        if (edgeReady && axisDirection && axisDirection !== previous.axis) {
+            hasRealEdge = true;
+            events[axisDirection] = true;
+        }
 
         const verticalValue = Number(pad.axes && pad.axes[1] || 0);
         const verticalDirection = inputAxisDirection(verticalValue, previous.vertical, 'up', 'down');
-        if (verticalDirection && verticalDirection !== previous.vertical) events[verticalDirection] = true;
+        if (edgeReady && verticalDirection && verticalDirection !== previous.vertical) {
+            hasRealEdge = true;
+            events[verticalDirection] = true;
+        }
         if (!suppressSources) {
             setInputSource(`gamepad:${index}:axis:up`, 'jump', verticalDirection === 'up');
             setInputSource(`gamepad:${index}:axis:down`, 'crouch', verticalDirection === 'down');
         }
 
-        inputPreviousGamepads.set(index, { buttons: pressedButtons, axis: axisDirection, vertical: verticalDirection });
+        const sampleNeutral = !axisDirection && !verticalDirection && ![...pressedButtons.values()].some(Boolean);
+        inputPreviousGamepads.set(index, {
+            buttons: pressedButtons,
+            axis: axisDirection,
+            vertical: verticalDirection,
+            neutralObserved: previous.neutralObserved || sampleNeutral
+        });
     });
 
     [...inputPreviousGamepads.keys()].forEach((index) => {
@@ -397,5 +413,6 @@ function pollInputGamepads() {
         if (!active) inputGamepadNeutralRequired = false;
         return { confirm: false, cancel: false, start: false, status: false, up: false, down: false, left: false, right: false };
     }
+    if (hasRealEdge && typeof recordRecentInputMethod === 'function') recordRecentInputMethod('gamepad');
     return events;
 }

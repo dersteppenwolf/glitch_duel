@@ -91,10 +91,28 @@ function loadGame(options = {}) {
         'menu-button': 'button',
         'onboarding-next-button': 'button',
         'onboarding-skip-button': 'button',
+        'onboarding-title': 'h1',
+        'onboarding-guidance-select': 'select',
+        'help-guidance-select': 'select',
+        'onboarding-guidance-status': 'p',
+        'help-guidance-status': 'p',
+        'onboarding-guide-keyboard-marker': 'span',
+        'onboarding-guide-touch-marker': 'span',
+        'onboarding-guide-gamepad-marker': 'span',
+        'help-guide-keyboard-marker': 'span',
+        'help-guide-touch-marker': 'span',
+        'help-guide-gamepad-marker': 'span',
+        'onboarding-guide-keyboard-text': 'p',
+        'onboarding-guide-touch-text': 'p',
+        'onboarding-guide-gamepad-text': 'p',
+        'help-guide-keyboard-text': 'p',
+        'help-guide-touch-text': 'p',
+        'help-guide-gamepad-text': 'p',
         'duel-settings': 'details',
         'controls-screen': 'div',
         'help-screen': 'div',
         'main-menu': 'div',
+        'onboarding-screen': 'div',
         'pause-screen': 'div',
         'game-over': 'div',
         'bindings-list': 'div',
@@ -361,6 +379,13 @@ function loadGame(options = {}) {
             createSeededRandom,
             showOnboardingIfNeeded,
             completeOnboarding,
+            requestStartMode,
+            startRequestedMode,
+            setGuidanceInputMethod,
+            recordRecentInputMethod,
+            renderInputGuidance,
+            renderOnboarding,
+            setupOnboarding,
             clearActiveInput,
             getInputBindings,
             resetInputBindings,
@@ -438,7 +463,10 @@ function loadGame(options = {}) {
                 } : null,
                 matchHistory: getMatchHistory(),
                 matchElapsedFrames,
-                trainingConfig: { ...trainingConfig },
+                 trainingConfig: { ...trainingConfig },
+                 recentInputMethod,
+                 guidanceInputMethod,
+                 pendingStartMode,
                 matchSeed,
                 debugOverlayEnabled,
                 selectedDifficulty,
@@ -1474,7 +1502,7 @@ test('static HTML contract preserves local assets, script order, controls, and a
 
     requiredIds.forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260818-trials2">/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260818-guidance">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
     ['arena-shell', 'game-toolbar', 'game-announcer', 'duel-settings', 'selection-summary', 'menu-footer', 'arcade-run-button'].forEach((id) => {
@@ -1946,6 +1974,78 @@ test('training trial reducers consume real Fighter attack and energy events', ()
     state.player1.attack('special', state.player2);
     assert.equal(state.player1.lastAttackOutcome, 'hit');
     assert.equal(specialCase.api.getState().trialState.completed, true);
+});
+
+test('input-aware onboarding preserves the requested mode through complete and skip', () => {
+    const training = loadGame();
+    training.api.requestStartMode('training');
+    assert.equal(training.api.getState().gameState, 'menu');
+    assert.equal(training.api.getState().pendingStartMode, 'training');
+    assert.equal(training.elements.get('onboarding-title').focused, true);
+    training.api.completeOnboarding(true);
+    assert.equal(training.api.getState().gameMode, 'training');
+    assert.equal(training.api.getState().pendingStartMode, null);
+
+    const arcade = loadGame();
+    arcade.api.requestStartMode('arcade');
+    arcade.api.completeOnboarding(false);
+    assert.equal(arcade.api.getState().gameMode, 'arcade');
+    assert.equal(arcade.api.getState().gameState, 'playing');
+
+    const seen = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    seen.api.requestStartMode('training');
+    assert.equal(seen.api.getState().gameMode, 'training');
+    assert.equal(seen.api.getState().onboardingScreenDisplay, 'none');
+});
+
+test('input guidance keeps all methods visible and distinguishes recent from manual selection', () => {
+    const { api, elements } = loadGame();
+    api.renderInputGuidance('help');
+    assert.equal(api.getState().recentInputMethod, null);
+    assert.match(elements.get('help-guidance-status').textContent, /Sin método/);
+
+    api.setGuidanceInputMethod('gamepad');
+    assert.equal(api.getState().guidanceInputMethod, 'gamepad');
+    assert.match(elements.get('help-guidance-status').textContent, /seleccionada/i);
+    assert.equal(elements.get('help-guide-gamepad-marker').textContent, 'SELECCIONADO');
+
+    api.recordRecentInputMethod('touch');
+    assert.equal(api.getState().recentInputMethod, 'touch');
+    assert.match(elements.get('help-guidance-status').textContent, /recientemente/i);
+    assert.match(elements.get('help-guide-touch-marker').textContent, /USADO RECIENTEMENTE/);
+    assert.match(elements.get('help-guide-gamepad-marker').textContent, /SELECCIONADO/);
+});
+
+test('onboarding guidance focuses the title after each step without persistence', () => {
+    const { api, elements, context } = loadGame();
+    api.requestStartMode('versus');
+    api.setupOnboarding();
+    const next = elements.get('onboarding-next-button');
+    next.listeners.click();
+    assert.equal(elements.get('onboarding-title').focused, true);
+    api.setGuidanceInputMethod('touch');
+    assert.match(elements.get('onboarding-text').textContent, /Mantén/);
+    assert.equal(context.window.localStorage.getItem('glitchDuelInputMethod'), null);
+});
+
+test('recent input records real touch and gamepad edges but not neutral capability', () => {
+    const touch = loadGame();
+    touch.api.setupMobileControls();
+    const trainingButton = touch.elements.get('training-button');
+    trainingButton.listeners.pointerdown({ pointerType: 'mouse', target: trainingButton });
+    assert.equal(touch.api.getState().recentInputMethod, null);
+    trainingButton.listeners.pointerdown({ pointerType: 'touch', target: trainingButton });
+    assert.equal(touch.api.getState().recentInputMethod, 'touch');
+
+    const buttons = Array.from({ length: 16 }, () => ({ pressed: false, value: 0 }));
+    let pad = { mapping: 'standard', buttons, axes: [0, 0] };
+    const gamepad = loadGame({ getGamepads: () => [pad] });
+    gamepad.api.pollInputGamepads();
+    assert.equal(gamepad.api.getState().recentInputMethod, null);
+    buttons[0].pressed = true;
+    pad = { mapping: 'standard', buttons, axes: [0, 0] };
+    gamepad.api.pollInputGamepads();
+    assert.equal(gamepad.api.getState().recentInputMethod, 'gamepad');
 });
 
 test('debug overlay is opt-in and seeded simulation is reproducible', () => {
