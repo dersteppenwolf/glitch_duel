@@ -198,14 +198,26 @@ function cancelInputBindingCapture() {
 
 function captureInputBinding(event) {
     if (!inputBindingCapture) return null;
+    const capture = inputBindingCapture;
     const code = getInputKeyboardCode(event);
+    if (event && (event.ctrlKey || event.altKey || event.metaKey)) return { ok: false, reason: 'reserved' };
+    if (event && event.shiftKey && code !== 'Tab') return { ok: false, reason: 'reserved' };
     if (code === 'Escape') {
         inputBindingCapture = null;
         return { cancelled: true };
     }
-    if (event && (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey)) return { ok: false, reason: 'reserved' };
+    if (code === 'Tab' && !(event && (event.ctrlKey || event.altKey || event.metaKey))) {
+        inputBindingCapture = null;
+        return {
+            cancelled: true,
+            navigation: event && event.shiftKey ? 'previous' : 'next',
+            action: capture.action,
+            slot: capture.slot
+        };
+    }
+    if (event && event.shiftKey) return { ok: false, reason: 'reserved' };
 
-    const result = setInputBinding(inputBindingCapture.action, inputBindingCapture.slot, code);
+    const result = setInputBinding(capture.action, capture.slot, code);
     if (result.ok) inputBindingCapture = null;
     return result;
 }
@@ -229,6 +241,26 @@ function inputBindingLabel(code) {
     if (code.startsWith('Key')) return code.slice(3).toUpperCase();
     if (code.startsWith('Digit')) return code.slice(5);
     return code.toUpperCase();
+}
+
+function inputBindingAccessibleLabel(code) {
+    const keys = {
+        ArrowLeft: 'inputKeyArrowLeft',
+        ArrowRight: 'inputKeyArrowRight',
+        ArrowUp: 'inputKeyArrowUp',
+        ArrowDown: 'inputKeyArrowDown',
+        Space: 'inputKeySpace',
+        Enter: 'inputKeyEnter',
+        ShiftLeft: 'inputKeyShift',
+        ShiftRight: 'inputKeyShift',
+        ControlLeft: 'inputKeyControl',
+        ControlRight: 'inputKeyControl',
+        AltLeft: 'inputKeyAlt',
+        AltRight: 'inputKeyAlt',
+        MetaLeft: 'inputKeyMeta',
+        MetaRight: 'inputKeyMeta'
+    };
+    return keys[code] ? t(keys[code]) : inputBindingLabel(code);
 }
 
 function getInputBindingLabels(action) {

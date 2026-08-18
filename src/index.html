@@ -13,10 +13,10 @@
 
         <div id="arena-shell">
             <div id="game-toolbar" role="toolbar" aria-label="Barra de partida" data-i18n-aria="gameToolbarLabel">
-                <div id="instructions" role="status" data-i18n="instructions">GLITCH DUEL - Modo Solo (Humano vs Maquina)</div>
+                <div id="instructions" role="status">GLITCH DUEL - Modo Solo (Humano vs Maquina)</div>
                 <button id="pause-button" type="button" aria-label="Pausar partida" data-i18n="pauseButton" data-i18n-aria="pauseButtonLabel">PAUSA</button>
             </div>
-            <canvas id="game" width="1000" height="500" role="img" aria-label="Arena de combate GLITCH DUEL" data-i18n-aria="canvasLabel"></canvas>
+            <canvas id="game" width="1000" height="500" tabindex="0" role="img" aria-label="Arena de combate GLITCH DUEL" data-i18n-aria="canvasLabel"></canvas>
         </div>
 
         <div id="game-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -145,7 +145,7 @@
         <div id="help-screen" class="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="help-title">
             <div class="menu-card help-card" tabindex="-1">
                 <div class="menu-kicker" data-i18n="helpKicker">Manual de combate</div>
-                <h1 id="help-title" data-i18n="help">AYUDA</h1>
+                <h1 id="help-title" class="dialog-focus-target" tabindex="-1" data-i18n="help">AYUDA</h1>
 
                 <div class="help-section">
                     <h2 data-i18n="objective">Objetivo</h2>
@@ -197,7 +197,7 @@
         <div id="controls-screen" class="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="controls-title">
             <div class="menu-card controls-card" tabindex="-1">
                 <div class="menu-kicker" data-i18n="controlsKicker">CONFIGURAR CONTROLES</div>
-                <h1 id="controls-title" data-i18n="controlsTitle">CONTROLES</h1>
+                <h1 id="controls-title" class="dialog-focus-target" tabindex="-1" data-i18n="controlsTitle">CONTROLES</h1>
                 <p data-i18n="controlsText">Elige una tecla fisica para cada accion. Los cambios se guardan en este dispositivo.</p>
                 <div id="bindings-list" class="bindings-list"></div>
                 <div id="binding-status" class="binding-status" role="status" aria-live="polite" tabindex="-1"></div>
@@ -223,7 +223,7 @@
         <div id="pause-screen" class="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
             <div class="menu-card" tabindex="-1">
                 <div class="menu-kicker" data-i18n="pauseKicker">Combate detenido</div>
-                <h1 id="pause-title" data-i18n="pauseTitle">PAUSA</h1>
+                <h1 id="pause-title" class="dialog-focus-target" tabindex="-1" data-i18n="pauseTitle">PAUSA</h1>
                 <p data-i18n="pauseText">Respira, revisa tu estrategia y vuelve al duelo cuando estes listo.</p>
                 <div id="pause-summary" class="pause-summary" aria-live="polite"></div>
 
@@ -234,33 +234,33 @@
             </div>
         </div>
 
-        <div id="controls" aria-label="Controles tactiles de combate">
+        <div id="controls" role="group" aria-label="Controles tactiles de combate" data-i18n-aria="touchControlsLabel">
             <div id="left-side" class="control-zone">
-                <button class="btn" id="btn-left" type="button" aria-label="Mover izquierda" data-i18n-aria="leftLabel">←</button>
-                <button class="btn" id="btn-right" type="button" aria-label="Mover derecha" data-i18n-aria="rightLabel">→</button>
-                <button class="btn" id="btn-jump" type="button" aria-label="Saltar" data-i18n-aria="jump">↑<br>JUMP</button>
-                <button class="btn" id="btn-crouch" type="button" aria-label="Agacharse" data-i18n-aria="crouch">↓<br>CROUCH</button>
-                <button class="btn" id="btn-block" type="button" aria-label="Bloquear" data-i18n-aria="block">BLOCK</button>
+                <button class="btn" id="btn-left" type="button" aria-label="Mover izquierda" data-i18n-aria="leftLabel"><span class="touch-glyph" aria-hidden="true">←</span><span class="touch-label" data-i18n="leftShort">IZQ</span></button>
+                <button class="btn" id="btn-right" type="button" aria-label="Mover derecha" data-i18n-aria="rightLabel"><span class="touch-glyph" aria-hidden="true">→</span><span class="touch-label" data-i18n="rightShort">DER</span></button>
+                <button class="btn" id="btn-jump" type="button" aria-label="Saltar" data-i18n-aria="jump"><span class="touch-glyph" aria-hidden="true">↑</span><span class="touch-label" data-i18n="jump">SALTAR</span></button>
+                <button class="btn" id="btn-crouch" type="button" aria-label="Agacharse" data-i18n-aria="crouch"><span class="touch-glyph" aria-hidden="true">↓</span><span class="touch-label" data-i18n="crouch">AGACHARSE</span></button>
+                <button class="btn" id="btn-block" type="button" aria-label="Bloquear" data-i18n-aria="block"><span class="touch-label" data-i18n="block">BLOQUEAR</span></button>
             </div>
             <div id="right-side" class="control-zone">
-                <button class="btn" id="btn-punch" type="button" aria-label="Punetazo" data-i18n-aria="punch">PUNCH</button>
-                <button class="btn" id="btn-kick" type="button" aria-label="Patada" data-i18n-aria="kick">KICK</button>
-                <button class="btn" id="btn-special" type="button" aria-label="Ataque especial con energia llena" data-i18n-aria="specialButtonLabel">SPECIAL</button>
+                <button class="btn" id="btn-punch" type="button" aria-label="Punetazo" data-i18n-aria="punch"><span class="touch-label" data-i18n="punch">PUNETAZO</span></button>
+                <button class="btn" id="btn-kick" type="button" aria-label="Patada" data-i18n-aria="kick"><span class="touch-label" data-i18n="kick">PATADA</span></button>
+                <button class="btn" id="btn-special" type="button" aria-label="Especial, CARGA, energia 0 de 100" aria-disabled="true" data-state="charging"><span class="touch-label" data-i18n="touchSpecialAction">ESPECIAL</span><span id="btn-special-state" class="touch-state">CARGA</span></button>
             </div>
         </div>
 
-        <div id="training-panel" aria-label="Controles de entrenamiento">
-            <select id="training-position-select" aria-label="Posicion de entrenamiento">
+        <div id="training-panel" role="group" aria-label="Controles de entrenamiento" data-i18n-aria="trainingControlsLabel">
+            <select id="training-position-select" aria-label="Posicion de entrenamiento" data-i18n-aria="trainingPositionLabel">
                 <option value="mid" data-i18n="trainingPositionMid">MEDIA</option>
                 <option value="close" data-i18n="trainingPositionClose">CERCA</option>
                 <option value="corner" data-i18n="trainingPositionCorner">ESQUINA</option>
             </select>
-            <select id="training-cpu-select" aria-label="CPU de entrenamiento">
+            <select id="training-cpu-select" aria-label="CPU de entrenamiento" data-i18n-aria="trainingCpuLabel">
                 <option value="idle" data-i18n="trainingCpuIdle">CPU QUIETA</option>
                 <option value="block" data-i18n="trainingCpuBlock">CPU BLOQUEA</option>
                 <option value="normal" data-i18n="trainingCpuNormal">CPU NORMAL</option>
             </select>
-            <select id="training-timer-select" aria-label="Timer de entrenamiento">
+            <select id="training-timer-select" aria-label="Timer de entrenamiento" data-i18n-aria="trainingTimerLabel">
                 <option value="off" data-i18n="trainingTimerOff">SIN TIEMPO</option>
                 <option value="on" data-i18n="trainingTimerOn">CON TIEMPO</option>
             </select>
@@ -269,8 +269,9 @@
             <button id="training-energy-button" type="button" data-i18n="trainingEnergy">ENERGIA</button>
         </div>
 
-        <div id="game-over" role="dialog" aria-modal="true" aria-labelledby="winner-text" tabindex="-1">
-            <div id="winner-text" aria-live="assertive"></div>
+        <div id="game-over" role="dialog" aria-modal="true" aria-labelledby="game-over-title" tabindex="-1">
+            <h1 id="game-over-title" class="dialog-focus-target" tabindex="-1" data-i18n="gameOverTitle">RESULTADO</h1>
+            <div id="winner-text"></div>
             <button id="restart-button" type="button" data-i18n="restart">REINICIAR</button>
             <button id="menu-button" type="button" data-i18n="menu">MENU</button>
         </div>

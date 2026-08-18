@@ -25,6 +25,7 @@ class Fighter {
         this.aiDecisionTimer = 0;
         this.aiAction = 'idle';
         this.comboBuffer = [];
+        this.pendingComboInput = '';
         this.comboTimer = 0;
         this.comboHintText = '';
         this.comboHintTimer = 0;
@@ -82,12 +83,9 @@ class Fighter {
     update(keys, opponent) {
         this.facingRight = opponent.x >= this.x;
 
-        if (this.hitStun > 0) {
-            this.hitStun--;
-            this.state = 'hit';
-            this.applyPhysics();
-            return;
-        }
+        const wasInHitStun = this.hitStun > 0;
+
+        if (this.hitStun > 0) this.hitStun--;
 
         if (this.attackCooldown > 0) {
             this.attackCooldown--;
@@ -95,7 +93,7 @@ class Fighter {
 
         if (this.comboTimer > 0) {
             this.comboTimer--;
-            if (this.comboTimer === 0) this.comboBuffer = [];
+            if (this.comboTimer === 0) this.clearComboSequence();
         }
 
         if (this.comboHintTimer > 0) {
@@ -109,6 +107,13 @@ class Fighter {
 
         if (this.aiCounterTimer > 0) {
             this.aiCounterTimer--;
+        }
+
+        if (wasInHitStun) {
+            this.clearComboSequence();
+            this.state = 'hit';
+            this.applyPhysics();
+            return;
         }
 
         this.velX = 0;
@@ -127,12 +132,15 @@ class Fighter {
     updatePlayerControls(actions, opponent) {
         const blockPressed = !!actions.block;
         const crouchPressed = !!actions.crouch;
+        const jumpPressed = !!actions.jump;
 
         if (blockPressed) {
+            this.clearComboSequence();
             this.state = 'block';
             this.velX = 0;
-        } else if (crouchPressed && this.onGround && this.attackCooldown === 0) {
-            this.state = 'crouch';
+        } else if (crouchPressed && this.onGround) {
+            this.clearComboSequence();
+            if (this.attackCooldown === 0) this.state = 'crouch';
             this.velX = 0;
         } else {
             if (actions.left) {
@@ -145,7 +153,8 @@ class Fighter {
                 if (this.onGround && this.attackCooldown === 0) this.state = 'walk';
             }
 
-            if (actions.jump && this.onGround) {
+            if (jumpPressed && this.onGround) {
+                this.clearComboSequence();
                 this.velY = -18;
                 this.onGround = false;
                 this.state = 'jump';
@@ -156,6 +165,10 @@ class Fighter {
         const kickPressed = !!actions.kick;
         const specialPressed = !!actions.special;
 
+        // Only edges visible in this fixed-step snapshot are processed. A complete
+        // tap between simulation steps is intentionally not queued by the Fighter.
+        this.consumePendingCombo(opponent);
+
         if (specialPressed && !this.prevSpecialPressed) this.attack('special', opponent);
         if (punchPressed && !this.prevPunchPressed) this.handleAttackCommand(this.onGround ? 'punch' : 'airPunch', opponent);
         if (kickPressed && !this.prevKickPressed) this.handleAttackCommand(this.onGround ? 'kick' : 'airKick', opponent);
@@ -165,16 +178,57 @@ class Fighter {
         this.prevSpecialPressed = specialPressed;
     }
 
-    handleAttackCommand(input, opponent) {
-        if (this.attackCooldown > 0 || this.state === 'block' || this.state === 'crouch') return;
+    clearComboSequence() {
+        this.pendingComboInput = '';
+        this.comboBuffer = [];
+        this.comboTimer = 0;
+        this.clearComboHint();
+    }
 
+    consumePendingCombo(opponent) {
+        if (!this.pendingComboInput) return;
+        if (this.hitStun > 0 || !this.onGround || this.state === 'block' || this.state === 'crouch' || this.state === 'jump' || this.comboTimer <= 0) {
+            this.clearComboSequence();
+            return;
+        }
+        if (this.attackCooldown > 0) return;
+
+        const combo = `${this.comboBuffer[0]},${this.pendingComboInput}`;
+        const comboType = {
+            'punch,punch': 'comboPunch',
+            'punch,kick': 'comboKick',
+            'kick,kick': 'backKick'
+        }[combo];
+
+        if (!comboType) {
+            this.clearComboSequence();
+            return;
+        }
+
+        this.executeComboAttack(comboType, opponent);
+    }
+
+    handleAttackCommand(input, opponent) {
         if (input === 'airPunch' || input === 'airKick') {
+            if (this.attackCooldown > 0 || this.state === 'block' || this.state === 'crouch') return;
             if (this.onGround || this.airAttackUsed) return;
             this.airAttackUsed = true;
-            this.comboBuffer = [];
-            this.clearComboHint();
+            this.clearComboSequence();
             this.attack(input, opponent);
             if (this.isPlayer1) recordPlayerAirAttack();
+            return;
+        }
+
+        if (input !== 'punch' && input !== 'kick') return;
+        if (this.state === 'block' || this.state === 'crouch') {
+            this.clearComboSequence();
+            return;
+        }
+
+        if (this.attackCooldown > 0) {
+            if (this.onGround && this.comboTimer > 0 && this.comboBuffer.length === 1 && (this.comboBuffer[0] === 'punch' || this.comboBuffer[0] === 'kick') && !this.pendingComboInput) {
+                this.pendingComboInput = input;
+            }
             return;
         }
 
@@ -187,27 +241,22 @@ class Fighter {
         const combo = this.comboBuffer.join(',');
 
         if (combo === 'punch,punch') {
-            this.comboBuffer = [];
-            this.clearComboHint();
-            this.attack('comboPunch', opponent);
-            if (this.isPlayer1) recordPlayerCombo();
-            this.showComboFeedback('comboPunch');
+            this.executeComboAttack('comboPunch', opponent);
         } else if (combo === 'punch,kick') {
-            this.comboBuffer = [];
-            this.clearComboHint();
-            this.attack('comboKick', opponent);
-            if (this.isPlayer1) recordPlayerCombo();
-            this.showComboFeedback('comboKick');
+            this.executeComboAttack('comboKick', opponent);
         } else if (combo === 'kick,kick') {
-            this.comboBuffer = [];
-            this.clearComboHint();
-            this.attack('backKick', opponent);
-            if (this.isPlayer1) recordPlayerCombo();
-            this.showComboFeedback('backKick');
+            this.executeComboAttack('backKick', opponent);
         } else {
             this.showComboHint(input);
             this.attack(input, opponent);
         }
+    }
+
+    executeComboAttack(type, opponent) {
+        this.clearComboSequence();
+        this.attack(type, opponent);
+        if (this.isPlayer1) recordPlayerCombo();
+        this.showComboFeedback(type);
     }
 
     showComboHint(input) {
@@ -222,9 +271,9 @@ class Fighter {
 
     showComboFeedback(type) {
         const labels = {
-            comboPunch: 'COMBO x2',
-            comboKick: 'PUNCH+KICK',
-            backKick: 'BACK KICK'
+            comboPunch: t('comboX2'),
+            comboKick: t('comboPunchKick'),
+            backKick: t('comboBackKick')
         };
         const colors = {
             comboPunch: '#d22',
@@ -537,6 +586,8 @@ class Fighter {
 
     takeHit(damage, attacker) {
         const impactDirection = attacker.facingRight ? 1 : -1;
+
+        this.clearComboSequence();
 
         if (this.state === 'block') {
             damage = Math.floor(damage * BLOCK_DAMAGE_MULTIPLIER);

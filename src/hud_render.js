@@ -10,23 +10,23 @@ function drawHealthBars() {
     drawHealthBar(50, 34, player1.health, player1.displayHealth, false, player1.accentColor);
     drawHealthBar(WIDTH - 354, 34, player2.health, player2.displayHealth, true, player2.accentColor);
 
-    ctx.font = `bold 18px ${GAME_FONT_FAMILY}`;
+    ctx.font = `bold ${hudCompactMode ? 28 : 18}px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#000';
     ctx.textAlign = 'left';
-    ctx.fillText(`${t('human')}: ${player1.health}%`, 50, 26);
+    ctx.fillText(`${hudCompactMode ? 'P1' : t('human')}: ${player1.health}%`, 50, 26);
     drawEnergyBar(52, 67, player1.energy, false, player1.accentColor);
     ctx.fillStyle = '#000';
     ctx.textAlign = 'right';
-    ctx.fillText(`${player2.labelKey ? t(player2.labelKey) : t('cpuAI')}: ${player2.health}%`, WIDTH - 50, 26);
+    ctx.fillText(`${hudCompactMode ? 'CPU' : (player2.labelKey ? t(player2.labelKey) : t('cpuAI'))}: ${player2.health}%`, WIDTH - 50, 26);
     drawEnergyBar(WIDTH - 252, 67, player2.energy, true, player2.accentColor);
 
     ctx.textAlign = 'center';
-    ctx.font = `bold 13px ${GAME_FONT_FAMILY}`;
+    ctx.font = `bold ${hudCompactMode ? 20 : 13}px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#000';
     ctx.fillText(`${t('round')} ${currentRound}`, WIDTH / 2, 26);
-    ctx.font = `bold 14px ${GAME_FONT_FAMILY}`;
+    ctx.font = `bold ${hudCompactMode ? 22 : 14}px ${GAME_FONT_FAMILY}`;
     ctx.fillText(`${playerRounds}-${cpuRounds}`, WIDTH / 2, 47);
-    ctx.font = `bold 28px ${GAME_FONT_FAMILY}`;
+    ctx.font = `bold ${hudCompactMode ? 32 : 28}px ${GAME_FONT_FAMILY}`;
     ctx.fillText(`${Math.ceil(roundTimeMs / 1000)}`, WIDTH / 2, 77);
 }
 
@@ -118,11 +118,11 @@ function drawEnergyBar(x, y, energy, alignRight, accentColor = '#000') {
         ctx.stroke();
     }
 
-    if (full) {
+    if (full && !hudCompactMode) {
         ctx.font = `bold 12px ${GAME_FONT_FAMILY}`;
         ctx.fillStyle = '#000';
         ctx.textAlign = 'center';
-        ctx.fillText('SPECIAL', x + width / 2, y + 10);
+        ctx.fillText(t('specialReadyShort'), x + width / 2, y + 10);
     }
 }
 

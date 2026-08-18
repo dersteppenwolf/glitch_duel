@@ -48,6 +48,7 @@ function createMockAudioContext(audioEvents = []) {
                 type: '',
                 frequency: { value: 0 },
                 connect() { return this; },
+                disconnect() { audioEvents.push({ event: 'disconnect', type: 'oscillator' }); },
                 start() { audioEvents.push({ event: 'start', type: this.type, frequency: this.frequency.value }); },
                 stop() { audioEvents.push({ event: 'stop', type: this.type, frequency: this.frequency.value }); }
             };
@@ -56,7 +57,8 @@ function createMockAudioContext(audioEvents = []) {
         createGain() {
             return {
                 gain: { value: 0 },
-                connect() { return this; }
+                connect() { return this; },
+                disconnect() { audioEvents.push({ event: 'disconnect', type: 'gain' }); }
             };
         }
     };
@@ -67,20 +69,93 @@ function loadGame(options = {}) {
     const audioEvents = [];
     const elements = new Map();
     let activeElement = null;
+    const staticTags = {
+        'pause-button': 'button',
+        'start-button': 'button',
+        'training-button': 'button',
+        'arcade-run-button': 'button',
+        'help-button': 'button',
+        'controls-button': 'button',
+        'language-select': 'select',
+        'difficulty-select': 'select',
+        'arena-select': 'select',
+        'style-select': 'select',
+        'rival-select': 'select',
+        'reduce-motion-toggle': 'input',
+        'back-button': 'button',
+        'controls-back-button': 'button',
+        'reset-controls-button': 'button',
+        'resume-button': 'button',
+        'pause-menu-button': 'button',
+        'restart-button': 'button',
+        'menu-button': 'button',
+        'onboarding-next-button': 'button',
+        'onboarding-skip-button': 'button',
+        'duel-settings': 'details',
+        'controls-screen': 'div',
+        'help-screen': 'div',
+        'main-menu': 'div',
+        'pause-screen': 'div',
+        'game-over': 'div',
+        'bindings-list': 'div',
+        'binding-status': 'div',
+        'game-toolbar': 'div',
+        'arena-shell': 'div'
+    };
+    const staticParents = {
+        'pause-button': 'game-toolbar',
+        game: 'arena-shell',
+        'bindings-list': 'controls-screen',
+        'binding-status': 'controls-screen',
+        'reset-controls-button': 'controls-screen',
+        'controls-back-button': 'controls-screen'
+    };
     const canvas = {
+        id: 'game',
+        tagName: 'CANVAS',
+        nodeName: 'CANVAS',
         width: 1000,
         height: 500,
         style: {},
+        focused: false,
+        attributes: { tabindex: '0' },
+        focus(options) {
+            elements.forEach((element) => { element.focused = false; });
+            this.focused = true;
+            this.focusOptions = options;
+            activeElement = this;
+        },
+        setAttribute(name, value) {
+            this.attributes[name] = value;
+        },
+        getAttribute(name) {
+            return this.attributes[name];
+        },
         getContext(type) {
             assert.equal(type, '2d');
             return ctx;
         }
     };
 
-    function createElement(id = '') {
+    function matchesSelector(element, selector) {
+        const value = selector.trim();
+        if (value === 'summary') return element.tagName === 'SUMMARY';
+        if (value === '[href]') return element.getAttribute('href') !== undefined && element.getAttribute('href') !== null;
+        if (value.startsWith('button')) return element.tagName === 'BUTTON' && !element.disabled;
+        if (value.startsWith('select')) return element.tagName === 'SELECT' && !element.disabled;
+        if (value.startsWith('input')) return element.tagName === 'INPUT' && !element.disabled;
+        if (value.startsWith('textarea')) return element.tagName === 'TEXTAREA' && !element.disabled;
+        if (value.startsWith('[tabindex]')) return element.getAttribute('tabindex') !== undefined && element.getAttribute('tabindex') !== null && element.getAttribute('tabindex') !== '-1';
+        if (value.startsWith('[contenteditable]')) return element.getAttribute('contenteditable') !== undefined && element.getAttribute('contenteditable') !== null && element.getAttribute('contenteditable') !== 'false';
+        return false;
+    }
+
+    function createElement(id = '', tagName = 'div') {
         const capturedPointers = new Set();
         return {
             id,
+            tagName: String(tagName).toUpperCase(),
+            nodeName: String(tagName).toUpperCase(),
             style: {},
             innerHTML: '',
             textContent: '',
@@ -88,6 +163,8 @@ function loadGame(options = {}) {
             checked: false,
             className: '',
             children: [],
+            parentElement: null,
+            parentNode: null,
             listeners: {},
             attributes: {},
             hidden: false,
@@ -98,6 +175,7 @@ function loadGame(options = {}) {
             },
             focus(options) {
                 elements.forEach((element) => { element.focused = false; });
+                canvas.focused = false;
                 this.focused = true;
                 this.focusOptions = options;
                 activeElement = this;
@@ -120,10 +198,30 @@ function loadGame(options = {}) {
             getBoundingClientRect() {
                 return { height: 0 };
             },
+            querySelectorAll(selector) {
+                const selectors = String(selector).split(',');
+                const descendants = [];
+                const visit = (element) => {
+                    element.children.forEach((child) => {
+                        descendants.push(child);
+                        visit(child);
+                    });
+                };
+                visit(this);
+                return descendants.filter((element) => selectors.some((item) => matchesSelector(element, item)));
+            },
             append(...children) {
-                this.children.push(...children);
+                children.forEach((child) => {
+                    child.parentElement = this;
+                    child.parentNode = this;
+                    this.children.push(child);
+                });
             },
             replaceChildren(...children) {
+                this.children.forEach((child) => {
+                    child.parentElement = null;
+                    child.parentNode = null;
+                });
                 this.children = [];
                 this.append(...children);
             }
@@ -132,7 +230,12 @@ function loadGame(options = {}) {
 
     function getElement(id) {
         if (id === 'game') return canvas;
-        if (!elements.has(id)) elements.set(id, createElement(id));
+        if (!elements.has(id)) {
+            const element = createElement(id, staticTags[id] || 'div');
+            elements.set(id, element);
+            const parentId = staticParents[id];
+            if (parentId) getElement(parentId).append(element);
+        }
         return elements.get(id);
     }
 
@@ -142,7 +245,7 @@ function loadGame(options = {}) {
     Object.entries(options.storage || {}).forEach(([key, value]) => storage.set(key, value));
     const MockAudioContext = createMockAudioContext(audioEvents);
     const navigatorMock = {
-        maxTouchPoints: 0,
+        maxTouchPoints: options.touchPoints || 0,
         language: options.language,
         languages: options.languages,
         getGamepads: options.getGamepads || (() => options.gamepads || [])
@@ -160,7 +263,9 @@ function loadGame(options = {}) {
                 documentElement: {},
                 get activeElement() { return activeElement; },
                 hidden: false,
-            createElement,
+            createElement(tagName) {
+                return createElement('', tagName);
+            },
             getElementById: getElement,
             addEventListener(type, handler) {
                 documentListeners[type] = handler;
@@ -202,6 +307,7 @@ function loadGame(options = {}) {
             playAttackSound,
             playImpactSound,
             playUISound,
+            getAudioDiagnostics,
             t,
             I18N,
             ARENAS,
@@ -247,10 +353,16 @@ function loadGame(options = {}) {
             getInputSnapshot,
             getInputActionForCode,
             pollInputGamepads,
-            beginInputBindingCapture,
-            captureInputBinding,
+             beginInputBindingCapture,
+             getInputBindingCapture,
+             captureInputBinding,
             renderInputBindingsDialog,
-            handleGamepadEvents,
+            renderModeContext,
+            renderTouchSpecialState,
+            getFighterMarkerLayout,
+             getFocusableElements,
+             trapDialogFocus,
+             handleGamepadEvents,
             showControlsScreen,
             hideControlsScreen,
             setupMobileControls,
@@ -285,6 +397,7 @@ function loadGame(options = {}) {
             renderGameOverText,
             update,
             advanceSimulation,
+            gameLoop,
             checkCollision,
             triggerImpactFeedback,
             triggerSpecialFeedback,
@@ -376,6 +489,7 @@ function loadGame(options = {}) {
         api: context.__gameTest,
         context,
         elements,
+        canvas,
         windowListeners,
         documentListeners,
         audioEvents
@@ -395,6 +509,25 @@ function startPlayingGame(api) {
     return api.getState();
 }
 
+function dispatchKey(windowListeners, options = {}) {
+    const event = {
+        key: options.key || '',
+        code: options.code || '',
+        target: options.target,
+        ctrlKey: !!options.ctrlKey,
+        altKey: !!options.altKey,
+        metaKey: !!options.metaKey,
+        shiftKey: !!options.shiftKey,
+        repeat: !!options.repeat,
+        prevented: false,
+        preventDefault() {
+            this.prevented = true;
+        }
+    };
+    windowListeners.keydown(event);
+    return event;
+}
+
 function giveEnergy(fighter, amount = 100) {
     fighter.energy = amount;
 }
@@ -406,6 +539,18 @@ function advanceFrames(api, frames, deltaMs = 1000 / 60) {
 function tapControl(fighter, keys, opponent) {
     fighter.updatePlayerControls(keys, opponent);
     fighter.updatePlayerControls({}, opponent);
+}
+
+function queueBufferedCombo(fighter, first, second, opponent) {
+    fighter.update({ [first]: true }, opponent);
+    fighter.update({}, opponent);
+    while (fighter.attackCooldown > 2) fighter.update({}, opponent);
+    fighter.update({ [second]: true }, opponent);
+}
+
+function executeBufferedCombo(fighter, first, second, opponent) {
+    queueBufferedCombo(fighter, first, second, opponent);
+    fighter.update({}, opponent);
 }
 
 test('resizeCanvas preserves logical aspect ratio and scales backing store', () => {
@@ -590,14 +735,25 @@ test('UI sounds use lightweight arcade profiles', () => {
     );
 });
 
+test('Web Audio diagnostics clean each tone graph exactly once', () => {
+    const { api } = loadGame();
+    const before = api.getAudioDiagnostics();
+
+    api.playAttackSound('punch');
+
+    const after = api.getAudioDiagnostics();
+    assert.equal(after.createdGraphs, before.createdGraphs + 1);
+    assert.equal(after.endedGraphs, before.endedGraphs + 1);
+    assert.equal(after.activeGraphs, 0);
+    assert.equal(after.oscillatorsCreated - after.oscillatorsDisconnected, 0);
+    assert.equal(after.gainsCreated - after.gainsDisconnected, 0);
+});
+
 test('simple combos increase damage and cooldown', () => {
     const { api } = loadGame();
     const { player, opponent } = createFighters(api, 100, 170);
 
-    player.updatePlayerControls({ punch: true }, opponent);
-    player.updatePlayerControls({}, opponent);
-    player.attackCooldown = 0;
-    player.updatePlayerControls({ punch: true }, opponent);
+    executeBufferedCombo(player, 'punch', 'punch', opponent);
 
     assert.equal(player.state, 'punch');
     assert.equal(player.attackCooldown, 18);
@@ -622,10 +778,7 @@ test('J,J combo creates combo-specific visual feedback', () => {
     const player = new api.Fighter(100, true);
     const opponent = new api.Fighter(170, false);
 
-    player.updatePlayerControls({ punch: true }, opponent);
-    player.updatePlayerControls({}, opponent);
-    player.attackCooldown = 0;
-    player.updatePlayerControls({ punch: true }, opponent);
+    executeBufferedCombo(player, 'punch', 'punch', opponent);
 
     assert.equal(player.lastAttackType, 'comboPunch');
     assert.equal(player.comboFlashTimer, 18);
@@ -638,14 +791,11 @@ test('J,K combo creates punch kick visual feedback', () => {
     const player = new api.Fighter(100, true);
     const opponent = new api.Fighter(220, false);
 
-    player.updatePlayerControls({ punch: true }, opponent);
-    player.updatePlayerControls({}, opponent);
-    player.attackCooldown = 0;
-    player.updatePlayerControls({ kick: true }, opponent);
+    executeBufferedCombo(player, 'punch', 'kick', opponent);
 
     assert.equal(player.lastAttackType, 'comboKick');
     assert.equal(player.comboFlashTimer, 18);
-    assert(api.getState().floatingTexts.some((text) => text.text === 'PUNCH+KICK'));
+    assert(api.getState().floatingTexts.some((text) => text.text === api.t('comboPunchKick')));
 });
 
 test('K,K triggers back kick combo damage and cooldown', () => {
@@ -653,17 +803,185 @@ test('K,K triggers back kick combo damage and cooldown', () => {
     const player = new api.Fighter(100, true);
     const opponent = new api.Fighter(220, false);
 
-    player.updatePlayerControls({ kick: true }, opponent);
-    player.updatePlayerControls({}, opponent);
-    player.attackCooldown = 0;
-    player.updatePlayerControls({ kick: true }, opponent);
+    executeBufferedCombo(player, 'kick', 'kick', opponent);
 
     assert.equal(player.state, 'kick');
     assert.equal(player.attackCooldown, 36);
     assert.equal(opponent.health, 64);
     assert.equal(player.lastAttackType, 'backKick');
     assert.equal(player.comboFlashTimer, 18);
-    assert(api.getState().floatingTexts.some((text) => text.text === 'BACK KICK'));
+    assert(api.getState().floatingTexts.some((text) => text.text === api.t('comboBackKick')));
+});
+
+test('buffered J-J, J-K, and K-K use real cooldown boundaries', () => {
+    const cases = [
+        { first: 'punch', second: 'punch', type: 'comboPunch', cooldown: 18, health: 80, state: 'punch' },
+        { first: 'punch', second: 'kick', type: 'comboKick', cooldown: 30, health: 74, state: 'kick' },
+        { first: 'kick', second: 'kick', type: 'backKick', cooldown: 36, health: 64, state: 'kick' }
+    ];
+
+    cases.forEach(({ first, second, type, cooldown, health, state }) => {
+        const { api } = loadGame();
+        const player = new api.Fighter(100, true);
+        const opponent = new api.Fighter(first === 'kick' ? 220 : 170, false);
+
+        player.update({ [first]: true }, opponent);
+        player.update({}, opponent);
+        while (player.attackCooldown > 2) player.update({}, opponent);
+
+        assert.equal(player.attackCooldown, 2);
+        const windowBeforeInput = player.comboTimer;
+        player.update({ [second]: true }, opponent);
+
+        assert.equal(player.attackCooldown, 1, `${first}-${second} must observe 2 -> 1`);
+        assert.equal(player.pendingComboInput, second);
+        assert.equal(player.comboTimer, windowBeforeInput - 1, 'buffering must not restart the combo window');
+        assert.equal(player.lastAttackType, first);
+
+        player.update({}, opponent);
+
+        assert.equal(player.attackCooldown, cooldown);
+        assert.equal(player.lastAttackType, type);
+        assert.equal(player.state, state);
+        assert.equal(player.health, 100);
+        assert.equal(opponent.health, health);
+        assert.equal(player.pendingComboInput, '');
+        assert.equal(player.comboBuffer.length, 0);
+        assert.equal(player.comboTimer, 0);
+    });
+});
+
+test('pending combo executes on the 1 -> 0 cooldown tick while the window is alive', () => {
+    const { api } = loadGame();
+    const player = new api.Fighter(100, true);
+    const opponent = new api.Fighter(170, false);
+
+    queueBufferedCombo(player, 'punch', 'punch', opponent);
+
+    assert.equal(player.attackCooldown, 1);
+    assert.equal(player.pendingComboInput, 'punch');
+    player.update({}, opponent);
+
+    assert.equal(player.attackCooldown, 18);
+    assert.equal(player.lastAttackType, 'comboPunch');
+    assert.equal(opponent.health, 80);
+    assert.equal(player.pendingComboInput, '');
+});
+
+test('combo timer expiration at 1 -> 0 discards pending input and permits a normal next edge', () => {
+    const { api } = loadGame();
+    const player = new api.Fighter(100, true);
+    const opponent = new api.Fighter(170, false);
+
+    player.update({ punch: true }, opponent);
+    player.update({}, opponent);
+    while (player.attackCooldown > 2) player.update({}, opponent);
+    player.comboTimer = 2;
+    player.update({ punch: true }, opponent);
+
+    assert.equal(player.attackCooldown, 1);
+    assert.equal(player.pendingComboInput, 'punch');
+    player.update({}, opponent);
+
+    assert.equal(player.attackCooldown, 0);
+    assert.equal(player.comboTimer, 0);
+    assert.equal(player.pendingComboInput, '');
+    assert.equal(player.comboBuffer.length, 0);
+    assert.equal(player.lastAttackType, 'punch');
+    assert.equal(opponent.health, 92);
+
+    player.update({}, opponent);
+    player.update({ punch: true }, opponent);
+
+    assert.equal(player.lastAttackType, 'punch');
+    assert.equal(player.attackCooldown, 12);
+    assert.equal(opponent.health, 84);
+});
+
+test('block, crouch, and jump cancel a pending combo before consumption', () => {
+    const interruptions = [
+        { action: { block: true }, state: 'block' },
+        { action: { crouch: true }, state: 'crouch' },
+        { action: { jump: true }, state: 'jump' }
+    ];
+
+    interruptions.forEach(({ action, state }) => {
+        const { api } = loadGame();
+        const player = new api.Fighter(100, true);
+        const opponent = new api.Fighter(170, false);
+
+        queueBufferedCombo(player, 'punch', 'punch', opponent);
+        assert.equal(player.pendingComboInput, 'punch');
+        player.update(action, opponent);
+
+        assert.equal(player.state, state);
+        assert.equal(player.lastAttackType, 'punch');
+        assert.equal(player.attackCooldown, 0);
+        assert.equal(player.pendingComboInput, '');
+        assert.equal(player.comboBuffer.length, 0);
+        assert.equal(player.comboTimer, 0);
+        assert.equal(opponent.health, 92);
+    });
+});
+
+test('blocked and unblocked hits cancel the defender combo sequence', () => {
+    [false, true].forEach((blocked) => {
+        const { api } = loadGame();
+        const defender = new api.Fighter(100, true);
+        const attacker = new api.Fighter(170, false);
+
+        queueBufferedCombo(defender, 'punch', 'punch', attacker);
+        assert.equal(defender.pendingComboInput, 'punch');
+        if (blocked) defender.state = 'block';
+        attacker.attack('punch', defender);
+
+        assert.equal(defender.pendingComboInput, '');
+        assert.equal(defender.comboBuffer.length, 0);
+        assert.equal(defender.comboTimer, 0);
+        assert.equal(defender.lastAttackType, 'punch');
+        assert.equal(defender.hitStun, blocked ? 0 : 20);
+    });
+});
+
+test('held follow-up input keeps one pending command and does not duplicate the combo', () => {
+    const { api } = loadGame();
+    const player = new api.Fighter(100, true);
+    const opponent = new api.Fighter(170, false);
+
+    queueBufferedCombo(player, 'punch', 'punch', opponent);
+    assert.equal(player.pendingComboInput, 'punch');
+
+    for (let i = 0; i < 20; i++) player.update({ punch: true }, opponent);
+
+    assert.equal(player.lastAttackType, 'comboPunch');
+    assert.equal(player.pendingComboInput, '');
+    assert.equal(player.comboBuffer.length, 0);
+    assert.equal(opponent.health, 80);
+});
+
+test('air and special edges are never buffered as grounded combo follow-ups', () => {
+    const { api } = loadGame();
+    const player = new api.Fighter(100, true);
+    const opponent = new api.Fighter(170, false);
+
+    player.update({ punch: true }, opponent);
+    player.update({}, opponent);
+    while (player.attackCooldown > 2) player.update({}, opponent);
+    player.update({ jump: true }, opponent);
+    player.update({ punch: true }, opponent);
+
+    assert.equal(player.pendingComboInput, '');
+    assert.equal(player.comboBuffer.length, 0);
+
+    const specialPlayer = new api.Fighter(100, true);
+    const specialOpponent = new api.Fighter(170, false);
+    specialPlayer.energy = 100;
+    specialPlayer.update({ punch: true }, specialOpponent);
+    specialPlayer.update({}, specialOpponent);
+    specialPlayer.update({ special: true }, specialOpponent);
+
+    assert.equal(specialPlayer.pendingComboInput, '');
+    assert.equal(specialPlayer.lastAttackType, 'punch');
 });
 
 test('arrow keys move and jump like WASD controls', () => {
@@ -894,6 +1212,184 @@ test('keyboard events become canonical actions and release by source code', () =
     assert.equal(api.getInputSnapshot().punch, false);
 });
 
+test('keyboard preserves native targets and modifier shortcuts while allowing other button bindings', () => {
+    const { api, context, canvas, elements, windowListeners } = loadGame();
+    api.setInputBinding('punch', 0, 'KeyQ');
+    api.setInputBinding('kick', 0, 'Space');
+    api.setupKeyboardControls();
+    startPlayingGame(api);
+
+    const input = context.document.createElement('input');
+    const inputChild = context.document.createElement('span');
+    input.append(inputChild);
+    const editor = context.document.createElement('div');
+    editor.setAttribute('contenteditable', 'true');
+    const editorChild = context.document.createElement('span');
+    editor.append(editorChild);
+
+    for (const target of [context.document.getElementById('arena-select'), input, inputChild, editorChild]) {
+        const event = dispatchKey(windowListeners, { key: 'q', code: 'KeyQ', target });
+        assert.equal(event.prevented, false, `native target ${target.tagName}`);
+        assert.equal(api.getInputSnapshot().punch, false);
+    }
+
+    const buttonEnter = dispatchKey(windowListeners, { key: 'Enter', code: 'Enter', target: elements.get('start-button') });
+    assert.equal(buttonEnter.prevented, false);
+    assert.equal(api.getInputSnapshot().punch, false);
+
+    const link = context.document.createElement('a');
+    link.setAttribute('href', '#help');
+    const linkChild = context.document.createElement('span');
+    link.append(linkChild);
+    const linkSpace = dispatchKey(windowListeners, { key: ' ', code: 'Space', target: linkChild });
+    assert.equal(linkSpace.prevented, false);
+    assert.equal(api.getInputSnapshot().kick, false);
+
+    const buttonBinding = dispatchKey(windowListeners, { key: 'q', code: 'KeyQ', target: elements.get('start-button') });
+    assert.equal(buttonBinding.prevented, true);
+    assert.equal(api.getInputSnapshot().punch, true);
+    windowListeners.keyup({ key: 'q', code: 'KeyQ', ctrlKey: true, target: input });
+    assert.equal(api.getInputSnapshot().punch, false);
+
+    for (const modifier of ['ctrlKey', 'altKey', 'metaKey']) {
+        const event = dispatchKey(windowListeners, { key: 'q', code: 'KeyQ', target: canvas, [modifier]: true });
+        assert.equal(event.prevented, false);
+        assert.equal(api.getState().gameState, 'playing');
+        assert.equal(api.getInputSnapshot().punch, false);
+    }
+
+    for (const options of [
+        { key: 'q', code: 'KeyQ', shiftKey: true },
+        { key: 'Tab', code: 'Tab', ctrlKey: true },
+        { key: 'Tab', code: 'Tab', ctrlKey: true, shiftKey: true },
+        { key: 'Escape', code: 'Escape', shiftKey: true }
+    ]) {
+        const event = dispatchKey(windowListeners, { ...options, target: canvas });
+        assert.equal(event.prevented, false);
+        assert.equal(api.getState().gameState, 'playing');
+        assert.equal(api.getInputSnapshot().punch, false);
+    }
+});
+
+test('pause binding is consumed only during playing or paused states', () => {
+    const menu = loadGame();
+    menu.api.setupKeyboardControls();
+    const menuEvent = dispatchKey(menu.windowListeners, { key: 'p', code: 'KeyP', target: menu.elements.get('start-button') });
+    assert.equal(menuEvent.prevented, false);
+    assert.equal(menu.api.getState().gameState, 'menu');
+
+    menu.api.showOnboardingIfNeeded();
+    const onboardingEvent = dispatchKey(menu.windowListeners, { key: 'p', code: 'KeyP', target: menu.elements.get('onboarding-next-button') });
+    assert.equal(onboardingEvent.prevented, false);
+    assert.equal(menu.api.getState().gameState, 'menu');
+    assert.equal(menu.api.getState().onboardingScreenDisplay, 'flex');
+
+    const active = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    active.api.setupKeyboardControls();
+    startPlayingGame(active.api);
+    const pauseEvent = dispatchKey(active.windowListeners, { key: 'p', code: 'KeyP', target: active.canvas });
+    assert.equal(pauseEvent.prevented, true);
+    assert.equal(active.api.getState().gameState, 'paused');
+
+    active.api.resumeGame();
+    active.api.getState().player2.health = 0;
+    active.api.update();
+    active.api.skipVsIntro();
+    active.api.getState().player2.health = 0;
+    active.api.update();
+    assert.equal(active.api.getState().gameState, 'gameOver');
+    const gameOverEvent = dispatchKey(active.windowListeners, { key: 'p', code: 'KeyP', target: active.elements.get('restart-button') });
+    assert.equal(gameOverEvent.prevented, false);
+    assert.equal(active.api.getState().gameState, 'gameOver');
+});
+
+test('keyboard Tab routes between the gameplay canvas and pause button', () => {
+    const { api, canvas, elements, windowListeners } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.setupKeyboardControls();
+    startPlayingGame(api);
+    assert.equal(canvas.focused, true);
+
+    const forward = dispatchKey(windowListeners, { key: 'Tab', code: 'Tab', target: canvas });
+    assert.equal(forward.prevented, true);
+    assert.equal(elements.get('pause-button').focused, true);
+
+    const backward = dispatchKey(windowListeners, { key: 'Tab', code: 'Tab', shiftKey: true, target: elements.get('pause-button') });
+    assert.equal(backward.prevented, true);
+    assert.equal(canvas.focused, true);
+});
+
+test('binding capture cancels on Tab and keeps an equivalent focus target', () => {
+    const { api, context, elements, windowListeners } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.setupKeyboardControls();
+    api.showControlsScreen();
+
+    const getBindingButton = (action, slot) => {
+        const list = elements.get('bindings-list');
+        return list.children.find((row) => row.children[1].children.some((button) => button.getAttribute('data-binding-action') === action && Number(button.getAttribute('data-binding-slot')) === slot)).children[1].children.find((button) => button.getAttribute('data-binding-action') === action && Number(button.getAttribute('data-binding-slot')) === slot);
+    };
+
+    api.beginInputBindingCapture('left', 0);
+    api.renderInputBindingsDialog();
+    const current = getBindingButton('left', 0);
+    assert.equal(current.getAttribute('data-binding-action'), 'left');
+    assert.equal(current.getAttribute('data-binding-slot'), '0');
+    assert.equal(api.getInputBindingCapture().action, 'left');
+
+    const modifier = dispatchKey(windowListeners, { key: 'Tab', code: 'Tab', ctrlKey: true, target: current });
+    assert.equal(modifier.prevented, false);
+    assert.equal(api.getInputBindingCapture().action, 'left');
+    assert.equal(api.getInputBindingCapture().slot, 0);
+
+    const next = dispatchKey(windowListeners, { key: 'Tab', code: 'Tab', target: current });
+    assert.equal(next.prevented, true);
+    assert.equal(api.getInputBindingCapture(), null);
+    assert.equal(context.document.activeElement.getAttribute('data-binding-action'), 'left');
+    assert.equal(context.document.activeElement.getAttribute('data-binding-slot'), '1');
+
+    api.beginInputBindingCapture('left', 0);
+    api.renderInputBindingsDialog();
+    const currentAgain = getBindingButton('left', 0);
+    const previous = dispatchKey(windowListeners, { key: 'Tab', code: 'Tab', shiftKey: true, target: currentAgain });
+    assert.equal(previous.prevented, true);
+    const focusablesAfterPrevious = api.getFocusableElements(context.document.getElementById('controls-screen'));
+    assert.equal(context.document.activeElement, focusablesAfterPrevious[focusablesAfterPrevious.length - 1]);
+
+    api.beginInputBindingCapture('left', 0);
+    api.renderInputBindingsDialog();
+    const escape = dispatchKey(windowListeners, { key: 'Escape', code: 'Escape', target: getBindingButton('left', 0) });
+    assert.equal(escape.prevented, true);
+    assert.equal(api.getInputBindingCapture(), null);
+});
+
+test('focus trap includes summary, excludes closed details content, and recovers from non-sequential focus', () => {
+    const { api, context, elements } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    const dialog = context.document.createElement('div');
+    const title = context.document.createElement('h1');
+    title.setAttribute('tabindex', '-1');
+    const first = context.document.createElement('button');
+    const details = context.document.createElement('details');
+    details.open = false;
+    const summary = context.document.createElement('summary');
+    const closedButton = context.document.createElement('button');
+    details.append(summary, closedButton);
+    dialog.append(title, first, details);
+
+    const focusables = api.getFocusableElements(dialog);
+    assert.equal(focusables.length, 2);
+    assert.equal(focusables[0], first);
+    assert.equal(focusables[1], summary);
+
+    api.setupKeyboardControls();
+    api.showControlsScreen();
+    const staticFocus = elements.get('binding-status');
+    staticFocus.setAttribute('tabindex', '-1');
+    staticFocus.focus({ preventScroll: true });
+    const event = { key: 'Tab', shiftKey: false, prevented: false, preventDefault() { this.prevented = true; } };
+    assert.equal(api.trapDialogFocus(event), true);
+    assert.equal(event.prevented, true);
+    assert.equal(context.document.activeElement.getAttribute('data-binding-action'), 'left');
+});
+
 test('localized control summaries reflect the current keyboard bindings', () => {
     const { api, elements } = loadGame();
     api.setInputBinding('punch', 0, 'KeyQ');
@@ -1047,8 +1543,8 @@ test('match history uses a bounded versioned record and excludes training', () =
     assert.equal(api.getMatchHistory().length, 25);
 });
 
-test('modal dialogs contain focus and restore the originating control', () => {
-    const { api, elements } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+test('modal dialogs contain focus and return gameplay focus to the canvas', () => {
+    const { api, elements, canvas } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
 
     api.showMainMenu();
     assert.equal(api.getState().modalId, 'main-menu');
@@ -1059,7 +1555,7 @@ test('modal dialogs contain focus and restore the originating control', () => {
 
     api.showHelpScreen();
     assert.equal(api.getState().modalId, 'help-screen');
-    assert.equal(elements.get('back-button').focused, true);
+    assert.equal(elements.get('help-title').focused, true);
     assert.equal(api.getState().helpScreenInert, false);
 
     api.hideHelpScreen();
@@ -1070,12 +1566,85 @@ test('modal dialogs contain focus and restore the originating control', () => {
     api.skipVsIntro();
     api.pauseGame();
     assert.equal(api.getState().modalId, 'pause-screen');
-    assert.equal(elements.get('resume-button').focused, true);
+    assert.equal(elements.get('pause-title').focused, true);
 
     api.resumeGame();
     assert.equal(api.getState().modalId, null);
-    assert.equal(elements.get('pause-button').focused, true);
+    assert.equal(canvas.focused, true);
+    assert.equal(canvas.focusOptions.preventScroll, true);
     assert.equal(api.getState().arenaShellInert, false);
+});
+
+test('phase-one UI localizes mode context, bindings, and touch special state', () => {
+    const { api, context, elements } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+
+    api.initGame();
+    api.renderLanguage();
+    assert.equal(elements.get('instructions').textContent, 'DUELO');
+
+    api.startTraining();
+    api.renderLanguage();
+    assert.equal(elements.get('instructions').textContent, 'ENTRENAMIENTO');
+
+    const special = context.document.getElementById('btn-special');
+    const specialState = context.document.getElementById('btn-special-state');
+    const player = api.getState().player1;
+    player.energy = 0;
+    api.renderTouchSpecialState();
+    assert.equal(special.getAttribute('data-state'), 'charging');
+    assert.equal(special.getAttribute('aria-disabled'), 'true');
+    assert.equal(specialState.textContent, api.t('specialCharging'));
+
+    player.energy = 100;
+    api.renderTouchSpecialState();
+    assert.equal(special.getAttribute('data-state'), 'ready');
+    assert.equal(special.getAttribute('aria-disabled'), 'false');
+    assert.match(special.getAttribute('aria-label'), /100/);
+
+    api.showControlsScreen();
+    const bindings = elements.get('bindings-list');
+    const leftRow = bindings.children.find((row) => row.children[0].textContent === api.t('inputActionLeft'));
+    const leftButton = leftRow.children[1].children[0];
+    assert.match(leftButton.getAttribute('aria-label'), /Mover izquierda/);
+    assert.match(leftButton.getAttribute('aria-label'), /A/);
+
+    const keys = Object.keys(api.I18N.es).sort();
+    assert.deepEqual(keys, Object.keys(api.I18N.en).sort());
+    keys.forEach((key) => {
+        const placeholders = (value) => String(value).match(/\{[a-zA-Z]+\}/g) || [];
+        assert.deepEqual(placeholders(api.I18N.es[key]).sort(), placeholders(api.I18N.en[key]).sort(), key);
+    });
+});
+
+test('phase-one marker layout stays inside safe canvas bounds during jumps', () => {
+    const { api } = loadGame();
+    const fighter = new api.Fighter(50, false);
+    const layout = api.getFighterMarkerLayout(fighter, 50, 80, 'MERGE CONFLICT');
+
+    assert(layout.badgeX >= 16);
+    assert(layout.badgeX + layout.badgeWidth <= 984);
+    assert(layout.badgeY >= 112);
+    assert(layout.specialTop >= layout.badgeY + 32);
+    assert(layout.specialCircleY >= layout.specialTop + 50);
+    assert(layout.specialCircleY + 34 <= 500);
+});
+
+test('special touch input remains inert while charging and activates when ready', () => {
+    const { api, elements } = loadGame({ touchPoints: 1, storage: { glitchDuelOnboardingSeen: '1' } });
+    api.setupMobileControls();
+    api.initGame();
+    const special = elements.get('btn-special');
+    const pointer = (pointerId) => ({ pointerId, button: 0, preventDefault() {} });
+
+    special.listeners.pointerdown(pointer(1));
+    assert.equal(api.getState().activePointerCount, 0);
+
+    api.getState().player1.energy = 100;
+    api.renderTouchSpecialState();
+    special.listeners.pointerdown(pointer(2));
+    assert.equal(api.getState().activePointerCount, 1);
+    special.listeners.pointerup(pointer(2));
+    assert.equal(api.getState().activePointerCount, 0);
 });
 
 test('escape closes help but does not escape game over or onboarding dialogs', () => {
@@ -1210,6 +1779,25 @@ test('debug overlay is opt-in and seeded simulation is reproducible', () => {
     assert(first.api.getState().ctxCalls.includes('strokeRect'));
 });
 
+test('debug timing metrics are opt-in and account for raw frame discard', () => {
+    const off = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    off.api.initGame();
+    off.api.gameLoop(0);
+    off.api.gameLoop(1000);
+    assert.equal(off.api.getDebugData().metrics.samples, 0);
+
+    const on = loadGame({ search: '?debug=1&seed=42', storage: { glitchDuelOnboardingSeen: '1' } });
+    on.api.initGame();
+    on.api.gameLoop(0);
+    on.api.gameLoop(1000);
+    const metrics = on.api.getDebugData().metrics;
+    assert.equal(metrics.samples, 2);
+    assert.equal(metrics.frameClampDiscardMs, 900);
+    assert.equal(metrics.maxStepsPerFrame, 6);
+    assert.equal(metrics.deviceDpr, 2);
+    assert.equal(metrics.effectiveDpr, 2);
+});
+
 test('first-run onboarding persists its skip decision', () => {
     const { api, context } = loadGame();
 
@@ -1231,7 +1819,7 @@ test('special attack consumes full energy and deals heavy damage', () => {
     assert.equal(player.energy, 0);
     assert.equal(opponent.health, 74);
     assert.equal(api.getState().specialFlash.color, player.accentColor);
-    assert(api.getState().floatingTexts.some((text) => text.text === 'SPECIAL!'));
+    assert(api.getState().floatingTexts.some((text) => text.text === api.t('specialImpact')));
 });
 
 test('special feedback respects reduced motion', () => {
@@ -2186,7 +2774,7 @@ test('finish poses render victory and defeat labels', () => {
     loser.draw();
 
     const state = api.getState();
-    assert(state.textCalls.includes('WIN'));
+    assert(state.textCalls.includes(api.t('win')));
     assert(state.textCalls.includes('404'));
 });
 

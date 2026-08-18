@@ -50,10 +50,17 @@ let debugStepCount = 0;
 let debugTimestamp = null;
 let debugFps = 0;
 let debugTicksPerSecond = 0;
+const DEBUG_SAMPLE_LIMIT = 1200;
+let debugMetrics = createDebugMetrics();
 let onboardingStep = 0;
 let activeDialog = null;
 let dialogReturnFocus = null;
 let specialReadyAnnounced = false;
+let canvasDisplayWidth = WIDTH;
+let hudCompactMode = false;
+let modeContextCacheKey = null;
+let touchSpecialStateCacheKey = null;
+let pauseSummaryCacheKey = null;
 const VS_INTRO_FRAMES = 90;
 const MODAL_SURFACE_IDS = ['arena-shell', 'orientation-warning', 'main-menu', 'help-screen', 'controls-screen', 'onboarding-screen', 'pause-screen', 'controls', 'training-panel', 'game-over'];
 const STYLE_DESCRIPTION_KEYS = {
@@ -62,6 +69,69 @@ const STYLE_DESCRIPTION_KEYS = {
     heavy: 'styleHeavyDescription',
     technical: 'styleTechnicalDescription'
 };
+
+function createDebugMetrics() {
+    return {
+        active: false,
+        rafDeltaMs: [],
+        updateStepMs: [],
+        simulationFrameMs: [],
+        sceneDrawMs: [],
+        frameWorkMs: [],
+        frameClampDiscardMs: 0,
+        accumulatorCapDiscardMs: 0,
+        stepCapDiscardMs: 0,
+        stepsPerFrame: 0,
+        multiStepFrames: 0,
+        maxStepsPerFrame: 0,
+        sampleCount: 0,
+        effectiveDpr: 1,
+        deviceDpr: 1,
+        backingMegapixels: 0
+    };
+}
+
+function getDebugNow() {
+    return typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : null;
+}
+
+function resetDebugMetrics() {
+    debugMetrics = createDebugMetrics();
+}
+
+function pushDebugSample(list, value) {
+    if (!debugMetrics.active || !Number.isFinite(value)) return;
+    list.push(value);
+    if (list.length > DEBUG_SAMPLE_LIMIT) list.splice(0, list.length - DEBUG_SAMPLE_LIMIT);
+}
+
+function getNearestRankPercentile(values, percentile = 0.95) {
+    if (!values.length) return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted[Math.max(0, Math.ceil(percentile * sorted.length) - 1)];
+}
+
+function getDebugMetricSummary() {
+    return {
+        active: debugMetrics.active,
+        samples: debugMetrics.sampleCount,
+        rafSamples: debugMetrics.rafDeltaMs.length,
+        p95RafMs: getNearestRankPercentile(debugMetrics.rafDeltaMs),
+        p95UpdateMs: getNearestRankPercentile(debugMetrics.updateStepMs),
+        p95SimulationFrameMs: getNearestRankPercentile(debugMetrics.simulationFrameMs),
+        p95SceneDrawMs: getNearestRankPercentile(debugMetrics.sceneDrawMs),
+        p95FrameWorkMs: getNearestRankPercentile(debugMetrics.frameWorkMs),
+        frameClampDiscardMs: debugMetrics.frameClampDiscardMs,
+        accumulatorCapDiscardMs: debugMetrics.accumulatorCapDiscardMs,
+        stepCapDiscardMs: debugMetrics.stepCapDiscardMs,
+        stepsPerFrame: debugMetrics.stepsPerFrame,
+        multiStepFrames: debugMetrics.multiStepFrames,
+        maxStepsPerFrame: debugMetrics.maxStepsPerFrame,
+        deviceDpr: debugMetrics.deviceDpr,
+        effectiveDpr: debugMetrics.effectiveDpr,
+        backingMegapixels: debugMetrics.backingMegapixels
+    };
+}
 
 function getDifficultyConfig() {
     return DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.normal;
@@ -110,6 +180,7 @@ function initializeMatchSeed(seed = getSeedFromLocation()) {
 
 function toggleDebugOverlay() {
     debugOverlayEnabled = !debugOverlayEnabled;
+    if (debugOverlayEnabled) resetDebugMetrics();
 }
 
 function getDebugData() {
@@ -128,7 +199,7 @@ function getDebugData() {
         y: fighter.y
     });
 
-    return { enabled: debugOverlayEnabled, seed: matchSeed, gameState, fps: debugFps, ticks: debugTicksPerSecond, player1: describe(player1), player2: describe(player2) };
+    return { enabled: debugOverlayEnabled, seed: matchSeed, gameState, fps: debugFps, ticks: debugTicksPerSecond, metrics: getDebugMetricSummary(), player1: describe(player1), player2: describe(player2) };
 }
 
 function loadOnboardingSeen() {
@@ -155,8 +226,15 @@ function completeOnboarding(startGame = false) {
     } catch (_) {
         // localStorage can be unavailable in private browsing or tests.
     }
-    closeModalDialog('onboarding-screen', !startGame);
-    if (startGame) initGame();
+    closeModalDialog('onboarding-screen', false);
+    if (startGame) {
+        initGame();
+        return;
+    }
+
+    const menu = document.getElementById('main-menu');
+    if (menu) menu.style.display = 'flex';
+    openModalDialog('main-menu', 'start-button');
 }
 
 function showOnboardingIfNeeded() {
@@ -179,6 +257,72 @@ function clearActiveInput() {
     keys = {};
 }
 
+function getElementTagName(element) {
+    return String(element && (element.tagName || element.nodeName) || '').toLowerCase();
+}
+
+function getElementParent(element) {
+    return element && (element.parentElement || element.parentNode) || null;
+}
+
+function getKeyboardTargetPolicy(target) {
+    let current = target;
+    while (current) {
+        const tagName = getElementTagName(current);
+        if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') return 'editing';
+
+        const contentEditable = current.getAttribute && current.getAttribute('contenteditable');
+        if (current.isContentEditable === true || current.contentEditable === 'true' || (contentEditable !== null && contentEditable !== undefined && contentEditable !== 'false')) {
+            return 'editing';
+        }
+
+        if (tagName === 'button' || tagName === 'summary' || (tagName === 'a' && current.getAttribute && current.getAttribute('href') !== null)) {
+            return 'activation';
+        }
+        current = getElementParent(current);
+    }
+    return null;
+}
+
+function isElementWithin(target, ancestor) {
+    let current = target;
+    while (current) {
+        if (current === ancestor) return true;
+        current = getElementParent(current);
+    }
+    return false;
+}
+
+function focusGameplayCanvas() {
+    if (canvas && typeof canvas.focus === 'function') canvas.focus({ preventScroll: true });
+}
+
+function focusDialogTarget(target) {
+    if (!target) return;
+    if (typeof target.focus === 'function') target.focus({ preventScroll: true });
+    if (typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+}
+
+function isInsideClosedDetails(element) {
+    const tagName = getElementTagName(element);
+    let current = getElementParent(element);
+    while (current) {
+        if (getElementTagName(current) === 'details' && current.open === false) {
+            return tagName !== 'summary' || getElementParent(element) !== current;
+        }
+        current = getElementParent(current);
+    }
+    return false;
+}
+
+function hasNegativeTabIndex(element) {
+    if (!element || typeof element.getAttribute !== 'function') return false;
+    const value = element.getAttribute('tabindex');
+    return value !== null && value !== undefined && value !== '' && Number(value) < 0;
+}
+
 function refreshInputSnapshot() {
     keys = getInputSnapshot();
     return keys;
@@ -187,9 +331,10 @@ function refreshInputSnapshot() {
 function getFocusableElements(dialog) {
     if (!dialog || typeof dialog.querySelectorAll !== 'function') return [];
 
-    const selector = 'button:not([disabled]), [href], select:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const selector = 'button:not([disabled]), [href], select:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), summary, [contenteditable]:not([contenteditable="false"])';
     return Array.from(dialog.querySelectorAll(selector)).filter((element) => {
         if (element.hidden || element.getAttribute('aria-hidden') === 'true') return false;
+        if (element.disabled || hasNegativeTabIndex(element) || isInsideClosedDetails(element)) return false;
         if (typeof window.getComputedStyle !== 'function') return true;
         const style = window.getComputedStyle(element);
         return style.display !== 'none' && style.visibility !== 'hidden';
@@ -214,7 +359,7 @@ function focusDialog(dialog, preferredId) {
     const focusables = getFocusableElements(dialog);
     const target = preferred || focusables[0] || dialog;
 
-    if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
+    focusDialogTarget(target);
 }
 
 function openModalDialog(id, preferredId, returnFocus = null) {
@@ -235,7 +380,7 @@ function closeModalDialog(id, restoreFocus = true) {
 
     const returnFocus = dialogReturnFocus;
     clearModalState();
-    if (restoreFocus && returnFocus && typeof returnFocus.focus === 'function') returnFocus.focus();
+    if (restoreFocus && returnFocus && typeof returnFocus.focus === 'function') returnFocus.focus({ preventScroll: true });
 }
 
 function closeAllModalDialogs() {
@@ -259,12 +404,16 @@ function trapDialogFocus(event) {
 
     const first = focusables[0];
     const last = focusables[focusables.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
+    const currentIndex = focusables.indexOf(document.activeElement);
+    if (currentIndex === -1) {
         event.preventDefault();
-        last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
+        (event.shiftKey ? last : first).focus({ preventScroll: true });
+    } else if (event.shiftKey && currentIndex === 0) {
         event.preventDefault();
-        first.focus();
+        last.focus({ preventScroll: true });
+    } else if (!event.shiftKey && currentIndex === focusables.length - 1) {
+        event.preventDefault();
+        first.focus({ preventScroll: true });
     }
 
     return true;
@@ -667,6 +816,55 @@ function setElementAria(id, key) {
     if (element && element.setAttribute) element.setAttribute('aria-label', t(key));
 }
 
+function getModeContextText() {
+    if (gameMode === 'training') return t('modeTraining');
+    if (gameMode === 'arcade' && arcadeRun) {
+        return t('modeArcade', {
+            fight: getArcadeFightNumber(),
+            total: ARCADE_RUN_FIGHTS.length
+        });
+    }
+    return t('modeVersus');
+}
+
+function renderModeContext() {
+    const instructions = document.getElementById('instructions');
+    if (!instructions) return;
+
+    const fight = gameMode === 'arcade' && arcadeRun ? getArcadeFightNumber() : 0;
+    const signature = `${getLanguage()}|${gameMode}|${fight}|${ARCADE_RUN_FIGHTS.length}`;
+    if (signature === modeContextCacheKey) return;
+
+    const text = getModeContextText();
+    instructions.textContent = text;
+    instructions.setAttribute('aria-label', text);
+    modeContextCacheKey = signature;
+}
+
+function renderTouchSpecialState() {
+    const button = document.getElementById('btn-special');
+    const stateElement = document.getElementById('btn-special-state');
+    if (!button || !stateElement) return;
+
+    const energy = Math.max(0, Math.min(MAX_ENERGY, Math.round(player1 ? player1.energy : 0)));
+    const ready = energy >= MAX_ENERGY;
+    const visible = mobileControlsEnabled && gameState === 'playing';
+    const signature = `${getLanguage()}|${energy}|${ready}|${visible}`;
+    if (signature === touchSpecialStateCacheKey) return;
+
+    const state = ready ? t('specialReadyShort') : t('specialCharging');
+    stateElement.textContent = state;
+    button.setAttribute('data-state', ready ? 'ready' : 'charging');
+    button.setAttribute('aria-disabled', ready ? 'false' : 'true');
+    button.setAttribute('aria-label', t('specialButtonStateLabel', {
+        action: t('touchSpecialAction'),
+        state,
+        energy,
+        max: MAX_ENERGY
+    }));
+    touchSpecialStateCacheKey = signature;
+}
+
 function getInputBindingText(action) {
     return getInputBindingLabels(action).join(' / ');
 }
@@ -703,13 +901,6 @@ function renderInputBindings() {
     const summary = document.getElementById('controls-summary');
     if (summary) summary.textContent = t('controlsSummary', getInputTextParams());
 
-    const punchButton = document.getElementById('btn-punch');
-    const kickButton = document.getElementById('btn-kick');
-    const specialButton = document.getElementById('btn-special');
-    if (punchButton) punchButton.textContent = t('punch');
-    if (kickButton) kickButton.textContent = t('kick');
-    if (specialButton) specialButton.textContent = t('specialShort');
-
     if (typeof renderInputBindingsDialog === 'function') renderInputBindingsDialog();
 }
 
@@ -717,7 +908,6 @@ function renderLanguage() {
     if (document.documentElement) document.documentElement.lang = t('htmlLang');
 
     applyI18nAttributes();
-    setElementText('instructions', 'instructions');
     setElementText('orientation-warning', 'orientationWarning');
     setElementText('pause-button', 'pauseButton');
     setElementText('start-button', 'start');
@@ -739,7 +929,6 @@ function renderLanguage() {
     setElementAria('btn-block', 'block');
     setElementAria('btn-punch', 'punch');
     setElementAria('btn-kick', 'kick');
-    setElementAria('btn-special', 'specialButtonLabel');
     renderLanguagePreference();
     renderStylePreference();
     renderRivalPreference();
@@ -747,6 +936,11 @@ function renderLanguage() {
     renderArenaPreview();
     renderSelectionSummary();
     renderInputBindings();
+    modeContextCacheKey = null;
+    touchSpecialStateCacheKey = null;
+    pauseSummaryCacheKey = null;
+    renderModeContext();
+    renderTouchSpecialState();
     renderPauseSummary();
 
     renderGameOverActions();
@@ -882,16 +1076,34 @@ function renderPauseSummary() {
     const difficulty = getDifficultyLabel();
     const arena = getArenaLabel();
     const seconds = Math.ceil(roundTimeMs / 1000);
+    const mode = getModeContextText();
+    const controls = t('controlsSummary', getInputTextParams());
+    const signature = [
+        gameState,
+        getLanguage(),
+        mode,
+        currentRound,
+        playerRounds,
+        cpuRounds,
+        seconds,
+        difficulty,
+        arena,
+        getRivalLabel(),
+        controls
+    ].join('|');
+    if (signature === pauseSummaryCacheKey) return;
 
     summary.textContent = t('pauseSummary', {
+        mode,
         round: currentRound,
         score: `${playerRounds}-${cpuRounds}`,
         seconds,
         difficulty,
         arena,
         rival: getRivalLabel(),
-        controls: t('controlsSummary', getInputTextParams())
+        controls
     });
+    pauseSummaryCacheKey = signature;
 }
 
 function hasTouchInput() {
@@ -931,9 +1143,14 @@ function resizeCanvas() {
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DEVICE_PIXEL_RATIO);
     const backingWidth = Math.round(displayWidth * dpr);
     const backingHeight = Math.round(displayHeight * dpr);
+    debugMetrics.deviceDpr = window.devicePixelRatio || 1;
+    debugMetrics.effectiveDpr = dpr;
+    debugMetrics.backingMegapixels = (backingWidth * backingHeight) / 1000000;
 
     canvas.style.width = `${displayWidth}px`;
     canvas.style.height = `${displayHeight}px`;
+    canvasDisplayWidth = displayWidth;
+    hudCompactMode = displayWidth / WIDTH < 0.65;
     canvas.style.marginTop = topReserve ? `${topReserve}px` : '';
     canvas.style.marginBottom = bottomReserve ? `${bottomReserve}px` : '';
     const arenaShell = document.getElementById('arena-shell');
@@ -981,6 +1198,7 @@ function startRound() {
     showStatusMessage(`${t('round')} ${currentRound}`, 75);
     announce(t('roundAnnounce', { round: currentRound, rival: getRivalLabel() }));
     updateControlsVisibility();
+    focusGameplayCanvas();
 }
 
 function startArcadeFight() {
@@ -1070,6 +1288,10 @@ function resetTraining() {
         fighter.hitStun = 0;
         fighter.energy = 0;
         fighter.onGround = true;
+        fighter.clearComboSequence();
+        fighter.prevPunchPressed = false;
+        fighter.prevKickPressed = false;
+        fighter.prevSpecialPressed = false;
     });
     player1.health = Math.round(100 * (FIGHTER_STYLES[player1.styleKey] || FIGHTER_STYLES.balanced).health);
     player1.displayHealth = player1.health;
@@ -1137,7 +1359,7 @@ function showHelpScreen() {
     closeAllModalDialogs();
     gameState = 'menu';
     document.getElementById('help-screen').style.display = 'flex';
-    openModalDialog('help-screen', 'back-button', document.getElementById('help-button'));
+    openModalDialog('help-screen', 'help-title', document.getElementById('help-button'));
     updateControlsVisibility();
 }
 
@@ -1154,7 +1376,7 @@ function showControlsScreen() {
     gameState = 'menu';
     document.getElementById('controls-screen').style.display = 'flex';
     renderInputBindingsDialog();
-    openModalDialog('controls-screen', 'controls-back-button', document.getElementById('controls-button'));
+    openModalDialog('controls-screen', 'controls-title', document.getElementById('controls-button'));
     updateControlsVisibility();
 }
 
@@ -1172,12 +1394,14 @@ function pauseGame(silent = false) {
 
     if (!silent) playUISound('pause');
     clearActiveInput();
+    if (player1) player1.clearComboSequence();
+    if (player2) player2.clearComboSequence();
     resetSimulationClock();
     gameState = 'paused';
     renderPauseSummary();
     document.getElementById('pause-screen').style.display = 'flex';
     updateControlsVisibility();
-    openModalDialog('pause-screen', 'resume-button', document.getElementById('pause-button'));
+    openModalDialog('pause-screen', 'pause-title');
 }
 
 function resumeGame() {
@@ -1189,7 +1413,8 @@ function resumeGame() {
     gameState = 'playing';
     document.getElementById('pause-screen').style.display = 'none';
     updateControlsVisibility();
-    closeModalDialog('pause-screen');
+    closeModalDialog('pause-screen', false);
+    focusGameplayCanvas();
 }
 
 function togglePause() {
@@ -1224,7 +1449,7 @@ function checkCollision() {
 function update() {
     if (gameState !== 'playing') return;
 
-    debugStepCount++;
+    if (debugMetrics.active) debugStepCount++;
 
     if (vsIntroTimer > 0) {
         vsIntroTimer--;
@@ -1263,6 +1488,8 @@ function finishRound(playerWon) {
     if (gameState !== 'playing') return;
 
     clearActiveInput();
+    if (player1) player1.clearComboSequence();
+    if (player2) player2.clearComboSequence();
     resetSimulationClock();
 
     if (playerWon === true) playerRounds++;
@@ -1380,7 +1607,7 @@ function triggerSpecialFeedback(fighter) {
         maxTimer: duration,
         fullFlash: !reducedMotionEnabled
     };
-    floatingTexts.push(new FloatingText(fighter.x, fighter.y - 140, 'SPECIAL!', color));
+    floatingTexts.push(new FloatingText(fighter.x, fighter.y - 140, t('specialImpact'), color));
 }
 
 function updateHealthAnimations() {
@@ -1474,7 +1701,9 @@ function drawDebugOverlay() {
         ctx.fillText(`${label} ${fighter.state} cd:${fighter.cooldown} stun:${fighter.hitStun} combo:${fighter.comboTimer} ai:${fighter.aiAction}/${fighter.aiDecisionTimer} e:${fighter.energy}`, 12, HEIGHT - 42 + index * 14);
     });
     ctx.fillStyle = '#111';
-    ctx.fillText(`debug ${data.gameState} fps:${data.fps} ticks:${data.ticks} seed:${data.seed}`, 12, HEIGHT - 12);
+    ctx.fillText(`debug ${data.gameState} fps:${data.fps} ticks:${data.ticks} seed:${data.seed}`, 12, HEIGHT - 26);
+    const metrics = data.metrics;
+    ctx.fillText(`p95 frame:${metrics.p95FrameWorkMs === null ? 'n/a' : metrics.p95FrameWorkMs.toFixed(2)}ms raf:${metrics.p95RafMs === null ? 'n/a' : metrics.p95RafMs.toFixed(2)}ms dpr:${metrics.deviceDpr}/${metrics.effectiveDpr} drop:${Math.round(metrics.frameClampDiscardMs + metrics.accumulatorCapDiscardMs + metrics.stepCapDiscardMs)}ms`, 12, HEIGHT - 12);
     ctx.restore();
 }
 
@@ -1485,6 +1714,8 @@ function updateControlsVisibility() {
     document.getElementById('pause-button').style.display = gameState === 'playing' ? 'block' : 'none';
     const trainingPanel = document.getElementById('training-panel');
     if (trainingPanel) trainingPanel.style.display = gameMode === 'training' && gameState === 'playing' ? 'block' : 'none';
+    renderModeContext();
+    renderTouchSpecialState();
     resizeCanvas();
     updateOrientationWarning();
 }
@@ -1492,6 +1723,8 @@ function updateControlsVisibility() {
 function finishMatch(playerWon) {
     if (gameState !== 'playing') return;
 
+    if (player1) player1.clearComboSequence();
+    if (player2) player2.clearComboSequence();
     const record = createMatchHistoryRecord(playerWon);
     gameState = 'gameOver';
     showStatusMessage(t('ko'), 180);
@@ -1508,16 +1741,18 @@ function finishMatch(playerWon) {
     document.getElementById('game-over').style.display = 'block';
     updateControlsVisibility();
     announce(t('finalAnnounce', { result: playerWon ? t('playerWins') : t('cpuWins') }));
-    openModalDialog('game-over', 'restart-button');
+    openModalDialog('game-over', 'game-over-title');
 }
 
 function moveDialogFocus(direction) {
     if (!activeDialog) return;
     const focusables = getFocusableElements(activeDialog);
     if (!focusables.length) return;
-    const currentIndex = Math.max(0, focusables.indexOf(document.activeElement));
-    const nextIndex = (currentIndex + direction + focusables.length) % focusables.length;
-    focusables[nextIndex].focus({ preventScroll: true });
+    const currentIndex = focusables.indexOf(document.activeElement);
+    const nextIndex = currentIndex === -1
+        ? (direction < 0 ? focusables.length - 1 : 0)
+        : (currentIndex + direction + focusables.length) % focusables.length;
+    focusDialogTarget(focusables[nextIndex]);
 }
 
 function adjustFocusedSelect(direction) {
@@ -1558,38 +1793,76 @@ function handleGamepadEvents(events) {
 function advanceSimulation(deltaMs) {
     if (gameState !== 'playing') return;
 
-    simulationAccumulator = Math.min(MAX_FRAME_DELTA_MS, simulationAccumulator + Math.max(0, deltaMs));
+    const rawDelta = Math.max(0, Number(deltaMs) || 0);
+    const acceptedDelta = Math.min(MAX_FRAME_DELTA_MS, rawDelta);
+    const accumulatorBefore = simulationAccumulator;
+    if (debugMetrics.active) {
+        debugMetrics.frameClampDiscardMs += Math.max(0, rawDelta - acceptedDelta);
+        debugMetrics.accumulatorCapDiscardMs += Math.max(0, accumulatorBefore + acceptedDelta - MAX_FRAME_DELTA_MS);
+    }
+    simulationAccumulator = Math.min(MAX_FRAME_DELTA_MS, accumulatorBefore + acceptedDelta);
     let steps = 0;
 
     while (simulationAccumulator + 0.000001 >= FIXED_STEP_MS && steps < MAX_SIMULATION_STEPS) {
+        const updateStart = debugMetrics.active ? getDebugNow() : null;
         update();
+        const updateEnd = debugMetrics.active ? getDebugNow() : null;
+        if (updateStart !== null && updateEnd !== null) pushDebugSample(debugMetrics.updateStepMs, Math.max(0, updateEnd - updateStart));
         simulationAccumulator -= FIXED_STEP_MS;
         steps++;
     }
 
     if (simulationAccumulator < 0.000001 || (steps === MAX_SIMULATION_STEPS && simulationAccumulator >= FIXED_STEP_MS)) {
+        if (debugMetrics.active && steps === MAX_SIMULATION_STEPS && simulationAccumulator >= FIXED_STEP_MS) {
+            debugMetrics.stepCapDiscardMs += simulationAccumulator;
+        }
         simulationAccumulator = 0;
+    }
+
+    if (debugMetrics.active) {
+        debugMetrics.stepsPerFrame += steps;
+        if (steps > 1) debugMetrics.multiStepFrames++;
+        debugMetrics.maxStepsPerFrame = Math.max(debugMetrics.maxStepsPerFrame, steps);
     }
 }
 
 function gameLoop(timestamp = 0) {
-    const deltaMs = lastFrameTimestamp === null ? 0 : Math.min(MAX_FRAME_DELTA_MS, Math.max(0, timestamp - lastFrameTimestamp));
+    const deltaMs = lastFrameTimestamp === null ? 0 : Math.max(0, timestamp - lastFrameTimestamp);
     lastFrameTimestamp = timestamp;
+    const collecting = debugOverlayEnabled && gameState === 'playing';
+    debugMetrics.active = collecting;
+    const frameStart = collecting ? getDebugNow() : null;
 
     handleGamepadEvents(pollInputGamepads());
     refreshInputSnapshot();
+    const simulationStart = collecting ? getDebugNow() : null;
     advanceSimulation(deltaMs);
-    debugFrameCount++;
-    if (debugTimestamp === null) debugTimestamp = timestamp;
-    if (timestamp - debugTimestamp >= 1000) {
-        const elapsed = timestamp - debugTimestamp;
-        debugFps = Math.round(debugFrameCount * 1000 / elapsed);
-        debugTicksPerSecond = Math.round(debugStepCount * 1000 / elapsed);
+    const simulationEnd = collecting ? getDebugNow() : null;
+    if (simulationStart !== null && simulationEnd !== null) pushDebugSample(debugMetrics.simulationFrameMs, Math.max(0, simulationEnd - simulationStart));
+    renderTouchSpecialState();
+    const drawStart = collecting ? getDebugNow() : null;
+    draw();
+    const frameEnd = collecting ? getDebugNow() : null;
+    if (collecting) {
+        debugFrameCount++;
+        debugMetrics.sampleCount++;
+        if (lastFrameTimestamp !== null && deltaMs > 0) pushDebugSample(debugMetrics.rafDeltaMs, deltaMs);
+        if (drawStart !== null && frameEnd !== null) pushDebugSample(debugMetrics.sceneDrawMs, Math.max(0, frameEnd - drawStart));
+        if (frameStart !== null && frameEnd !== null) pushDebugSample(debugMetrics.frameWorkMs, Math.max(0, frameEnd - frameStart));
+        if (debugTimestamp === null) debugTimestamp = timestamp;
+        if (timestamp - debugTimestamp >= 1000) {
+            const elapsed = timestamp - debugTimestamp;
+            debugFps = Math.round(debugFrameCount * 1000 / elapsed);
+            debugTicksPerSecond = Math.round(debugStepCount * 1000 / elapsed);
+            debugFrameCount = 0;
+            debugStepCount = 0;
+            debugTimestamp = timestamp;
+        }
+    } else {
+        debugTimestamp = null;
         debugFrameCount = 0;
         debugStepCount = 0;
-        debugTimestamp = timestamp;
     }
-    draw();
     requestAnimationFrame(gameLoop);
 }
 
@@ -1623,6 +1896,7 @@ function setupMobileControls() {
 
         btn.addEventListener('pointerdown', (e) => {
             if (e.button !== undefined && e.button !== 0) return;
+            if (key === 'special' && (!player1 || player1.energy < MAX_ENERGY)) return;
             if (e.preventDefault) e.preventDefault();
             initAudio();
             const sourceId = `pointer:${e.pointerId}`;
@@ -1637,6 +1911,7 @@ function setupMobileControls() {
         btn.addEventListener('lostpointercapture', (e) => releasePointer(e.pointerId));
         btn.addEventListener('keydown', (e) => {
             if (e.repeat || (e.key !== ' ' && e.key !== 'Enter')) return;
+            if (key === 'special' && (!player1 || player1.energy < MAX_ENERGY)) return;
             if (e.preventDefault) e.preventDefault();
             setInputSource(`button:${key}:${e.key}`, key, true);
             refreshInputSnapshot();
@@ -1657,14 +1932,15 @@ function setupKeyboardControls() {
     window.addEventListener('keydown', (e) => {
         const code = getInputKeyboardCode(e);
 
+        if (e.ctrlKey || e.altKey || e.metaKey) return;
+        if (e.shiftKey && code !== 'Tab') return;
+
         if (getInputBindingCapture()) {
-            if (e.preventDefault) e.preventDefault();
             const result = captureInputBinding(e);
+            if (e.preventDefault) e.preventDefault();
             renderInputBindingsDialog(result);
             return;
         }
-
-        if (e.target && e.target.classList && e.target.classList.contains('btn')) return;
 
         if (activeDialog) {
             if (trapDialogFocus(e)) return;
@@ -1677,8 +1953,35 @@ function setupKeyboardControls() {
             }
         }
 
+        const activeElement = document.activeElement && document.activeElement !== document.body
+            ? document.activeElement
+            : e.target;
+        const pauseButton = document.getElementById('pause-button');
+        if (gameState === 'playing' && code === 'Tab') {
+            if (!e.shiftKey && isElementWithin(activeElement, canvas)) {
+                if (e.preventDefault) e.preventDefault();
+                if (pauseButton && typeof pauseButton.focus === 'function') pauseButton.focus({ preventScroll: true });
+                return;
+            }
+            if (e.shiftKey && isElementWithin(activeElement, pauseButton)) {
+                if (e.preventDefault) e.preventDefault();
+                focusGameplayCanvas();
+                return;
+            }
+        }
+
+        const targetPolicy = getKeyboardTargetPolicy(e.target || activeElement);
+        if (targetPolicy === 'editing') return;
+        if (targetPolicy === 'activation' && (code === 'Enter' || code === 'Space')) return;
+
         const action = getInputActionForCode(code);
-        if (action === 'pause' || code === 'Escape') {
+        if (action === 'pause' && (gameState === 'playing' || gameState === 'paused')) {
+            if (e.preventDefault) e.preventDefault();
+            if (!e.repeat) togglePause();
+            return;
+        }
+
+        if (code === 'Escape' && (gameState === 'playing' || gameState === 'paused')) {
             if (e.preventDefault) e.preventDefault();
             if (!e.repeat || code === 'Escape') togglePause();
             return;
@@ -1737,9 +2040,16 @@ function renderInputBindingsDialog(result = null) {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'binding-button';
+            button.setAttribute('data-binding-action', action);
+            button.setAttribute('data-binding-slot', String(slot));
             button.textContent = capture && capture.action === action && capture.slot === slot
                 ? t('bindingPressKey')
                 : inputBindingLabel(code);
+            button.setAttribute('aria-label', t('bindingName', {
+                action: t(`inputAction${action.charAt(0).toUpperCase()}${action.slice(1)}`),
+                slot: slot + 1,
+                key: inputBindingAccessibleLabel(code)
+            }));
             button.addEventListener('click', () => {
                 beginInputBindingCapture(action, slot);
                 renderInputBindingsDialog();
@@ -1751,8 +2061,12 @@ function renderInputBindingsDialog(result = null) {
             const addButton = document.createElement('button');
             addButton.type = 'button';
             addButton.className = 'binding-button binding-button--add';
+            addButton.setAttribute('data-binding-action', action);
+            addButton.setAttribute('data-binding-slot', String(bindings[action].length));
             addButton.textContent = '+';
-            addButton.setAttribute('aria-label', t('bindingAdd'));
+            addButton.setAttribute('aria-label', t('bindingAddForAction', {
+                action: t(`inputAction${action.charAt(0).toUpperCase()}${action.slice(1)}`)
+            }));
             addButton.addEventListener('click', () => {
                 beginInputBindingCapture(action, bindings[action].length);
                 renderInputBindingsDialog();
@@ -1768,7 +2082,18 @@ function renderInputBindingsDialog(result = null) {
         }
     });
 
-    if (result && status && typeof status.focus === 'function') status.focus({ preventScroll: true });
+    if (result && result.navigation) {
+        const dialog = activeDialog || document.getElementById('controls-screen');
+        const focusables = getFocusableElements(dialog);
+        const currentIndex = focusables.findIndex((element) => element.getAttribute('data-binding-action') === result.action && Number(element.getAttribute('data-binding-slot')) === result.slot);
+        if (focusables.length) {
+            const direction = result.navigation === 'previous' ? -1 : 1;
+            const nextIndex = currentIndex === -1
+                ? (direction < 0 ? focusables.length - 1 : 0)
+                : (currentIndex + direction + focusables.length) % focusables.length;
+            focusables[nextIndex].focus({ preventScroll: true });
+        }
+    } else if (result && status && typeof status.focus === 'function') status.focus({ preventScroll: true });
 }
 
 function setupRestartButton() {

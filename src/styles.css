@@ -117,10 +117,52 @@ canvas {
 button:focus-visible,
 select:focus-visible,
 input:focus-visible,
+summary:focus-visible,
+canvas:focus-visible,
 .github-link:focus-visible,
 .btn:focus-visible {
-    outline: 4px solid #ffcc00;
+    outline: 3px solid #111;
+    box-shadow: 0 0 0 6px #ffcc00;
     outline-offset: 3px;
+}
+
+.dialog-focus-target:focus-visible {
+    outline: 3px solid #111;
+    box-shadow: 0 0 0 6px #ffcc00;
+    outline-offset: 4px;
+}
+
+#btn-special[data-state="charging"] {
+    background-image: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.14) 0 5px, transparent 5px 10px);
+}
+
+#btn-special[data-state="ready"] {
+    background-color: #ffd447;
+}
+
+.touch-state {
+    display: block;
+    font-size: 0.72em;
+    line-height: 1;
+}
+
+@media (forced-colors: active) {
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible,
+    summary:focus-visible,
+    canvas:focus-visible,
+    .github-link:focus-visible,
+    .btn:focus-visible,
+    .dialog-focus-target:focus-visible {
+        outline: 2px solid Highlight;
+        box-shadow: 0 0 0 4px Canvas;
+        forced-color-adjust: auto;
+    }
+
+    #btn-special[data-state="charging"]::after {
+        content: " / CARGA";
+    }
 }
 
 .github-link {

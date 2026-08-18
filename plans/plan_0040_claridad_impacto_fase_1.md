@@ -445,4 +445,30 @@ Ejecutar pruebas focales antes de cada commit y la validacion completa antes del
 
 ## Estado De Implementacion
 
-Pendiente.
+Parcial.
+
+Implementado y validado automaticamente:
+
+- `#72`: politica de targets/modificadores, foco Canvas, puente Canvas/Pausa, captura Tab y focus trap.
+- `#73`: `pendingComboInput`, cancelacion atomica, limites de cooldown/ventana y regresiones deterministas.
+- `#25`: foco de gameplay/dialogos, nombre conciso de Game Over, HUD compacto y layout seguro de marcadores.
+- `#69`: grupos/selects touch-training, spans localizables, feedback funcional ES/EN y nombres accesibles de bindings.
+- `#75`: contexto de modo/progreso, estado tactil charging/ready y mutaciones DOM cacheadas.
+- `#32`: metricas debug locales acotadas, descarte bruto/caps, DPR raw/efectivo y cleanup idempotente de Web Audio.
+
+Evidencia ejecutada en esta implementacion:
+
+- `node --test tests\game.test.js`: 115 pruebas aprobadas, 0 fallos.
+- `node --check` sobre todos los `src/*.js`: correcto.
+- `git diff --check`: correcto, con solo advertencias de conversion LF/CRLF del entorno.
+- Smoke de navegador local: menu, Ayuda, inicio de partida y Pausa cargaron; la pausa mostro contexto `DUELO`, ronda, score, tiempo, dificultad, arena, rival y controles.
+
+Pendiente antes de cerrar Fase 1:
+
+- Teclado fisico y atajos del navegador en un browser real.
+- Touch multitactil fisico, gamepad real y estado charging/ready en dispositivos hibridos.
+- Zoom real 200%, forced-colors, contraste pixel-real y lectores de pantalla.
+- Medicion de rendimiento en hardware nombrado a 30/60/120 Hz y DPR raw/efectivo, incluida sesion Web Audio de 20 minutos mas reposo.
+- Piloto de seis primeras sesiones de `#77`.
+
+No se deben marcar `#72`, `#73`, `#69`, `#75` ni `#32` como completados hasta registrar esas verificaciones manuales/tecnicas. `#25` y `#77` conservan trabajo posterior por diseño.

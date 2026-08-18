@@ -200,11 +200,8 @@ function drawFighter(fighter) {
 function drawFighterIdentityMarker(fighter, baseX, baseY, accentColor) {
     const tag = fighter.isPlayer1 ? 'P1' : 'AI';
     const label = fighter.labelKey ? t(fighter.labelKey) : (fighter.label || (fighter.isPlayer1 ? t('human') : t('cpu')));
-    const measuredLabelWidth = typeof ctx.measureText === 'function' ? ctx.measureText(label).width : label.length * 7;
-    const badgeWidth = fighter.isPlayer1 ? 56 : Math.max(76, measuredLabelWidth + 16);
-    const badgeCenter = Math.max(16 + badgeWidth / 2, Math.min(WIDTH - 16 - badgeWidth / 2, baseX));
-    const badgeX = badgeCenter - badgeWidth / 2;
-    const badgeY = baseY - 150;
+    const layout = getFighterMarkerLayout(fighter, baseX, baseY, label);
+    const { badgeWidth, badgeCenter, badgeX, badgeY } = layout;
 
     ctx.fillStyle = accentColor;
     ctx.fillRect(badgeX, badgeY, badgeWidth, 24);
@@ -216,24 +213,43 @@ function drawFighterIdentityMarker(fighter, baseX, baseY, accentColor) {
     ctx.textAlign = 'center';
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#000';
-    ctx.strokeText(tag, badgeCenter, baseY - 132);
+    ctx.strokeText(tag, badgeCenter, badgeY + 18);
     ctx.fillStyle = '#fff';
-    ctx.fillText(tag, badgeCenter, baseY - 132);
+    ctx.fillText(tag, badgeCenter, badgeY + 18);
 
     ctx.font = `bold 10px ${GAME_FONT_FAMILY}`;
-    ctx.strokeText(label, badgeCenter, baseY - 115);
-    ctx.fillText(label, badgeCenter, baseY - 115);
+    ctx.strokeText(label, badgeCenter, badgeY + 35);
+    ctx.fillText(label, badgeCenter, badgeY + 35);
+}
+
+function getFighterMarkerLayout(fighter, baseX, baseY, label) {
+    ctx.font = `bold 10px ${GAME_FONT_FAMILY}`;
+    const measuredLabelWidth = typeof ctx.measureText === 'function' ? ctx.measureText(label).width : label.length * 7;
+    const badgeWidth = fighter.isPlayer1 ? 56 : Math.max(76, Math.min(190, measuredLabelWidth + 16));
+    const badgeCenter = Math.max(16 + badgeWidth / 2, Math.min(WIDTH - 16 - badgeWidth / 2, baseX));
+    const badgeX = badgeCenter - badgeWidth / 2;
+    const badgeY = Math.max(baseY - 150, HUD_SAFE_BOTTOM + 8);
+    const specialTop = Math.max(baseY - 176, badgeY + 32, HUD_SAFE_BOTTOM + 44);
+    const specialCircleY = Math.max(baseY - 74, specialTop + 50);
+
+    return { badgeWidth, badgeCenter, badgeX, badgeY, specialTop, specialCircleY };
 }
 
 function drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor) {
     if (fighter.energy < MAX_ENERGY || fighter.state === 'special') return;
 
-    const y = baseY - 176;
+    const layout = getFighterMarkerLayout(
+        fighter,
+        baseX,
+        baseY,
+        fighter.labelKey ? t(fighter.labelKey) : (fighter.label || (fighter.isPlayer1 ? t('human') : t('cpu')))
+    );
+    const y = layout.specialTop + 18;
     const indicatorCenter = Math.max(78, Math.min(WIDTH - 78, baseX));
     ctx.strokeStyle = accentColor;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(indicatorCenter, baseY - 74, 34 + Math.sin(fighter.frame / 5) * 3, 0, Math.PI * 2);
+    ctx.arc(indicatorCenter, layout.specialCircleY, 34 + Math.sin(fighter.frame / 5) * 3, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.fillStyle = '#fffdf2';
@@ -290,9 +306,9 @@ function drawVictoryPose(fighter, baseX, baseY, accentColor) {
     ctx.textAlign = 'center';
     ctx.lineWidth = 4;
     ctx.strokeStyle = '#000';
-    ctx.strokeText('WIN', baseX, baseY - 166);
+    ctx.strokeText(t('win'), baseX, baseY - 166);
     ctx.fillStyle = accentColor;
-    ctx.fillText('WIN', baseX, baseY - 166);
+    ctx.fillText(t('win'), baseX, baseY - 166);
 }
 
 function drawDefeatPose(fighter, baseX, baseY, accentColor) {

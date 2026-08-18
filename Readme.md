@@ -140,7 +140,7 @@ Available combos:
 | J, K | Punch chained into kick, with more range and damage. |
 | K, K | Heavy back kick, with more damage and slow recovery. |
 
-The second combo key must be pressed within the combo window. If you wait too long, the normal attack for the pressed key comes out instead.
+The second combo key must be pressed within the combo window. If you wait too long, the normal attack for the pressed key comes out instead. If the second grounded punch or kick arrives during the first attack's recovery, the game buffers one follow-up and executes it on the first legal fixed simulation tick. Blocking, crouching, jumping, being hit, pausing, or resetting cancels the full combo sequence. A tap that begins and ends entirely between fixed simulation ticks is not queued.
 
 Energy charges when hitting, taking damage, or blocking. The special binding is not a normal strike: it only activates the special when the bar is full.
 
@@ -226,11 +226,14 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Arcade `VS` intro with difficulty and arena before each round.
 - `Reducir movimiento` option persisted in `glitchDuelReducedMotion`, with fallback reads from `xkcdKombatReducedMotion`; the system `prefers-reduced-motion` value is used only when no manual choice exists.
 - Pause screen with round, score, time, difficulty, arena, and controls summary.
+- Toolbar and pause identify Versus, Training, or Arcade progress (`n/5`).
 - Game over screen with final summary, post-match medal, `REINICIAR` / `RESTART`, and `MENU`.
 - Arcade Run with five deterministic matches, click-to-continue intermissions, fixed difficulty progression, and a localized final summary.
 - Local stats with wins, losses, current streak, and best streak, persisted in `glitchDuelStats` with fallback reads from `xkcdKombatStats`.
 - Bounded local match history, version `1`, stores up to 25 completed versus or arcade matches under `glitchDuelMatchHistory`; training matches are excluded.
 - Visible focus and ARIA labels on main controls, with modal focus entry, focus containment, focus restoration, and inert background surfaces for help, onboarding, pause, and game over.
+- Gameplay focus moves to the canvas when a match starts or resumes; Tab connects the canvas and pause button without stealing native browser shortcuts.
+- Touch action labels, training groups, training selectors, and keyboard binding names are localized in Spanish and English. The touch special exposes loading/ready state through text, ARIA, and a non-color pattern.
 - Browser zoom remains available; combat events expose short, non-per-frame announcements through an ARIA live region.
 - Native button-based touch controls with Pointer Events, safe areas, prioritized landscape view, and degraded portrait layout with orientation warning.
 - Active matches pause when the page becomes hidden and require an explicit resume.
@@ -271,6 +274,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - i18n is separated in `src/i18n.js`.
 - Unit tests use `node:test` with DOM/canvas/audio mocks.
 - Use `?debug=1` or `` ` `` during a match to show developer combat diagnostics; use `?seed=<uint32>` to reproduce simulation randomness.
+- Debug diagnostics are local and opt-in: they report bounded frame/update timing, fixed-step counts, discarded delta, effective DPR/backing size, and Web Audio graph lifecycle without persistence or network calls.
 - `src/input.js` owns canonical actions, physical keyboard bindings, pointer/gamepad sources, axis hysteresis, persistence, and input lifecycle cleanup.
 
 ## Run

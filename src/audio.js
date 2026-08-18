@@ -1,4 +1,13 @@
 let audioCtx;
+const audioDiagnostics = {
+    createdGraphs: 0,
+    endedGraphs: 0,
+    activeGraphs: 0,
+    oscillatorsCreated: 0,
+    oscillatorsDisconnected: 0,
+    gainsCreated: 0,
+    gainsDisconnected: 0
+};
 
 const ATTACK_SOUND_PROFILES = {
     punch: { wave: 'square', start: 420, end: 150, gain: 0.12, duration: 80 },
@@ -35,8 +44,20 @@ function initAudio() {
     if (!audioCtx) {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextClass) return;
-        audioCtx = new AudioContextClass();
+        try {
+            audioCtx = new AudioContextClass();
+        } catch (_) {
+            audioCtx = null;
+        }
     }
+}
+
+function getAudioDiagnostics() {
+    return {
+        ...audioDiagnostics,
+        activeGraphs: audioDiagnostics.activeGraphs,
+        contextState: audioCtx ? audioCtx.state || 'unknown' : 'uninitialized'
+    };
 }
 
 function playTone(profile) {
@@ -51,9 +72,34 @@ function playTone(profile) {
     g.gain.value = profile.gain;
 
     o.connect(g).connect(audioCtx.destination);
+    audioDiagnostics.createdGraphs++;
+    audioDiagnostics.activeGraphs++;
+    audioDiagnostics.oscillatorsCreated++;
+    audioDiagnostics.gainsCreated++;
+
+    let cleaned = false;
+    const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        o.onended = null;
+        if (typeof o.disconnect === 'function') {
+            o.disconnect();
+            audioDiagnostics.oscillatorsDisconnected++;
+        }
+        if (typeof g.disconnect === 'function') {
+            g.disconnect();
+            audioDiagnostics.gainsDisconnected++;
+        }
+        audioDiagnostics.endedGraphs++;
+        audioDiagnostics.activeGraphs = Math.max(0, audioDiagnostics.activeGraphs - 1);
+    };
+    o.onended = cleanup;
     o.start();
     setTimeout(() => { o.frequency.value = profile.end; }, Math.floor(profile.duration * 0.35));
-    setTimeout(() => o.stop(), profile.duration);
+    setTimeout(() => {
+        o.stop();
+        cleanup();
+    }, profile.duration);
 }
 
 function playAttackSound(type) {
