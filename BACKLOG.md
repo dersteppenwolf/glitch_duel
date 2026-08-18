@@ -13,14 +13,27 @@ Modern browser APIs must use capability detection, preserve graceful fallbacks, 
 | Partial | Some behavior already exists; only the stated remainder is active. |
 | Deferred | Requires evidence, support, or architecture pressure before implementation. |
 | S / M / L | Relative implementation size, not calendar time. |
+| P0 | Confirmed critical barrier to playing, understanding, or controlling the game. |
+| P1 | High-impact improvement to address next. |
+| P2 | Valuable measured or validated improvement that is not urgent. |
+| P3 | Future experiment that needs stronger evidence before full implementation. |
 
 ## Recommended Execution Order
 
 | Order | # | Improvement | Why now |
 | --- | --- | --- | --- |
-| 1 | 12 | Fullscreen and wake lock | Small capability-detected accessibility/distribution improvement with no gameplay dependency. |
+| 1 | 72 | Preserve native keyboard operation | Confirmed input barrier: modified shortcuts and focused native controls can currently trigger combat actions or lose their expected behavior. |
+| 2 | 73 | Reliable combo input buffering | Confirmed control mismatch: valid-looking second inputs are discarded during cooldown while help asks players to press quickly. |
+| 3 | 25 | Complete residual focus, contrast, and small-HUD work | Rebaseline and execute pending plan 0036 before adding more visual layers. |
+| 4 | 24, 69 | Input-aware help and complete localization | Teach the controls actually in use and remove the remaining Spanish-only accessible names. |
+| 5 | 75 | Clarify active mode and touch special state | Small visible improvement for arcade, training, and touch users with no combat-rule change. |
+| 6 | 77 | Validate first-session comprehension and recurring depth | Gate larger onboarding, attack-timing, AI, and differentiating-system decisions with observed player behavior. |
+| 7 | 74 | Expose a consultable semantic combat status | Provide essential non-visual state without turning per-frame combat updates into live-region noise. |
+| 8 | 9 | Combo trials | Turn existing training infrastructure into guided mastery after combo input is reliable. |
+| 9 | 12 | Fullscreen and wake lock | Keep the previous small capability-detected accessibility/distribution improvement ready after confirmed play barriers. |
+| 10 | 32 | Lightweight performance telemetry | Measure visual timing, long frames, DPR cost, and audio lifecycle before performance architecture changes. |
 
-Next recommended improvement: `#12 Fullscreen and wake lock`.
+Next recommended improvement: `#72 Preserve native keyboard operation`. The previous recommendation, `#12 Fullscreen and wake lock`, remains ready but follows the newly confirmed input, focus, and clarity barriers.
 
 ## Correctness And Release Safety
 
@@ -28,16 +41,17 @@ Next recommended improvement: `#12 Fullscreen and wake lock`.
 | --- | --- | --- | --- | --- | --- | --- |
 | 33 | Medium | Ready | L | - | Input replay test harness | Record and replay input sequences only after deterministic simulation and RNG exist. |
 | 31 | Medium | Ready | M | 22 | Local combat telemetry | Capture bounded local aggregate data for balancing combos, blocks, specials, damage, and round duration, with visible reset controls. |
-| 32 | Medium | Ready | S | - | Lightweight performance telemetry | Measure FPS and long frames locally before introducing performance architecture or quality presets. |
+| 32 | Medium | Ready | S | - | Lightweight performance telemetry | Measure RAF intervals, long frames, simulation catch-up/discarded time, DPR cost, render timing at 30/60/120 Hz, and Web Audio node/handler return to baseline. Use repeatable local runs and explicit thresholds before quality presets, compositing hints, or render suspension. |
 | 48 | Low | Blocked | M | 31 | Advanced balance | Tune attacks, styles, and difficulty only from observed telemetry and regression scenarios. |
 | 57 | Low | Partial | S | - | Background organization | Split arena helpers further only when measured file growth makes the current renderer hard to maintain. |
 | 58 | Low | Blocked | S | 32 | CSS compositing optimization | Add containment or targeted layer hints only when performance measurements identify a concrete issue. |
+| 72 | P0 | Ready | S | - | Preserve native keyboard operation | Ignore combat bindings for Ctrl/Alt/Meta/Shift combinations and while native interactive controls own the event; process pause only in playing/paused and retain the explicit Escape policy. Automated coverage must prove browser shortcuts are not prevented, training selects keep arrow behavior, remapped Enter/Space still activate focused controls, and input snapshots remain neutral. Evidence: `setupKeyboardControls()` only excludes `.btn` targets in `src/game.js`. |
 
 ## Player Roadmap
 
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
-| 9 | Medium | Ready | M | - | Combo trials | Build objective-based sequences on training reset, positioning, and success-detection infrastructure. |
+| 9 | Medium | Ready | M | 73 | Combo trials | Build four localized objectives on existing training infrastructure: complete each current combo, crouch under a high punch and punish, block and counter, and charge/spend the special. Reuse normal simulation/reset rules; automatically verify success detection and manually verify that new players understand each objective. |
 | 7 | Medium | Ready | M | 14 | Daily/local quick missions | Offer bounded local challenges using the shared match-event model. |
 | 8 | Medium | Completed | L | 14 | Arcade ladder run | Add a five-fight escalating run with deterministic progression and a final summary. |
 | 13 | Medium | Ready | M | 14 | Local achievements | Add first win, blocking, combo, and special goals through the shared local event model. |
@@ -49,6 +63,8 @@ Next recommended improvement: `#12 Fullscreen and wake lock`.
 | 41 | Low | Ready | S | - | New impact phrases and medals | Add content to the existing phrase/medal system without new progression rules. |
 | 47 | Low | Blocked | M | 1 | Additional combos | Add combat depth only after training and collision regression coverage exist. |
 | 60 | Low | Blocked | M | 14, 22 | Export/import local data | Export a versioned schema and validate imports without overwriting unrelated settings. |
+| 73 | P1 | Ready | M | - | Buffer valid second combo inputs | Buffer at most one punch/kick pressed during the current attack cooldown when the combo window is still open, execute it on the first legal simulation tick, and distinguish accepted, expired, and blocked inputs without changing damage initially. Tests must use real cooldown boundaries rather than forcing cooldown to zero and prove identical results at 30/60/120 FPS for keyboard, touch, and gamepad action snapshots. Evidence: `Fighter.handleAttackCommand()` currently returns before recording the input. |
+| 76 | P3 | Blocked | M | 73, 77 | Validate a GLITCH CANCEL MVP | Prototype, but do not fully roll out, one deterministic recovery cancel per sequence: pressing Special during eligible recovery spends 25 energy, preserves the full-bar special from neutral, and gives localized static/motion-reduced feedback. Test all input sources, simulation equivalence, energy economy, and dominant loops; continue only if recurring players understand the energy tradeoff and prefer it without making it mandatory. |
 
 ## Input, Accessibility, And UX
 
@@ -56,12 +72,15 @@ Next recommended improvement: `#12 Fullscreen and wake lock`.
 | --- | --- | --- | --- | --- | --- | --- |
 | 4 | Medium | Completed | L | - | Action-based input, gamepad, and remapping | Canonical action layer, standard Gamepad API input, source-safe lifecycle cleanup, and persistent physical-key mappings with accessible remapping UI. Absorbs former `#5`. |
 | 12 | Medium | Ready | S | - | Fullscreen and wake lock | Use capability detection, release wake lock outside play, and preserve current layout fallback. |
-| 24 | Medium | Ready | M | - | More visual help | Add diagrams for keyboard, touch, combos, and special after onboarding structure exists. |
-| 25 | Medium | Partial | L | - | Advanced accessibility preferences | Dialog focus entry/restore, focus containment, inert hidden overlays, system reduced-motion fallback, and discrete announcements delivered; contrast/color preferences remain. |
-| 26 | Medium | Ready | M | - | Colorblind-safe combat feedback | Differentiate hit, block, special, and danger using shape, text, pattern, and motion rather than color alone. |
+| 24 | Medium | Ready | M | 69 | Input-aware help and onboarding | Extend the existing onboarding/help rather than creating a second tutorial: show current keyboard bindings plus touch or standard-gamepad instructions when relevant, preserve the mode the player intended to start, and explain multitouch, combos, block, and special in localized action terms. Validate first-use tasks with `#77`. |
+| 25 | Medium | Partial | L | - | Advanced accessibility preferences | Dialog focus entry/restore, containment, inert overlays, system reduced motion, and discrete announcements exist. Rebaseline pending plan 0036 to finish visible focus after start/restart/onboarding, focus visibility in scrollable low-height dialogs, a contrast-safe ring including `summary`, small-HUD legibility, and safe vertical placement; configurable contrast/color preferences remain. |
+| 26 | Medium | Ready | M | - | Colorblind-safe combat feedback | Differentiate hit, block, special, danger, fighter posture, and energy using contrast plus shape, text, pattern, and motion. Verify at least 3:1 for essential non-text fighter/action marks on every arena, including dark `serverDown`, and provide DOM values for information that becomes physically too small in portrait. Coordinate with the small-HUD work in `#25` without blocking independent contrast fixes. |
 | 29 | Medium | Ready | S | - | Haptic feedback | Add optional capability-detected vibration for hits, blocks, special, and match events. |
 | 30 | Medium | Ready | M | - | Separate audio controls | Add persisted combat/UI volume controls; do not invent ambient or voice channels until those sounds exist. |
-| 69 | Low | Ready | S | - | Complete localized accessibility labels | Translate fixed accessible group names for GitHub, settings, and touch controls in Spanish and English. |
+| 69 | Low | Partial | S | - | Complete localized accessibility labels | GitHub, settings, and individual touch buttons already localize. Add the remaining ES/EN names for touch/training groups and training selects, localize functional Canvas/touch feedback while preserving intentional technical jokes, and give each remapping button an action-specific accessible name. Verify locale-key parity and screen-reader output. |
+| 74 | P1 | Ready | M | 69 | Expose consultable semantic combat status | Add a compact DOM representation of health, energy, round, score, and time that inherits browser zoom, plus a remappable/queryable summary for health, energy, rival direction/distance, and final seconds. Keep values non-live; announce only deduplicated thresholds and events. Validate ES/EN with NVDA/Narrator/VoiceOver and prove no per-frame speech. Coordinate visual placement with `#25`; do not block the semantic work on configurable preferences. Evidence: essential state currently exists only in Canvas and the live region announces mainly round, special-ready, and result events. |
+| 75 | P1 | Ready | S | 69 | Clarify active mode and touch special state | Make the toolbar/pause summary identify Versus, Training, or Arcade progress and make the touch Special control expose loading/ready through short localized text, pattern/shape, and ARIA state without color-only or silent failure. Automatically verify state transitions and manually check mobile landscape, portrait, hybrid touch, ES, and EN. |
+| 77 | P2 | Ready | S | - | Validate first-session comprehension and recurring depth | Run a scripted study with at least six new players split across keyboard, touch, and gamepad, plus four recurring/fighting-game players. New players attempt start, move, block, combo, and special without coaching; recurring players rank difficulty, identify exploitable AI/recovery patterns, and describe what feels uniquely glitch. Success for onboarding is at least five of six completing every core task with no input path producing two failures. Record observations and use them to gate `#16`, `#17`, `#24`, attack-phase changes, and `#76`. |
 
 ## Measured AI Roadmap
 
