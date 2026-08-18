@@ -31,6 +31,8 @@ class Fighter {
         this.comboHintTimer = 0;
         this.comboFlashTimer = 0;
         this.lastAttackType = '';
+        this.lastAttackOutcome = '';
+        this.attackSequence = 0;
         this.prevPunchPressed = false;
         this.prevKickPressed = false;
         this.prevSpecialPressed = false;
@@ -447,8 +449,20 @@ class Fighter {
         };
     }
 
-    gainEnergy(amount) {
+    gainEnergy(amount, source = '') {
+        const energyBefore = Math.max(0, Math.min(MAX_ENERGY, Math.round(this.energy)));
         this.energy = Math.min(MAX_ENERGY, this.energy + Math.round(amount * this.energyModifier));
+        const energyAfter = Math.max(0, Math.min(MAX_ENERGY, Math.round(this.energy)));
+        if (energyBefore < MAX_ENERGY && energyAfter >= MAX_ENERGY && ['hit', 'block', 'damage'].includes(source)) {
+            recordCombatEvent({
+                type: 'energyReady',
+                frame: matchElapsedFrames,
+                actor: this.isPlayer1 ? 'player' : 'cpu',
+                source,
+                energyBefore,
+                energyAfter
+            });
+        }
     }
 
     applyPhysics() {
@@ -467,8 +481,8 @@ class Fighter {
         }
     }
 
-    getHurtBox() {
-        if (this.state === 'crouch') {
+    getHurtBoxForPosture(posture = 'standing') {
+        if (posture === 'crouch') {
             return {
                 x: this.x - 28,
                 y: this.y - 28,
@@ -477,7 +491,7 @@ class Fighter {
             };
         }
 
-        if (!this.onGround || this.state === 'airPunch' || this.state === 'airKick' || this.state === 'jump') {
+        if (posture === 'air') {
             return {
                 x: this.x - 24,
                 y: this.y - 96,
@@ -492,6 +506,18 @@ class Fighter {
             width: 50,
             height: 135
         };
+    }
+
+    getDefenderPosture() {
+        if (this.state === 'block') return 'block';
+        if (this.state === 'crouch') return 'crouch';
+        if (!this.onGround || this.state === 'airPunch' || this.state === 'airKick' || this.state === 'jump') return 'air';
+        return 'standing';
+    }
+
+    getHurtBox() {
+        const posture = this.getDefenderPosture();
+        return this.getHurtBoxForPosture(posture === 'block' ? 'standing' : posture);
     }
 
     getBodyBox() {
@@ -563,6 +589,8 @@ class Fighter {
         const attack = ATTACKS[type];
         if (!attack) return;
 
+        const energyBefore = Math.max(0, Math.min(MAX_ENERGY, Math.round(this.energy)));
+
         if (type === 'special') {
             if (this.energy < SPECIAL_ENERGY_COST) return;
             this.energy -= SPECIAL_ENERGY_COST;
@@ -571,17 +599,46 @@ class Fighter {
         }
 
         this.lastAttackType = type;
+        this.attackSequence++;
         this.state = attack.animation || type;
         this.attackCooldown = attack.cooldown;
         playAttackSound(type);
 
         const attackBox = this.getAttackBox(type);
+        const defenderState = opponent.getDefenderPosture();
         const opponentBox = opponent.getHurtBox();
+        const standingBox = opponent.getHurtBoxForPosture('standing');
+        const intersectsOpponent = !!attackBox && this.intersects(attackBox, opponentBox);
+        const evadedByCrouch = !intersectsOpponent && defenderState === 'crouch' && !!attackBox && this.intersects(attackBox, standingBox);
+        let outcome = 'whiff';
+        let damageApplied = 0;
 
-        if (attackBox && this.intersects(attackBox, opponentBox)) {
-            opponent.takeHit(Math.round(attack.damage * this.damageModifier), this);
-            if (type !== 'special') this.gainEnergy(ENERGY_GAIN_ON_HIT);
+        if (intersectsOpponent) {
+            const healthBefore = opponent.health;
+            const result = opponent.takeHit(Math.round(attack.damage * this.damageModifier), this);
+            damageApplied = result && Number.isFinite(result.damageApplied)
+                ? result.damageApplied
+                : Math.max(0, healthBefore - opponent.health);
+            outcome = result && result.blocked ? 'blocked' : 'hit';
+            if (type !== 'special') this.gainEnergy(ENERGY_GAIN_ON_HIT, 'hit');
         }
+
+        const energyAfter = Math.max(0, Math.min(MAX_ENERGY, Math.round(this.energy)));
+        this.lastAttackOutcome = outcome;
+        recordCombatEvent({
+            type: 'attackResolved',
+            frame: matchElapsedFrames,
+            actor: this.isPlayer1 ? 'player' : 'cpu',
+            target: opponent.isPlayer1 ? 'player' : 'cpu',
+            attackType: type,
+            outcome,
+            damageApplied,
+            defenderState,
+            evadedByCrouch,
+            energyBefore,
+            energyAfter,
+            sequence: this.attackSequence
+        });
     }
 
     takeHit(damage, attacker) {
@@ -590,9 +647,10 @@ class Fighter {
         this.clearComboSequence();
 
         if (this.state === 'block') {
+            const healthBefore = this.health;
             damage = Math.floor(damage * BLOCK_DAMAGE_MULTIPLIER);
             this.health = Math.max(0, this.health - damage);
-            this.gainEnergy(ENERGY_GAIN_ON_BLOCK);
+            this.gainEnergy(ENERGY_GAIN_ON_BLOCK, 'block');
             if (this.isPlayer1) recordPlayerBlock();
             if (!this.isPlayer1) {
                 const difficulty = getDifficultyConfig();
@@ -604,11 +662,12 @@ class Fighter {
             showStatusMessage(t('blockStatus'), 28);
             triggerImpactFeedback(this.x, this.y - 50, impactDirection, true);
             playImpactSound(attacker.lastAttackType, true);
-            return;
+            return { blocked: true, damageApplied: healthBefore - this.health };
         }
 
+        const healthBefore = this.health;
         this.health = Math.max(0, this.health - damage);
-        this.gainEnergy(ENERGY_GAIN_ON_DAMAGE);
+        this.gainEnergy(ENERGY_GAIN_ON_DAMAGE, 'damage');
         this.hitStun = 20;
         this.state = 'hit';
         this.velX = attacker.facingRight ? 7 : -7;
@@ -621,6 +680,7 @@ class Fighter {
 
         const texts = ['¡ZAP!', '¡SPLAT!', '¡BOOM!', '404', 'NaN', '¡OW!', 'Segmentation Fault', 'Python 2.7', 'Compiling...', 'Buffer Overflow'];
         floatingTexts.push(new FloatingText(this.x, this.y - 70, texts[Math.floor(randomCosmetic() * texts.length)], '#c00'));
+        return { blocked: false, damageApplied: healthBefore - this.health };
     }
 
     draw() {

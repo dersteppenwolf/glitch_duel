@@ -606,7 +606,11 @@ canvas:focus-visible,
     left: 12px;
     top: 52px;
     z-index: 110;
+    box-sizing: border-box;
+    width: min(440px, calc(100vw - 24px));
     max-width: min(440px, calc(100vw - 24px));
+    max-height: min(38vh, 300px);
+    overflow: auto;
     padding: 6px;
     border: 3px solid #000;
     background: rgba(255, 253, 242, 0.96);
@@ -619,6 +623,68 @@ canvas:focus-visible,
     border: 2px solid #000;
     background: #fff;
     font: bold 11px "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+}
+
+#training-panel legend,
+#training-panel label,
+.training-trial-brief,
+.training-trial-progress {
+    font-size: 11px;
+    font-weight: bold;
+}
+
+#training-panel label {
+    display: grid;
+    gap: 3px;
+    margin: 2px;
+}
+
+.training-trial-picker {
+    width: 100%;
+}
+
+.training-trial-picker select {
+    width: 100%;
+}
+
+#training-panel fieldset {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    min-width: 0;
+    margin: 4px 0 0;
+    padding: 4px;
+    border: 2px solid #000;
+}
+
+#training-panel fieldset:disabled {
+    opacity: 0.72;
+}
+
+.training-trial-brief,
+.training-trial-progress {
+    max-width: 420px;
+    margin: 5px 2px;
+    padding: 5px 6px;
+    border-left: 4px solid var(--glitch-cyan);
+    background: var(--paper-0);
+    overflow-wrap: anywhere;
+}
+
+.training-trial-progress {
+    border-left-color: var(--glitch-magenta);
+    white-space: pre-wrap;
+}
+
+.training-admin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+.training-panel--complete .training-trial-progress {
+    border: 3px solid #111;
+    background: #ffd447;
 }
 
 .control-zone {

@@ -241,6 +241,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Native button-based touch controls with Pointer Events, safe areas, prioritized landscape view, and degraded portrait layout with orientation warning.
 - Active matches pause when the page becomes hidden and require an explicit resume.
 - Training mode with position, CPU, timer, reset, health, and energy controls.
+- Training objectives inside the existing mode: three combo connections, crouch-and-punish, block-and-counter, and combat-earned energy/special spend. Trial progress is session-only and excluded from stats/history.
 - First-run onboarding with an immediate skip path.
 
 ### Visual And Audio

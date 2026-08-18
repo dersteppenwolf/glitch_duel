@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GLITCH DUEL - Arcade VS AI</title>
-    <link rel="stylesheet" href="styles.css?v=20260818-phase2">
+    <link rel="stylesheet" href="styles.css?v=20260818-trials2">
 </head>
 <body>
     <div id="game-container">
@@ -267,23 +267,41 @@
         </div>
 
         <div id="training-panel" role="group" aria-label="Controles de entrenamiento" data-i18n-aria="trainingControlsLabel">
-            <select id="training-position-select" aria-label="Posicion de entrenamiento" data-i18n-aria="trainingPositionLabel">
-                <option value="mid" data-i18n="trainingPositionMid">MEDIA</option>
-                <option value="close" data-i18n="trainingPositionClose">CERCA</option>
-                <option value="corner" data-i18n="trainingPositionCorner">ESQUINA</option>
-            </select>
-            <select id="training-cpu-select" aria-label="CPU de entrenamiento" data-i18n-aria="trainingCpuLabel">
-                <option value="idle" data-i18n="trainingCpuIdle">CPU QUIETA</option>
-                <option value="block" data-i18n="trainingCpuBlock">CPU BLOQUEA</option>
-                <option value="normal" data-i18n="trainingCpuNormal">CPU NORMAL</option>
-            </select>
-            <select id="training-timer-select" aria-label="Timer de entrenamiento" data-i18n-aria="trainingTimerLabel">
-                <option value="off" data-i18n="trainingTimerOff">SIN TIEMPO</option>
-                <option value="on" data-i18n="trainingTimerOn">CON TIEMPO</option>
-            </select>
-            <button id="training-reset-button" type="button" data-i18n="trainingReset">RESET</button>
-            <button id="training-health-button" type="button" data-i18n="trainingHealth">VIDA</button>
-            <button id="training-energy-button" type="button" data-i18n="trainingEnergy">ENERGIA</button>
+            <label class="training-trial-picker" for="training-trial-select">
+                <span data-i18n="trainingTrialLabel">Objetivo de entrenamiento</span>
+                <select id="training-trial-select" aria-label="Objetivo de entrenamiento">
+                    <option value="free" data-i18n="trainingTrialFreeOption">PRACTICA LIBRE</option>
+                    <option value="combos" data-i18n="trainingTrialCombos">TRIAL 1 · COMBOS</option>
+                    <option value="crouchPunish" data-i18n="trainingTrialCrouchPunish">TRIAL 2 · CASTIGO AGACHADO</option>
+                    <option value="blockCounter" data-i18n="trainingTrialBlockCounter">TRIAL 3 · BLOQUEO Y CONTRA</option>
+                    <option value="specialSpend" data-i18n="trainingTrialSpecialSpend">TRIAL 4 · CARGAR Y GASTAR</option>
+                </select>
+            </label>
+            <div id="training-trial-brief" class="training-trial-brief"></div>
+            <div id="training-trial-progress" class="training-trial-progress"></div>
+            <button id="training-trial-next" type="button" hidden data-i18n="trainingTrialNext">SIGUIENTE TRIAL</button>
+            <fieldset id="training-free-options">
+                <legend data-i18n="trainingFreeOptions">OPCIONES LIBRES</legend>
+                <select id="training-position-select" aria-label="Posicion de entrenamiento" data-i18n-aria="trainingPositionLabel">
+                    <option value="mid" data-i18n="trainingPositionMid">MEDIA</option>
+                    <option value="close" data-i18n="trainingPositionClose">CERCA</option>
+                    <option value="corner" data-i18n="trainingPositionCorner">ESQUINA</option>
+                </select>
+                <select id="training-cpu-select" aria-label="CPU de entrenamiento" data-i18n-aria="trainingCpuLabel">
+                    <option value="idle" data-i18n="trainingCpuIdle">CPU QUIETA</option>
+                    <option value="block" data-i18n="trainingCpuBlock">CPU BLOQUEA</option>
+                    <option value="normal" data-i18n="trainingCpuNormal">CPU NORMAL</option>
+                </select>
+                <select id="training-timer-select" aria-label="Timer de entrenamiento" data-i18n-aria="trainingTimerLabel">
+                    <option value="off" data-i18n="trainingTimerOff">SIN TIEMPO</option>
+                    <option value="on" data-i18n="trainingTimerOn">CON TIEMPO</option>
+                </select>
+            </fieldset>
+            <div class="training-admin-actions">
+                <button id="training-reset-button" type="button" data-i18n="trainingReset">RESET</button>
+                <button id="training-health-button" type="button" data-i18n="trainingHealth">VIDA</button>
+                <button id="training-energy-button" type="button" data-i18n="trainingEnergy">ENERGIA</button>
+            </div>
         </div>
 
         <div id="game-over" role="dialog" aria-modal="true" aria-labelledby="game-over-title" tabindex="-1">
@@ -294,16 +312,16 @@
         </div>
     </div>
 
-    <script src="i18n.js?v=20260818-phase2"></script>
-    <script src="config.js?v=20260818-phase2"></script>
-    <script src="input.js?v=20260818-phase2"></script>
-    <script src="audio.js?v=20260818-phase2"></script>
-    <script src="effects.js?v=20260818-phase2"></script>
-    <script src="ai.js?v=20260818-phase2"></script>
-    <script src="fighter_render.js?v=20260818-phase2"></script>
-    <script src="fighter.js?v=20260818-phase2"></script>
-    <script src="arena_render.js?v=20260818-phase2"></script>
-    <script src="hud_render.js?v=20260818-phase2"></script>
-    <script src="game.js?v=20260818-phase2"></script>
+    <script src="i18n.js?v=20260818-trials"></script>
+    <script src="config.js?v=20260818-trials"></script>
+    <script src="input.js?v=20260818-trials"></script>
+    <script src="audio.js?v=20260818-trials"></script>
+    <script src="effects.js?v=20260818-trials"></script>
+    <script src="ai.js?v=20260818-trials"></script>
+    <script src="fighter_render.js?v=20260818-trials"></script>
+    <script src="fighter.js?v=20260818-trials"></script>
+    <script src="arena_render.js?v=20260818-trials"></script>
+    <script src="hud_render.js?v=20260818-trials"></script>
+    <script src="game.js?v=20260818-trials"></script>
 </body>
 </html>

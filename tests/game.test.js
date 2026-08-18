@@ -323,6 +323,9 @@ function loadGame(options = {}) {
             getAudioDiagnostics,
             announceCombatStatus,
             renderCombatStatus,
+            recordCombatEvent,
+            setTrainingTrial,
+            renderTrainingTrial,
             t,
             I18N,
             ARENAS,
@@ -426,6 +429,8 @@ function loadGame(options = {}) {
                 impactParticles,
                 gameState,
                 gameMode,
+                activeTrialId,
+                trialState: trialState ? { ...trialState, completedSteps: [...trialState.completedSteps] } : null,
                 arcadeRun: arcadeRun ? {
                     ...arcadeRun,
                     results: arcadeRun.results.map((record) => ({ ...record, events: { ...record.events } })),
@@ -1463,13 +1468,13 @@ test('touch controls are native buttons with stable accessible IDs', () => {
 
 test('static HTML contract preserves local assets, script order, controls, and arena inventory', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.html'), 'utf8');
-    const requiredIds = ['game', 'main-menu', 'help-screen', 'controls-screen', 'pause-screen', 'onboarding-screen', 'training-panel', 'start-button', 'training-button', 'controls-button', 'arena-select', 'rival-select'];
+    const requiredIds = ['game', 'main-menu', 'help-screen', 'controls-screen', 'pause-screen', 'onboarding-screen', 'training-panel', 'training-trial-select', 'training-trial-brief', 'training-trial-progress', 'training-trial-next', 'training-free-options', 'start-button', 'training-button', 'controls-button', 'arena-select', 'rival-select'];
     const scripts = ['i18n.js', 'config.js', 'input.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'arena_render.js', 'hud_render.js', 'game.js'];
     const { api } = loadGame();
 
     requiredIds.forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260818-phase2">/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260818-trials2">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
     ['arena-shell', 'game-toolbar', 'game-announcer', 'duel-settings', 'selection-summary', 'menu-footer', 'arcade-run-button'].forEach((id) => {
@@ -1599,7 +1604,8 @@ test('phase-one UI localizes mode context, bindings, and touch special state', (
 
     api.startTraining();
     api.renderLanguage();
-    assert.equal(elements.get('instructions').textContent, 'ENTRENAMIENTO');
+    assert.match(elements.get('instructions').textContent, /ENTRENAMIENTO/);
+    assert.match(elements.get('instructions').textContent, /LIBRE/);
 
     const special = context.document.getElementById('btn-special');
     const specialState = context.document.getElementById('btn-special-state');
@@ -1851,6 +1857,95 @@ test('training mode reuses fighters with configurable CPU, reset, timer, health,
     state.player1.health = 1;
     api.refillTraining('health');
     assert.equal(api.getState().player1.health, 100);
+});
+
+test('training trials use explicit selectors, session progress, and four reducers', () => {
+    const { api, context, elements } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining();
+    api.setTrainingTrial('combos');
+    let state = api.getState();
+    assert.equal(state.activeTrialId, 'combos');
+    assert.equal(elements.get('training-free-options').disabled, true);
+
+    api.recordCombatEvent({ type: 'attackResolved', actor: 'player', target: 'cpu', attackType: 'comboPunch', outcome: 'whiff', damageApplied: 0, sequence: 1 });
+    assert.equal(api.getState().trialState.completed, false);
+    ['comboPunch', 'comboKick', 'backKick'].forEach((attackType, index) => {
+        api.recordCombatEvent({ type: 'attackResolved', actor: 'player', target: 'cpu', attackType, outcome: 'hit', damageApplied: 1, sequence: index + 2 });
+    });
+    assert.equal(api.getState().trialState.completed, true);
+    assert.equal(api.getState().stats.wins, 0);
+    assert.equal(api.getMatchHistory().length, 0);
+
+    api.setTrainingTrial('crouchPunish');
+    api.recordCombatEvent({ type: 'attackResolved', actor: 'cpu', target: 'player', attackType: 'punch', outcome: 'whiff', evadedByCrouch: true, damageApplied: 0, sequence: 1 });
+    assert.equal(api.getState().trialState.phase, 'window');
+    api.recordCombatEvent({ type: 'attackResolved', actor: 'player', target: 'cpu', attackType: 'punch', outcome: 'hit', damageApplied: 1, sequence: 1 });
+    assert.equal(api.getState().trialState.completed, true);
+
+    api.setTrainingTrial('blockCounter');
+    api.recordCombatEvent({ type: 'attackResolved', actor: 'cpu', target: 'player', attackType: 'kick', outcome: 'blocked', damageApplied: 0, sequence: 1 });
+    assert.equal(api.getState().trialState.phase, 'window');
+    api.recordCombatEvent({ type: 'attackResolved', actor: 'player', target: 'cpu', attackType: 'punch', outcome: 'hit', damageApplied: 1, sequence: 1 });
+    assert.equal(api.getState().trialState.completed, true);
+
+    api.setTrainingTrial('specialSpend');
+    api.recordCombatEvent({ type: 'energyReady', actor: 'player', source: 'hit', energyBefore: 90, energyAfter: 100 });
+    assert.equal(api.getState().trialState.energyReady, true);
+    api.recordCombatEvent({ type: 'attackResolved', actor: 'player', target: 'cpu', attackType: 'special', outcome: 'whiff', damageApplied: 0, energyBefore: 100, energyAfter: 0, sequence: 1 });
+    assert.equal(api.getState().trialState.completed, true);
+
+    api.setTrainingTrial('free');
+    state = api.getState();
+    assert.equal(state.activeTrialId, 'free');
+    assert.equal(elements.get('training-free-options').disabled, false);
+    assert.equal(context.window.localStorage.getItem('glitchDuelTrainingTrials'), null);
+});
+
+test('special-spend trial requires combat-earned energy and real special cost values', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining();
+    api.setTrainingTrial('specialSpend');
+
+    api.recordCombatEvent({ type: 'attackResolved', actor: 'player', target: 'cpu', attackType: 'special', outcome: 'whiff', energyBefore: 100, energyAfter: 0 });
+    assert.equal(api.getState().trialState.completed, false);
+    api.recordCombatEvent({ type: 'energyReady', actor: 'player', source: 'hit', energyBefore: 80, energyAfter: 100 });
+    api.recordCombatEvent({ type: 'attackResolved', actor: 'player', target: 'cpu', attackType: 'special', outcome: 'whiff', energyBefore: 100, energyAfter: 0 });
+    assert.equal(api.getState().trialState.completed, true);
+});
+
+test('training trial reducers consume real Fighter attack and energy events', () => {
+    const crouchCase = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    crouchCase.api.startTraining();
+    crouchCase.api.setTrainingTrial('crouchPunish');
+    let state = crouchCase.api.getState();
+    state.player1.state = 'crouch';
+    state.player2.attack('punch', state.player1);
+    assert.equal(state.player2.lastAttackOutcome, 'whiff');
+    assert.equal(crouchCase.api.getState().trialState.phase, 'window');
+    state.player1.state = 'idle';
+    state.player1.attack('punch', state.player2);
+    assert.equal(crouchCase.api.getState().trialState.completed, true);
+
+    const blockCase = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    blockCase.api.startTraining();
+    blockCase.api.setTrainingTrial('blockCounter');
+    state = blockCase.api.getState();
+    state.player1.state = 'block';
+    state.player2.attack('kick', state.player1);
+    assert.equal(state.player2.lastAttackOutcome, 'blocked');
+    assert.equal(blockCase.api.getState().trialState.phase, 'window');
+    state.player1.state = 'idle';
+    state.player1.attack('punch', state.player2);
+    assert.equal(blockCase.api.getState().trialState.completed, true);
+
+    const specialCase = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    specialCase.api.startTraining();
+    specialCase.api.setTrainingTrial('specialSpend');
+    state = specialCase.api.getState();
+    state.player1.gainEnergy(20, 'hit');
+    state.player1.attack('special', state.player2);
+    assert.equal(state.player1.lastAttackOutcome, 'hit');
+    assert.equal(specialCase.api.getState().trialState.completed, true);
 });
 
 test('debug overlay is opt-in and seeded simulation is reproducible', () => {

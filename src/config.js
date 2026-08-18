@@ -17,6 +17,17 @@ const TRAINING_POSITIONS = {
     close: [440, 560],
     corner: [90, 200]
 };
+const TRAINING_TRIAL_IDS = ['combos', 'crouchPunish', 'blockCounter', 'specialSpend'];
+const TRAINING_TRIAL_COUNT = TRAINING_TRIAL_IDS.length;
+const TRAINING_TRIAL_CUE_FRAMES = 60;
+const TRAINING_TRIAL_WINDOW_FRAMES = 45;
+const TRAINING_TRIAL_RETRY_FRAMES = 120;
+const TRAINING_TRIAL_PRESETS = {
+    combos: { positions: [440, 560], cpu: 'idle', timer: false },
+    crouchPunish: { positions: [520, 620], cpu: 'idle', timer: false },
+    blockCounter: { positions: [440, 560], cpu: 'idle', timer: false },
+    specialSpend: { positions: [440, 560], cpu: 'idle', timer: false, playerEnergy: 80 }
+};
 const MAX_ENERGY = 100;
 const SPECIAL_ENERGY_COST = 100;
 const COMBO_WINDOW_FRAMES = 36;

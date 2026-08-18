@@ -38,14 +38,14 @@ Queda fuera del alcance:
 ## Contexto Actual
 
 - `BACKLOG.md` mantiene `#76` P3 Blocked por `#73` y `#77`. `#73` tiene buffer fijo probado, pero timing fisico touch/gamepad sigue pendiente; `#77` no tiene cohortes registradas.
-- `#9` Combo trials sigue Ready. El MVP de Fase 3 no debe inventar un selector paralelo mientras la infraestructura de trials no exista.
+- `#9` Combo trials queda Partial: ya existe selector, reducers, eventos y host, pero conserva smoke fisico/comprension pendiente. El MVP de Fase3 debe consumirlo, no crear selector paralelo.
 - La baseline actual pasa `118/118` pruebas y sintaxis de todos los JS; `#74` agrego estado semantico y bindings v2 sin completar gates humanos.
 - `Fighter.update()` decrementa `attackCooldown` antes de procesar controles. No existen startup/active/recovery; cooldown es la unica recuperacion ofensiva.
 - Durante cooldown, el jugador ya puede moverse, bloquear y saltar. El valor real de Cancel es volver a atacar/agacharse antes, no habilitar movimiento/defensa.
 - `updatePlayerControls()` procesa postura/movimiento, luego `consumePendingCombo()`, despues edges Special/Punch/Kick. Esta precedencia debe cambiar de forma explicita para el trial.
 - `pendingComboInput` solo acepta punch/kick y `clearComboSequence()` limpia pending/buffer/timer/hint. Special no se bufferiza.
 - `Fighter.attack()` rechaza cooldown, block/crouch y energia insuficiente; Special neutral cuesta 100, tiene daño base 26 modificado por estilo y registra `playerSpecials`.
-- El outcome hit/blocked/whiff no esta todavia modelado porque `#9` no se implemento. Esa API/event host es artefacto obligatorio de Gate0; Fase3 no crea un fallback paralelo.
+- El outcome hit/blocked/whiff y `energyReady` ya son modelados por el host de `#9`; esa API es artefacto obligatorio de Gate0 y Fase3 no crea un fallback paralelo.
 - El atacante gana 14 o 18 con Tecnico por cualquier interseccion, incluido golpe bloqueado; dos contactos pueden financiar un cancel de 25. Permitir hit/block cancel en MVP podria crear presion autosostenible.
 - Touch actualmente no genera `special` por debajo de 100. Para el MVP, un helper central debe decidir si Special produce cancel, ataque completo o nada.
 - Teclado, pointer y gamepad ya convergen en la accion `special`; boton 3/Y es gamepad. No hace falta modificar `INPUT_ACTIONS`.
@@ -82,7 +82,7 @@ Antes de codigo:
 - Ejecutar smoke fisico de `#73` con teclado, touch y gamepad: cinco oportunidades de segundo input por fuente, sin dos fallos percibidos.
 - Ejecutar cohortes `#77`: seis nuevos y cuatro recurrentes, con hallazgos/seed/configuracion registrados.
 - Confirmar que la falta de decision de energia/recuperacion aparece en al menos dos recurrentes o que tres de cuatro desean explorar esa decision tras explicarla.
-- Entregar `#9` o actualizar este plan para usar su selector/brief/progreso real. No crear infraestructura de trial paralela.
+- Confirmar smoke/comprension de `#9` y usar su selector/brief/progreso real. No crear infraestructura de trial paralela.
 - Confirmar que el trial de Especial de `#9` sigue exigiendo ataque special real y gasto 100->0; GLITCH CANCEL no puede completarlo.
 - Reconciliar BACKLOG: `#76` solo pasa de Blocked a Ready si `#73/#77` estan aceptados y existe trial host.
 
@@ -578,7 +578,7 @@ Resultado de la revision:
 
 ## Criterios De Aceptacion
 
-- Gate0 registra #73 fisico, #77 y #9/trial host; sin ellos no hay codigo Fase3.
+- Gate0 registra #73 fisico, #77 y #9/trial host; el host esta presente, pero sin smoke/comprension aceptados no hay codigo Fase3.
 - MVP existe solo en Training trial y solo para player1.
 - Solo whiff punch/kick grounded con cooldown post-decremento >0, energia>=25 y cuota0/1 es elegible.
 - Coste exacto25 independiente de estilo; no daño/energia/hit-stun/hit-stop/invulnerabilidad.
@@ -620,6 +620,15 @@ Ejecutar pruebas focales antes de cada commit y suite completa antes del ultimo.
 
 ## Estado De Implementacion
 
-Pendiente y bloqueado por Gate0 (`#73` fisico, `#77` y trial host `#9`).
+Bloqueado en Gate0.
 
-Este documento no autoriza codigo hasta registrar esos prerrequisitos. El primer alcance permitido es Training trial, humano, whiff-only, punch/kick, coste25 y cuota1/1. Versus, Carrera, CPU y cualquier ampliacion permanecen fuera hasta gates posteriores.
+Ejecucion verificada sin cambios de producto:
+
+- El repositorio ya contiene `activeTrialId`, `attackResolved`, `energyReady` y el trial host de `#9`.
+- `#77` se toma como ejecutado por supuesto explicito del usuario, pero no existen registros de las seis sesiones nuevas ni de los cuatro jugadores recurrentes en el repositorio.
+- El timing fisico de `#73` con touch/gamepad sigue sin verificarse.
+- Baseline tecnica: `node --test tests\game.test.js` con `121/121` aprobadas.
+- Baseline de sintaxis: todos los `src/*.js` pasan `node --check`.
+- No se modificaron codigo, tests ni configuracion de combate.
+
+Este documento no autoriza codigo hasta registrar el timing fisico de `#73` y la validacion manual/comprension de `#9/#77`. El primer alcance permitido sigue siendo Training trial, humano, whiff-only, punch/kick, coste25 y cuota1/1. Versus, Carrera, CPU y cualquier ampliacion permanecen fuera hasta gates posteriores.

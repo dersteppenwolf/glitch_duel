@@ -51,7 +51,7 @@ Next recommended improvement: `#72 Preserve native keyboard operation`. The prev
 
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
-| 9 | Medium | Ready | M | 73 | Combo trials | Build four localized objectives on existing training infrastructure: complete each current combo, crouch under a high punch and punish, block and counter, and charge/spend the special. Reuse normal simulation/reset rules; automatically verify success detection and manually verify that new players understand each objective. |
+| 9 | Medium | Partial | M | 73 | Combo trials | Implemented four localized session-only objectives inside Training: three combos, crouch-punish, block-counter, and combat-earned energy/special spend. Uses real attack outcomes/energy-ready events, fixed-step cues/windows, reset/retry, and no stats/history persistence. Manual keyboard/touch/gamepad and first-use comprehension smoke remains. |
 | 7 | Medium | Ready | M | 14 | Daily/local quick missions | Offer bounded local challenges using the shared match-event model. |
 | 8 | Medium | Completed | L | 14 | Arcade ladder run | Add a five-fight escalating run with deterministic progression and a final summary. |
 | 13 | Medium | Ready | M | 14 | Local achievements | Add first win, blocking, combo, and special goals through the shared local event model. |
