@@ -117,6 +117,8 @@ No `npm install`, `package.json`, bundler, or backend server is required.
 
 Keyboard bindings use physical `KeyboardEvent.code` values and can be changed from `CONTROLES / CONTROLS` in the main menu. Valid mappings persist locally under `glitchDuelKeyboardBindings`; invalid data safely falls back to defaults. `Escape`, `Tab`, debug backtick, browser shortcuts, and modifier combinations remain reserved.
 
+Binding storage version 2 adds an optional `Digit0` combat-status query. Existing version 1 mappings migrate without losing codes; the status query can be left unassigned.
+
 Standard gamepad defaults:
 
 | Action | Gamepad |
@@ -227,6 +229,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - `Reducir movimiento` option persisted in `glitchDuelReducedMotion`, with fallback reads from `xkcdKombatReducedMotion`; the system `prefers-reduced-motion` value is used only when no manual choice exists.
 - Pause screen with round, score, time, difficulty, arena, and controls summary.
 - Toolbar and pause identify Versus, Training, or Arcade progress (`n/5`).
+- Expandable combat status exposes mode, health, energy, round, score, time, rival direction, distance, and last event without replacing the Canvas HUD.
 - Game over screen with final summary, post-match medal, `REINICIAR` / `RESTART`, and `MENU`.
 - Arcade Run with five deterministic matches, click-to-continue intermissions, fixed difficulty progression, and a localized final summary.
 - Local stats with wins, losses, current streak, and best streak, persisted in `glitchDuelStats` with fallback reads from `xkcdKombatStats`.

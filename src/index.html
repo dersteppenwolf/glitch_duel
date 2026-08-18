@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GLITCH DUEL - Arcade VS AI</title>
-    <link rel="stylesheet" href="styles.css?v=20260817-arcade">
+    <link rel="stylesheet" href="styles.css?v=20260818-phase2">
 </head>
 <body>
     <div id="game-container">
@@ -15,6 +15,23 @@
             <div id="game-toolbar" role="toolbar" aria-label="Barra de partida" data-i18n-aria="gameToolbarLabel">
                 <div id="instructions" role="status">GLITCH DUEL - Modo Solo (Humano vs Maquina)</div>
                 <button id="pause-button" type="button" aria-label="Pausar partida" data-i18n="pauseButton" data-i18n-aria="pauseButtonLabel">PAUSA</button>
+                <details id="combat-status">
+                    <summary id="combat-status-summary" aria-label="ESTADO DEL COMBATE ESTÁTICO" data-i18n-aria="combatStatusSummaryLabel"><span id="combat-status-compact" aria-hidden="true"></span></summary>
+                    <dl id="combat-status-details">
+                        <dt data-i18n="combatStatusMode">MODO</dt><dd id="combat-status-mode"></dd>
+                        <dt data-i18n="combatStatusPlayerHealth">VIDA P1</dt><dd id="combat-status-p1-health"></dd>
+                        <dt data-i18n="combatStatusCpuHealth">VIDA CPU</dt><dd id="combat-status-cpu-health"></dd>
+                        <dt data-i18n="combatStatusPlayerEnergy">ENERGÍA P1</dt><dd id="combat-status-p1-energy"></dd>
+                        <dt data-i18n="combatStatusCpuEnergy">ENERGÍA CPU</dt><dd id="combat-status-cpu-energy"></dd>
+                        <dt data-i18n="combatStatusRound">RONDA</dt><dd id="combat-status-round"></dd>
+                        <dt data-i18n="combatStatusScore">MARCADOR</dt><dd id="combat-status-score"></dd>
+                        <dt data-i18n="combatStatusTime">TIEMPO</dt><dd id="combat-status-time"></dd>
+                        <dt data-i18n="combatStatusRival">RIVAL</dt><dd id="combat-status-rival"></dd>
+                        <dt data-i18n="combatStatusDirection">DIRECCIÓN</dt><dd id="combat-status-direction"></dd>
+                        <dt data-i18n="combatStatusDistance">DISTANCIA</dt><dd id="combat-status-distance"></dd>
+                        <dt data-i18n="combatStatusLastEvent">ÚLTIMO EVENTO</dt><dd id="combat-status-last-event"></dd>
+                    </dl>
+                </details>
             </div>
             <canvas id="game" width="1000" height="500" tabindex="0" role="img" aria-label="Arena de combate GLITCH DUEL" data-i18n-aria="canvasLabel"></canvas>
         </div>
@@ -277,16 +294,16 @@
         </div>
     </div>
 
-    <script src="i18n.js?v=20260817-arcade"></script>
-    <script src="config.js?v=20260817-arcade"></script>
-    <script src="input.js?v=20260817"></script>
-    <script src="audio.js?v=20260802"></script>
-    <script src="effects.js?v=20260802"></script>
-    <script src="ai.js?v=20260802"></script>
-    <script src="fighter_render.js?v=20260802"></script>
-    <script src="fighter.js?v=20260817"></script>
-    <script src="arena_render.js?v=20260802"></script>
-    <script src="hud_render.js?v=20260817-arcade"></script>
-    <script src="game.js?v=20260817-arcade"></script>
+    <script src="i18n.js?v=20260818-phase2"></script>
+    <script src="config.js?v=20260818-phase2"></script>
+    <script src="input.js?v=20260818-phase2"></script>
+    <script src="audio.js?v=20260818-phase2"></script>
+    <script src="effects.js?v=20260818-phase2"></script>
+    <script src="ai.js?v=20260818-phase2"></script>
+    <script src="fighter_render.js?v=20260818-phase2"></script>
+    <script src="fighter.js?v=20260818-phase2"></script>
+    <script src="arena_render.js?v=20260818-phase2"></script>
+    <script src="hud_render.js?v=20260818-phase2"></script>
+    <script src="game.js?v=20260818-phase2"></script>
 </body>
 </html>

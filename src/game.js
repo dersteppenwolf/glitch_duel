@@ -56,6 +56,20 @@ let onboardingStep = 0;
 let activeDialog = null;
 let dialogReturnFocus = null;
 let specialReadyAnnounced = false;
+let playerHealthDangerAnnounced = false;
+let timerTenAnnounced = false;
+let timerFiveAnnounced = false;
+let lastCombatEvent = '';
+let combatStatusCacheKey = null;
+let announcementFrame = null;
+let announcementPriority = 0;
+const ANNOUNCEMENT_PRIORITIES = {
+    query: 1,
+    special: 2,
+    threshold: 3,
+    round: 4,
+    final: 5
+};
 let canvasDisplayWidth = WIDTH;
 let hudCompactMode = false;
 let modeContextCacheKey = null;
@@ -144,6 +158,8 @@ function setDifficulty(value) {
 function showStatusMessage(text, frames = 80) {
     statusMessage = text;
     statusTimer = frames;
+    lastCombatEvent = text;
+    combatStatusCacheKey = null;
 }
 
 function setRoundTimerFrames(value) {
@@ -552,12 +568,153 @@ function renderMotionPreference() {
     if (toggle) toggle.checked = reducedMotionEnabled;
 }
 
-function announce(message) {
+function recordCombatStatusEvent(text) {
+    lastCombatEvent = text;
+    combatStatusCacheKey = null;
+}
+
+function announce(message, priority = 'query') {
     const announcer = document.getElementById('game-announcer');
     if (!announcer) return;
 
+    const currentFrame = matchElapsedFrames;
+    if (announcementFrame !== currentFrame) {
+        announcementFrame = currentFrame;
+        announcementPriority = 0;
+    }
+
+    const nextPriority = ANNOUNCEMENT_PRIORITIES[priority] || ANNOUNCEMENT_PRIORITIES.query;
+    const currentText = announcer.textContent;
+    if (nextPriority < announcementPriority) {
+        if (priority !== 'query') return;
+        message = currentText ? `${currentText} ${t('announcementSeparator')} ${message}` : message;
+    } else if (nextPriority === announcementPriority && currentText && currentText !== message && priority !== 'query') {
+        if (!currentText.includes(message)) message = `${currentText} ${t('announcementSeparator')} ${message}`;
+    }
+
     announcer.textContent = '';
     announcer.textContent = message;
+    announcementPriority = Math.max(announcementPriority, nextPriority);
+}
+
+function getCombatStatusHealth(fighter, fallback = 100) {
+    return Math.max(0, Math.round(fighter ? fighter.health : fallback));
+}
+
+function getCombatStatusEnergy(fighter) {
+    return Math.max(0, Math.min(MAX_ENERGY, Math.round(fighter ? fighter.energy : 0)));
+}
+
+function getCombatStatusTime() {
+    if (gameMode === 'training' && !trainingConfig.timer) return null;
+    return Math.max(0, Math.ceil(roundTimeMs / 1000));
+}
+
+function getCombatStatusDistanceBucket() {
+    const distance = player1 && player2 ? Math.abs(player1.x - player2.x) : 500;
+    if (distance <= 110) return 'close';
+    if (distance <= 250) return 'mid';
+    return 'far';
+}
+
+function getCombatStatusDirection() {
+    if (!player1 || !player2 || player1.x === player2.x) return 'same';
+    return player2.x < player1.x ? 'left' : 'right';
+}
+
+function getCombatStatusDirectionText(direction = getCombatStatusDirection()) {
+    return t(`combatStatusDirection${direction.charAt(0).toUpperCase()}${direction.slice(1)}`);
+}
+
+function getCombatStatusDistanceText(bucket = getCombatStatusDistanceBucket()) {
+    return t(`combatStatusDistance${bucket.charAt(0).toUpperCase()}${bucket.slice(1)}`);
+}
+
+function getCombatStatusTimeText(seconds = getCombatStatusTime()) {
+    return seconds === null ? t('combatStatusNoTimer') : `${seconds}s`;
+}
+
+function announceCombatStatus() {
+    const p1Health = getCombatStatusHealth(player1);
+    const cpuHealth = getCombatStatusHealth(player2);
+    const p1Energy = getCombatStatusEnergy(player1);
+    const cpuEnergy = getCombatStatusEnergy(player2);
+    const direction = getCombatStatusDirectionText();
+    const distance = getCombatStatusDistanceText();
+    const time = getCombatStatusTimeText();
+    announce(t('combatStatusAnnouncement', {
+        p1Health,
+        cpuHealth,
+        p1Energy,
+        cpuEnergy,
+        direction,
+        distance,
+        round: currentRound,
+        score: `${playerRounds}-${cpuRounds}`,
+        time
+    }), 'query');
+}
+
+function renderCombatStatus() {
+    const compact = document.getElementById('combat-status-compact');
+    const details = document.getElementById('combat-status-details');
+    if (!compact || !details || !details.children) return;
+
+    const p1Health = getCombatStatusHealth(player1);
+    const cpuHealth = getCombatStatusHealth(player2);
+    const p1Energy = getCombatStatusEnergy(player1);
+    const cpuEnergy = getCombatStatusEnergy(player2);
+    const seconds = getCombatStatusTime();
+    const direction = getCombatStatusDirection();
+    const distance = getCombatStatusDistanceBucket();
+    const mode = getModeContextText();
+    const event = lastCombatEvent || t('combatStatusNoEvent');
+    const summary = document.getElementById('combat-status-summary');
+    const signature = [
+        getLanguage(),
+        p1Health,
+        cpuHealth,
+        p1Energy,
+        cpuEnergy,
+        seconds === null ? 'off' : seconds,
+        currentRound,
+        playerRounds,
+        cpuRounds,
+        mode,
+        direction,
+        distance,
+        event
+    ].join('|');
+    if (signature === combatStatusCacheKey) return;
+
+    const time = getCombatStatusTimeText(seconds);
+    const compactText = hudCompactMode
+        ? `${t('combatStatusCompactLabel')} · ${time}`
+        : `${t('combatStatusCompactLabel')} · P1 ${p1Health} · CPU ${cpuHealth} · ${time}`;
+    const values = [
+        mode,
+        `${p1Health}%`,
+        `${cpuHealth}%`,
+        `${p1Energy}/${MAX_ENERGY}`,
+        `${cpuEnergy}/${MAX_ENERGY}`,
+        currentRound,
+        `${playerRounds}-${cpuRounds}`,
+        time,
+        getRivalLabel(),
+        getCombatStatusDirectionText(direction),
+        getCombatStatusDistanceText(distance),
+        event
+    ];
+
+    if (summary && summary.getAttribute('aria-label') !== t('combatStatusSummaryLabel')) {
+        summary.setAttribute('aria-label', t('combatStatusSummaryLabel'));
+    }
+    compact.textContent = compactText;
+    values.forEach((value, index) => {
+        const element = details.children[index * 2 + 1];
+        if (element) element.textContent = String(value);
+    });
+    combatStatusCacheKey = signature;
 }
 
 function getStyleDescription() {
@@ -865,6 +1022,27 @@ function renderTouchSpecialState() {
     touchSpecialStateCacheKey = signature;
 }
 
+function updateCombatStatusThresholds() {
+    if (gameState !== 'playing' || !player1) return;
+
+    if (player1.health <= 30 && !playerHealthDangerAnnounced) {
+        playerHealthDangerAnnounced = true;
+        announce(t('combatStatusHealthWarning'), 'threshold');
+    } else if (player1.health > 30) {
+        playerHealthDangerAnnounced = false;
+    }
+
+    const seconds = getCombatStatusTime();
+    if (seconds !== null && seconds <= 10 && !timerTenAnnounced) {
+        timerTenAnnounced = true;
+        announce(t('combatStatusTimerTen'), 'threshold');
+    }
+    if (seconds !== null && seconds <= 5 && !timerFiveAnnounced) {
+        timerFiveAnnounced = true;
+        announce(t('combatStatusTimerFive'), 'threshold');
+    }
+}
+
 function getInputBindingText(action) {
     return getInputBindingLabels(action).join(' / ');
 }
@@ -942,6 +1120,8 @@ function renderLanguage() {
     renderModeContext();
     renderTouchSpecialState();
     renderPauseSummary();
+    combatStatusCacheKey = null;
+    renderCombatStatus();
 
     renderGameOverActions();
     if (gameState === 'gameOver') renderGameOverText();
@@ -1189,6 +1369,13 @@ function startRound() {
     impactFlash = null;
     specialFlash = null;
     specialReadyAnnounced = false;
+    playerHealthDangerAnnounced = false;
+    timerTenAnnounced = false;
+    timerFiveAnnounced = false;
+    lastCombatEvent = '';
+    combatStatusCacheKey = null;
+    announcementFrame = null;
+    announcementPriority = 0;
     roundTimerFrames = ROUND_TIMER_FRAMES;
     roundTimeMs = ROUND_TIME_MS;
     if (gameMode === 'training') resetTraining();
@@ -1196,7 +1383,7 @@ function startRound() {
     resetSimulationClock();
     gameState = 'playing';
     showStatusMessage(`${t('round')} ${currentRound}`, 75);
-    announce(t('roundAnnounce', { round: currentRound, rival: getRivalLabel() }));
+    announce(t('roundAnnounce', { round: currentRound, rival: getRivalLabel() }), 'round');
     updateControlsVisibility();
     focusGameplayCanvas();
 }
@@ -1482,6 +1669,7 @@ function update() {
     }
 
     updateRoundTimer();
+    updateCombatStatusThresholds();
 }
 
 function finishRound(playerWon) {
@@ -1506,7 +1694,7 @@ function finishRound(playerWon) {
     gameState = 'roundOver';
     const roundMessage = playerWon === null ? t('tie') : (playerWon ? t('roundHuman') : t('roundCpu'));
     showStatusMessage(roundMessage, 90);
-    announce(roundMessage);
+    announce(roundMessage, 'round');
     updateControlsVisibility();
     const roundMode = gameMode;
     setTimeout(() => {
@@ -1569,7 +1757,7 @@ function updateEffects() {
 
     if (player1 && player1.energy >= MAX_ENERGY && !specialReadyAnnounced) {
         specialReadyAnnounced = true;
-        announce(t('specialAnnounce'));
+        announce(t('specialAnnounce'), 'special');
     } else if (player1 && player1.energy < MAX_ENERGY) {
         specialReadyAnnounced = false;
     }
@@ -1717,6 +1905,7 @@ function updateControlsVisibility() {
     renderModeContext();
     renderTouchSpecialState();
     resizeCanvas();
+    renderCombatStatus();
     updateOrientationWarning();
 }
 
@@ -1740,7 +1929,7 @@ function finishMatch(playerWon) {
     renderGameOverText();
     document.getElementById('game-over').style.display = 'block';
     updateControlsVisibility();
-    announce(t('finalAnnounce', { result: playerWon ? t('playerWins') : t('cpuWins') }));
+    announce(t('finalAnnounce', { result: playerWon ? t('playerWins') : t('cpuWins') }), 'final');
     openModalDialog('game-over', 'game-over-title');
 }
 
@@ -1770,11 +1959,19 @@ function activateFocusedControl() {
     if (target && typeof target.click === 'function') target.click();
 }
 
+function isGameplayStatusFocus(target = null) {
+    const statusSummary = document.getElementById('combat-status-summary');
+    const focused = target || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
+    return !!focused && (focused === canvas || focused === statusSummary);
+}
+
 function handleGamepadEvents(events) {
     if (!events) return;
+    if (events.status && (gameState === 'playing' || gameState === 'paused') && isGameplayStatusFocus()) {
+        announceCombatStatus();
+    }
     if (events.start && (gameState === 'playing' || gameState === 'paused')) {
         togglePause();
-        return;
     }
     if (!activeDialog) return;
 
@@ -1840,6 +2037,7 @@ function gameLoop(timestamp = 0) {
     const simulationEnd = collecting ? getDebugNow() : null;
     if (simulationStart !== null && simulationEnd !== null) pushDebugSample(debugMetrics.simulationFrameMs, Math.max(0, simulationEnd - simulationStart));
     renderTouchSpecialState();
+    renderCombatStatus();
     const drawStart = collecting ? getDebugNow() : null;
     draw();
     const frameEnd = collecting ? getDebugNow() : null;
@@ -1975,6 +2173,11 @@ function setupKeyboardControls() {
         if (targetPolicy === 'activation' && (code === 'Enter' || code === 'Space')) return;
 
         const action = getInputActionForCode(code);
+        if (action === 'status' && (gameState === 'playing' || gameState === 'paused') && isGameplayStatusFocus(activeElement)) {
+            if (e.preventDefault) e.preventDefault();
+            if (!e.repeat) announceCombatStatus();
+            return;
+        }
         if (action === 'pause' && (gameState === 'playing' || gameState === 'paused')) {
             if (e.preventDefault) e.preventDefault();
             if (!e.repeat) togglePause();
@@ -2031,10 +2234,34 @@ function renderInputBindingsDialog(result = null) {
         const row = document.createElement('div');
         const label = document.createElement('strong');
         const values = document.createElement('div');
+        const actionLabel = t(`inputAction${action.charAt(0).toUpperCase()}${action.slice(1)}`);
         row.className = 'binding-row';
         label.className = 'binding-action';
         values.className = 'binding-values';
-        label.textContent = t(`inputAction${action.charAt(0).toUpperCase()}${action.slice(1)}`);
+        label.textContent = actionLabel;
+
+        const addCaptureButton = (slot, text, className = 'binding-button') => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = className;
+            button.setAttribute('data-binding-action', action);
+            button.setAttribute('data-binding-slot', String(slot));
+            button.textContent = capture && capture.action === action && capture.slot === slot
+                ? t('bindingPressKey')
+                : text;
+            button.setAttribute('aria-label', t('bindingName', {
+                action: actionLabel,
+                slot: slot + 1,
+                key: text === t('bindingUnassigned') ? t('bindingUnassigned') : inputBindingAccessibleLabel(text)
+            }));
+            button.addEventListener('click', () => {
+                beginInputBindingCapture(action, slot);
+                renderInputBindingsDialog();
+            });
+            values.append(button);
+        };
+
+        if (action === 'status' && !bindings[action].length) addCaptureButton(0, t('bindingUnassigned'), 'binding-button binding-button--unassigned');
 
         bindings[action].forEach((code, slot) => {
             const button = document.createElement('button');
@@ -2057,7 +2284,7 @@ function renderInputBindingsDialog(result = null) {
             values.append(button);
         });
 
-        if (bindings[action].length < INPUT_MAX_BINDINGS_PER_ACTION) {
+        if (bindings[action].length < INPUT_MAX_BINDINGS_PER_ACTION && !(action === 'status' && !bindings[action].length)) {
             const addButton = document.createElement('button');
             addButton.type = 'button';
             addButton.className = 'binding-button binding-button--add';
@@ -2072,6 +2299,20 @@ function renderInputBindingsDialog(result = null) {
                 renderInputBindingsDialog();
             });
             values.append(addButton);
+        }
+
+        if (action === 'status') {
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'binding-button binding-button--remove';
+            removeButton.textContent = '−';
+            removeButton.setAttribute('aria-label', t('bindingRemove'));
+            removeButton.disabled = !bindings[action].length;
+            removeButton.addEventListener('click', () => {
+                clearInputBinding(action);
+                renderInputBindingsDialog();
+            });
+            values.append(removeButton);
         }
 
         row.append(label, values);
@@ -2188,6 +2429,15 @@ function setupTrainingControls() {
     document.getElementById('training-timer-select').addEventListener('change', (e) => setTrainingTimer(e.target.value));
 }
 
+function setupCombatStatus() {
+    const details = document.getElementById('combat-status');
+    if (!details) return;
+    details.addEventListener('toggle', () => {
+        resizeCanvas();
+        renderCombatStatus();
+    });
+}
+
 function setupOnboarding() {
     document.getElementById('onboarding-next-button').addEventListener('click', () => {
         if (onboardingStep < 2) {
@@ -2211,6 +2461,7 @@ window.addEventListener('load', () => {
     setupMainMenu();
     setupRestartButton();
     setupTrainingControls();
+    setupCombatStatus();
     setupOnboarding();
     gameLoop();
 });

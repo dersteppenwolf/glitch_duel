@@ -662,6 +662,24 @@ Ejecutar pruebas focales antes de cada commit y suite completa antes del ultimo.
 
 ## Estado De Implementacion
 
-Pendiente. La baseline de `#77` debe capturarse antes de cambiar comprension/profundidad.
+Parcial.
 
-Un fallo tecnico en primera sesion bloquea `#9/#24/#16` hasta corregir Fase 1; un fallo solo de comprension habilita `#24/#9`. `#74` puede ejecutarse tras capturar baseline por su barrera P1 confirmada. `#16` queda bloqueado por el gate recurrente y `#17/#19` no forman parte del alcance ejecutable sin revision posterior.
+Implementado en esta ejecucion:
+
+- `#74`: `<details>`/`<dl>` no-live, render cacheado de salud/energia/ronda/score/tiempo/rival, consulta por status key/gamepad 8/details, migracion de bindings v1 a v2 sin robar teclas, status sin tecla y thresholds deduplicados.
+- Cache-busting de recursos en `src/index.html` para que el navegador no reutilice la version anterior de Fase 1.
+
+Validacion ejecutada:
+
+- Baseline antes del cambio: `115/115` pruebas y sintaxis completa.
+- Despues del cambio: `118/118` pruebas aprobadas, sintaxis completa y `git diff --check` correcto.
+- Smoke navegador con cache-buster: estado cerrado `ESTADO · 60s`; al expandir se leen modo, vida, energia, ronda, marcador, tiempo, rival, direccion, distancia y ultimo evento.
+
+Pendiente:
+
+- `#77`: seis jugadores nuevos y cuatro recurrentes; no se realizaron sesiones humanas.
+- `#9`, `#24` y `#16`: no implementados por depender de gates de usuarios/profundidad.
+- `#17/#19`: permanecen bloqueados y sin codigo.
+- Validacion real de zoom 200%, low-height, touch/gamepad fisico, forced-colors y NVDA/Narrator/VoiceOver.
+
+Un fallo tecnico en primera sesion sigue bloqueando `#9/#24/#16` hasta corregir Fase 1; un fallo solo de comprension habilita `#24/#9`. `#74` queda Partial hasta completar validacion manual/AT. `#16` queda bloqueado por el gate recurrente.

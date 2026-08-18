@@ -1084,6 +1084,138 @@ summary:active {
     font-size: 13px;
 }
 
+#combat-status {
+    position: relative;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: min(420px, 42vw);
+    background: var(--paper-0);
+    border: 3px solid var(--ink-900);
+    font-size: 11px;
+    z-index: 121;
+}
+
+#combat-status summary {
+    max-width: 100%;
+    padding: 5px 8px;
+    overflow: hidden;
+    cursor: pointer;
+    font-weight: bold;
+    list-style-position: inside;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#combat-status-details {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    display: grid;
+    grid-template-columns: max-content minmax(92px, 1fr);
+    gap: 3px 8px;
+    width: min(360px, calc(100vw - 32px));
+    max-height: min(52vh, 280px);
+    overflow: auto;
+    margin: 0;
+    padding: 10px;
+    background: var(--paper-0);
+    border: 3px solid var(--ink-900);
+    box-shadow: var(--hard-shadow);
+}
+
+#combat-status-details dt {
+    font-weight: bold;
+}
+
+#combat-status-details dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px), (max-height: 500px) {
+    #combat-status {
+        max-width: 32vw;
+    }
+
+    #combat-status summary {
+        padding: 5px;
+        font-size: 10px;
+    }
+
+    #combat-status-details {
+        right: auto;
+        left: 0;
+        max-height: 38vh;
+    }
+}
+
+#combat-status {
+    position: relative;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: min(420px, 42vw);
+    background: var(--paper-0);
+    border: 3px solid var(--ink-900);
+    font-size: 11px;
+    z-index: 121;
+}
+
+#combat-status summary {
+    max-width: 100%;
+    padding: 5px 8px;
+    overflow: hidden;
+    cursor: pointer;
+    font-weight: bold;
+    list-style-position: inside;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#combat-status-details {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    display: grid;
+    grid-template-columns: max-content minmax(92px, 1fr);
+    gap: 3px 8px;
+    width: min(360px, calc(100vw - 32px));
+    max-height: min(52vh, 280px);
+    overflow: auto;
+    margin: 0;
+    padding: 10px;
+    background: var(--paper-0);
+    border: 3px solid var(--ink-900);
+    box-shadow: var(--hard-shadow);
+}
+
+#combat-status-details dt {
+    font-weight: bold;
+}
+
+#combat-status-details dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px), (max-height: 500px) {
+    #combat-status {
+        max-width: 32vw;
+    }
+
+    #combat-status summary {
+        padding: 5px;
+        font-size: 10px;
+    }
+
+    #combat-status-details {
+        right: auto;
+        left: 0;
+        max-height: 38vh;
+    }
+}
+
 .arcade-run-summary {
     max-width: 520px;
 }

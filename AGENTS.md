@@ -31,6 +31,7 @@
 - Grounded combo follow-ups use one fixed-step `pendingComboInput`; interruption clears the full combo sequence, and taps that begin and end between simulation ticks are not queued.
 - Touch controls keep localized child labels; `renderTouchSpecialState()` is the only writer of special readiness state and updates DOM only when its cached signature changes.
 - Debug timing and audio lifecycle diagnostics are opt-in, bounded, in-memory, and never persisted or sent over the network. Web Audio tone graphs must disconnect idempotently after ending.
+- `#combat-status` is a non-live DOM summary; `Digit0`, a remapped status edge, gamepad button 8, or opening its details can query a localized snapshot without per-frame announcements. Binding storage v2 migrates v1 without stealing user keys.
 - Canvas simulation uses fixed logical dimensions `1000x500`; `resizeCanvas()` maps that space to a responsive CSS size and DPR-aware backing store. Keep hitboxes in logical coordinates.
 
 ## Conventions

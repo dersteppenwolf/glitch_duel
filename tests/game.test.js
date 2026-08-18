@@ -100,7 +100,11 @@ function loadGame(options = {}) {
         'bindings-list': 'div',
         'binding-status': 'div',
         'game-toolbar': 'div',
-        'arena-shell': 'div'
+        'arena-shell': 'div',
+        'combat-status': 'details',
+        'combat-status-summary': 'summary',
+        'combat-status-compact': 'span',
+        'combat-status-details': 'dl'
     };
     const staticParents = {
         'pause-button': 'game-toolbar',
@@ -108,7 +112,11 @@ function loadGame(options = {}) {
         'bindings-list': 'controls-screen',
         'binding-status': 'controls-screen',
         'reset-controls-button': 'controls-screen',
-        'controls-back-button': 'controls-screen'
+        'controls-back-button': 'controls-screen',
+        'combat-status': 'game-toolbar',
+        'combat-status-summary': 'combat-status',
+        'combat-status-compact': 'combat-status-summary',
+        'combat-status-details': 'combat-status'
     };
     const canvas = {
         id: 'game',
@@ -235,6 +243,11 @@ function loadGame(options = {}) {
             elements.set(id, element);
             const parentId = staticParents[id];
             if (parentId) getElement(parentId).append(element);
+            if (id === 'combat-status-details') {
+                for (let index = 0; index < 12; index++) {
+                    element.append(createElement('', 'dt'), createElement('', 'dd'));
+                }
+            }
         }
         return elements.get(id);
     }
@@ -308,6 +321,8 @@ function loadGame(options = {}) {
             playImpactSound,
             playUISound,
             getAudioDiagnostics,
+            announceCombatStatus,
+            renderCombatStatus,
             t,
             I18N,
             ARENAS,
@@ -1454,7 +1469,7 @@ test('static HTML contract preserves local assets, script order, controls, and a
 
     requiredIds.forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260817-arcade">/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260818-phase2">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
     ['arena-shell', 'game-toolbar', 'game-announcer', 'duel-settings', 'selection-summary', 'menu-footer', 'arcade-run-button'].forEach((id) => {
@@ -1645,6 +1660,86 @@ test('special touch input remains inert while charging and activates when ready'
     assert.equal(api.getState().activePointerCount, 1);
     special.listeners.pointerup(pointer(2));
     assert.equal(api.getState().activePointerCount, 0);
+});
+
+test('combat status is non-live, localized, queryable, and cached by values', () => {
+    const { api, context, canvas, elements, windowListeners } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.setupKeyboardControls();
+    api.initGame();
+    api.renderLanguage();
+    const state = api.getState();
+    state.player1.health = 42;
+    state.player1.energy = 37;
+    state.player2.health = 68;
+    state.player2.energy = 21;
+    state.player1.x = 600;
+    state.player2.x = 450;
+    api.renderCombatStatus();
+
+    const details = context.document.getElementById('combat-status');
+    const summary = context.document.getElementById('combat-status-summary');
+    const compact = context.document.getElementById('combat-status-compact');
+    const values = context.document.getElementById('combat-status-details').children;
+    assert.equal(details.getAttribute('aria-live'), undefined);
+    assert.equal(summary.getAttribute('aria-label'), api.t('combatStatusSummaryLabel'));
+    assert.match(compact.textContent, /P1 42/);
+    assert.equal(values[1].textContent, 'DUELO');
+    assert.equal(values[3].textContent, '42%');
+    assert.equal(values[5].textContent, '68%');
+    assert.equal(values[19].textContent, api.t('combatStatusDirectionLeft'));
+    assert.equal(values[21].textContent, api.t('combatStatusDistanceMid'));
+
+    api.announceCombatStatus();
+    const announcement = context.document.getElementById('game-announcer').textContent;
+    assert.match(announcement, /42/);
+    assert.match(announcement, /68/);
+
+    const firstAnnouncement = announcement;
+    const repeat = dispatchKey(windowListeners, { key: '0', code: 'Digit0', repeat: true, target: canvas });
+    assert.equal(repeat.prevented, true);
+    assert.equal(context.document.getElementById('game-announcer').textContent, firstAnnouncement);
+
+    const query = dispatchKey(windowListeners, { key: '0', code: 'Digit0', target: canvas });
+    assert.equal(query.prevented, true);
+    assert.match(context.document.getElementById('game-announcer').textContent, /42/);
+    assert.equal(elements.get('combat-status-summary').getAttribute('aria-live'), undefined);
+});
+
+test('binding version one migrates without losing remapped keys and leaves status unassigned on conflict', () => {
+    const bindings = {
+        left: ['KeyQ', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], jump: ['KeyW', 'ArrowUp'],
+        crouch: ['KeyC', 'ArrowDown'], block: ['KeyS', 'KeyI'], punch: ['KeyJ'], kick: ['KeyK'],
+        special: ['KeyL'], pause: ['KeyP']
+    };
+    const migrated = loadGame({ storage: {
+        glitchDuelKeyboardBindings: JSON.stringify({ version: 1, bindings })
+    } });
+    assert.equal(migrated.api.getInputBindings().left[0], 'KeyQ');
+    assert.equal(migrated.api.getInputBindings().status[0], 'Digit0');
+    assert.equal(JSON.parse(migrated.context.window.localStorage.getItem('glitchDuelKeyboardBindings')).version, 2);
+
+    const conflictBindings = { ...bindings, left: ['Digit0', 'ArrowLeft'], right: ['KeyO', 'ArrowRight'], jump: ['Semicolon', 'ArrowUp'] };
+    const conflicted = loadGame({ storage: {
+        glitchDuelKeyboardBindings: JSON.stringify({ version: 1, bindings: conflictBindings })
+    } });
+    assert.equal(conflicted.api.getInputBindings().status.length, 0);
+    conflicted.api.showControlsScreen();
+    const statusRow = conflicted.elements.get('bindings-list').children.find((row) => row.children[0].textContent === conflicted.api.t('inputActionStatus'));
+    assert.equal(statusRow.children[1].children[0].textContent, conflicted.api.t('bindingUnassigned'));
+});
+
+test('standard gamepad button eight emits status edge without changing Start pause', () => {
+    const buttons = Array.from({ length: 16 }, () => ({ pressed: false, value: 0 }));
+    let pad = { mapping: 'standard', buttons, axes: [0, 0] };
+    const { api } = loadGame({ getGamepads: () => [pad] });
+    assert.equal(api.pollInputGamepads().status, false);
+    buttons[8].pressed = true;
+    pad = { mapping: 'standard', buttons, axes: [0, 0] };
+    assert.equal(api.pollInputGamepads().status, true);
+    buttons[8].pressed = false;
+    buttons[9].pressed = true;
+    pad = { mapping: 'standard', buttons, axes: [0, 0] };
+    assert.equal(api.pollInputGamepads().start, true);
 });
 
 test('escape closes help but does not escape game over or onboarding dialogs', () => {

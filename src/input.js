@@ -1,6 +1,7 @@
 const INPUT_BINDINGS_STORAGE_KEY = 'glitchDuelKeyboardBindings';
-const INPUT_BINDINGS_VERSION = 1;
-const INPUT_ACTIONS = ['left', 'right', 'jump', 'crouch', 'block', 'punch', 'kick', 'special', 'pause'];
+const INPUT_BINDINGS_VERSION = 2;
+const INPUT_V1_ACTIONS = ['left', 'right', 'jump', 'crouch', 'block', 'punch', 'kick', 'special', 'pause'];
+const INPUT_ACTIONS = [...INPUT_V1_ACTIONS, 'status'];
 const INPUT_REMAPPABLE_ACTIONS = [...INPUT_ACTIONS];
 const INPUT_MAX_BINDINGS_PER_ACTION = 2;
 const INPUT_AXIS_PRESS_THRESHOLD = 0.55;
@@ -14,7 +15,8 @@ const INPUT_DEFAULT_BINDINGS = {
     punch: ['KeyJ'],
     kick: ['KeyK'],
     special: ['KeyL'],
-    pause: ['KeyP']
+    pause: ['KeyP'],
+    status: ['Digit0']
 };
 const INPUT_RESERVED_CODES = new Set([
     'Escape', 'Tab', 'Backquote', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
@@ -24,13 +26,19 @@ const INPUT_RESERVED_CODES = new Set([
 
 const inputActionSources = new Map(INPUT_ACTIONS.map((action) => [action, new Set()]));
 const inputSourceActions = new Map();
+let inputBindingsMigrationPending = false;
 const inputKeyboardBindings = loadInputBindings();
+if (inputBindingsMigrationPending) saveInputBindings();
 const inputPreviousGamepads = new Map();
 let inputGamepadNeutralRequired = false;
 let inputBindingCapture = null;
 
 function cloneInputBindings(bindings) {
     return Object.fromEntries(INPUT_ACTIONS.map((action) => [action, [...(bindings[action] || [])]]));
+}
+
+function cloneInputV1Bindings(bindings) {
+    return Object.fromEntries(INPUT_V1_ACTIONS.map((action) => [action, [...(bindings[action] || [])]]));
 }
 
 function isInputCode(value) {
@@ -54,9 +62,39 @@ function validateInputBindings(value) {
             codes.push(code);
             usedCodes.add(code);
         }
+        if (!codes.length && action !== 'status') return null;
+        result[action] = codes;
+    }
+    return result;
+}
+
+function validateInputV1Bindings(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value) || value.version !== 1) return null;
+
+    const result = {};
+    const usedCodes = new Set();
+    for (const action of INPUT_V1_ACTIONS) {
+        if (!value.bindings || !Array.isArray(value.bindings[action])) return null;
+        const codes = [];
+        for (const code of value.bindings[action].slice(0, INPUT_MAX_BINDINGS_PER_ACTION)) {
+            if (!isInputCode(code) || isInputReservedCode(code) || usedCodes.has(code)) continue;
+            codes.push(code);
+            usedCodes.add(code);
+        }
         if (!codes.length) return null;
         result[action] = codes;
     }
+    return result;
+}
+
+function migrateInputV1Bindings(value) {
+    const validated = validateInputV1Bindings(value);
+    if (!validated) return null;
+
+    const result = cloneInputV1Bindings(validated);
+    const usedCodes = new Set(Object.values(result).flat());
+    const statusCandidates = ['Digit0', 'KeyO', 'Semicolon'];
+    result.status = statusCandidates.filter((code) => !usedCodes.has(code))[0] ? [statusCandidates.find((code) => !usedCodes.has(code))] : [];
     return result;
 }
 
@@ -67,6 +105,11 @@ function loadInputBindings() {
             const parsed = JSON.parse(saved);
             const validated = validateInputBindings(parsed);
             if (validated) return validated;
+            const migrated = migrateInputV1Bindings(parsed);
+            if (migrated) {
+                inputBindingsMigrationPending = true;
+                return cloneInputBindings(migrated);
+            }
         }
     } catch (_) {
         // localStorage or JSON can be unavailable/corrupt; defaults are safe.
@@ -98,6 +141,14 @@ function resetInputBindings() {
     });
     saveInputBindings();
     return getInputBindings();
+}
+
+function clearInputBinding(action) {
+    if (action !== 'status') return { ok: false, reason: 'invalid' };
+    inputKeyboardBindings.status = [];
+    cancelInputBindingCapture();
+    saveInputBindings();
+    return { ok: true, bindings: getInputBindings() };
 }
 
 function setInputBinding(action, slot, code) {
@@ -143,6 +194,7 @@ function getInputActionForCode(code) {
 
 function setInputSource(sourceId, action, active) {
     if (!sourceId) return;
+    if (action === 'status') return;
     const currentAction = inputSourceActions.get(sourceId);
     if (active) {
         if (!INPUT_ACTIONS.includes(action)) return;
@@ -223,19 +275,22 @@ function captureInputBinding(event) {
 }
 
 function inputBindingLabel(code) {
+    if (!code) return t('bindingUnassigned');
     const labels = {
-        ArrowLeft: 'LEFT',
-        ArrowRight: 'RIGHT',
-        ArrowUp: 'UP',
-        ArrowDown: 'DOWN',
-        Space: 'SPACE',
-        Enter: 'ENTER',
-        ShiftLeft: 'SHIFT',
-        ShiftRight: 'SHIFT',
-        ControlLeft: 'CTRL',
-        ControlRight: 'CTRL',
-        AltLeft: 'ALT',
-        AltRight: 'ALT'
+        ArrowLeft: t('inputKeyArrowLeft'),
+        ArrowRight: t('inputKeyArrowRight'),
+        ArrowUp: t('inputKeyArrowUp'),
+        ArrowDown: t('inputKeyArrowDown'),
+        Space: t('inputKeySpace'),
+        Enter: t('inputKeyEnter'),
+        ShiftLeft: t('inputKeyShift'),
+        ShiftRight: t('inputKeyShift'),
+        ControlLeft: t('inputKeyControl'),
+        ControlRight: t('inputKeyControl'),
+        AltLeft: t('inputKeyAlt'),
+        AltRight: t('inputKeyAlt'),
+        MetaLeft: t('inputKeyMeta'),
+        MetaRight: t('inputKeyMeta')
     };
     if (labels[code]) return labels[code];
     if (code.startsWith('Key')) return code.slice(3).toUpperCase();
@@ -244,6 +299,7 @@ function inputBindingLabel(code) {
 }
 
 function inputBindingAccessibleLabel(code) {
+    if (!code) return t('bindingUnassigned');
     const keys = {
         ArrowLeft: 'inputKeyArrowLeft',
         ArrowRight: 'inputKeyArrowRight',
@@ -282,7 +338,7 @@ function inputAxisDirection(value, previous, negativeName, positiveName) {
 }
 
 function pollInputGamepads() {
-    const events = { confirm: false, cancel: false, start: false, up: false, down: false, left: false, right: false };
+    const events = { confirm: false, cancel: false, start: false, status: false, up: false, down: false, left: false, right: false };
     if (!navigator.getGamepads) return events;
 
     const pads = navigator.getGamepads() || [];
@@ -302,6 +358,7 @@ function pollInputGamepads() {
             if (pressed && !previous.buttons.get(buttonIndex)) {
                 if (buttonIndex === 0) events.confirm = true;
                 if (buttonIndex === 1) events.cancel = true;
+                if (buttonIndex === 8) events.status = true;
                 if (buttonIndex === 9) events.start = true;
                 if (buttonIndex === 12) events.up = true;
                 if (buttonIndex === 13) events.down = true;
@@ -338,7 +395,7 @@ function pollInputGamepads() {
     if (inputGamepadNeutralRequired) {
         const active = [...inputPreviousGamepads.values()].some((state) => state.axis || state.vertical || [...state.buttons.values()].some(Boolean));
         if (!active) inputGamepadNeutralRequired = false;
-        return { confirm: false, cancel: false, start: false, up: false, down: false, left: false, right: false };
+        return { confirm: false, cancel: false, start: false, status: false, up: false, down: false, left: false, right: false };
     }
     return events;
 }
