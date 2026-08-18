@@ -229,4 +229,6 @@ Se cargo y aplico `karpathy-guidelines` antes de finalizar este plan.
 
 ## Estado De Implementacion
 
-Pendiente.
+Sustituido por `plans/plan_0040_claridad_impacto_fase_1.md`.
+
+El plan 0040 rebaselina el alcance vigente de foco, HUD pequeno, marcadores y toolbar, elimina la referencia obsoleta a `syncDuelSettingsLayout()` y lo integra con los items de Fase 1. No ejecutar este plan 0036 de forma independiente.
