@@ -14,7 +14,7 @@
 - GitHub Pages uses `.github/workflows/pages.yml`: pull requests and pushes validate every `src/*.js` file plus `tests/game.test.js`, and deployment publishes `src/` only after validation passes; keep this no-build gate unless the project architecture changes.
 - JS syntax check: run `node --check` for each `src\*.js` file.
 - Unit tests: `node --test tests\game.test.js`.
-- All pending browser, hardware, assistive-technology, performance and player validation lives only in `plans/plan_0043_validacion_humana_consolidada.md`; do not duplicate or claim those checks from mocks.
+- Browser, hardware, assistive-technology, performance and player validation evidence is recorded only in `plans/plan_0043_validacion_humana_consolidada.md`; do not duplicate or claim those checks from mocks.
 
 ## Runtime Notes
 - `gameState` in `src/game.js` controls simulation: `menu`, `paused`, `roundOver`, and `gameOver` stop updates; only `playing` advances physics, AI, and combat.

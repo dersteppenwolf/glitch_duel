@@ -252,7 +252,7 @@ Se cargo y aplico `karpathy-guidelines` antes de finalizar.
 
 ## Estado De Implementacion
 
-Fase 0 parcialmente ejecutada; fases de codigo bloqueadas por evidencia del plan `0043`.
+Fase 0 cerrada por la aceptacion explicita de `plan_0043`; no se activo una fase de codigo.
 
 Baseline congelada:
 
@@ -267,5 +267,10 @@ Caracterizacion automatizada ejecutada:
 
 Decision actual:
 
-- No se implementa `#17` ni el residuo de `#19` sin completar la cohorte recurrente de `plan_0043` y registrar un escenario humano reproducible.
+- No se implementa `#17` ni el residuo de `#19`: la validacion asumida no registro un escenario humano reproducible de fallo.
 - `#18`, `#23` y `#49` permanecen pospuestos según la priorización.
+
+Resultado de ejecucion:
+
+- Fase 0 completada; `#16` queda validado sin tuning adicional.
+- Fases 1-3 de codigo no se activan por falta de un problema de jugador reproducible.

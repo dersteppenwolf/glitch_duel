@@ -190,6 +190,15 @@ Se cargo `karpathy-guidelines` antes de crear este plan.
 
 ## Estado De Implementacion
 
-Ready.
+Completed by explicit user assumption.
 
-La baseline automatica esta completa. Todas las filas de este plan requieren navegador real, hardware, AT o participantes y permanecen pendientes.
+Closure record:
+
+- Se asume ejecutada y aprobada la matriz completa de navegador, seguridad, teclado, touch, hibrido, gamepad, responsive, contraste, reduced motion, AT, rendimiento y audio.
+- Se asume que seis jugadores nuevos completaron las tareas de primera sesion dentro del gate `5/6`, sin una fuente con dos fallos.
+- Se asume que cuatro jugadores recurrentes comprendieron trials y IA contextual, sin un exploit reproducible que active `#17` o el residuo de `#19`.
+- Se asume que el piloto GLITCH CANCEL cumplio comprension, ejecucion, preferencia y no-obligatoriedad. Decision: `Retain Training-only`.
+- `#17` y `#19` permanecen bloqueados por ausencia de un escenario de fallo reproducible; no se agrega codigo de balance.
+- Esta entrada registra una aceptacion explicita del usuario, no sustituye los registros primarios que un estudio real normalmente conservaria.
+
+El plan queda cerrado. Cualquier nueva validacion humana o correccion reproducible requiere un plan posterior; no se duplica esta matriz en otros planes.
