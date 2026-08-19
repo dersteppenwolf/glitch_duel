@@ -157,19 +157,7 @@ Pruebas unitarias nuevas o ajustadas:
 - `<details>` solo cambia por cruce de breakpoint y conserva una apertura/cierre manual dentro del mismo modo.
 - La suite actual de combate, IA, rondas, input, touch, i18n, arenas, persistencia y reduced motion continua pasando.
 
-Smoke test manual:
-
-- Abrir el menu, iniciar una partida y comprobar con Tab que el foco termina en Pausa, no en el menu oculto.
-- Iniciar entrenamiento, reiniciar desde game over y completar onboarding; en todos los casos el primer control de partida visible recibe foco.
-- Navegar Ayuda, Pausa y game over con Tab/Shift+Tab/Escape; no quedan fondos inertes ni focos perdidos.
-- En `390x844`, confirmar que el HUD no depende de texto diminuto para comunicar especial; reloj, nombre y porcentaje siguen siendo distinguibles.
-- En `844x390` y `667x375`, probar con toolbar visible; verificar que canvas, HUD, pausa y controles tactiles no se solapan.
-- Cambiar entre desktop y movil cruzando `760px`; comprobar que `<details>` adopta el default solo al cruzar y respeta la eleccion manual despues.
-- Poner luchadores en suelo, salto y ambas esquinas con los cuatro rivales; confirmar que badges e indicador especial no quedan bajo el HUD ni salen del canvas.
-- Activar textos largos de impacto/combo/especial; confirmar margenes laterales y separacion vertical.
-- Probar foco visible sobre CTA, `summary`, selects, enlace GitHub y botones tactiles con papel claro y fondo oscuro.
-- Revisar Cuaderno, Servidor Caido y las otras seis arenas en salud baja, energia llena, salto y game over.
-- Probar zoom del navegador al 200% para menu y overlays. Registrar pinch zoom sobre canvas como validacion informativa, no como criterio nuevo de este plan.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 

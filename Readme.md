@@ -513,6 +513,7 @@ Test limitations:
 - They do not replace real visual validation in a browser.
 - They do not verify Canvas pixels.
 - They do not test real browser audio.
+- The single authoritative checklist for browser, hardware, assistive technology, performance and player studies is `plans/plan_0043_validacion_humana_consolidada.md`.
 
 ## Troubleshooting
 

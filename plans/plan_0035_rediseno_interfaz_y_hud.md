@@ -183,18 +183,7 @@ Pruebas unitarias nuevas o ajustadas:
 - Badges, indicador especial y `FloatingText` clamplean nombres/mensajes largos en ambos extremos.
 - La suite actual de simulacion, IA, combate, input, touch, arenas, i18n y persistencia sigue pasando.
 
-Smoke test manual:
-
-- Abrir menu a `1366x768`: titulo, configuracion, preview, stats y acciones principales caben sin scroll; Inicio domina la jerarquia y GitHub queda secundario.
-- Probar `844x390`, `390x844`, `667x375` y zoom de navegador al 200%: no hay overflow horizontal; menu/ayuda/pausa/game over siguen navegables.
-- Navegar solo con teclado: Inicio recibe foco, Ayuda contiene foco y lo devuelve, Pausa contiene foco y al reanudar no se pierde contexto, game over enfoca Reiniciar.
-- Probar `Escape` y `P` en menu, Ayuda, playing, paused, onboarding y game over; ninguna tecla produce transiciones ambiguas.
-- Cambiar idioma, dificultad, arena, estilo y rival; verificar descriptor, preview y textos en ES/EN.
-- Simular preferencia de sistema de movimiento reducido con y sin valor guardado; comprobar que una eleccion manual persiste y prevalece.
-- Revisar las ocho arenas con salud alta/media/baja, energia normal/llena, nombres de los cuatro rivales y timer de uno/dos digitos; todo el HUD conserva contraste.
-- Revisar combate en ambas esquinas con badge, especial listo, combo, bloqueo y textos de impacto; nada sale del canvas ni tapa informacion critica.
-- En movil landscape, comprobar toolbar, HUD, canvas, entrenamiento, Pausa y controles tactiles sin solapamientos criticos.
-- Confirmar que movimiento, ataques, combos, bloqueo, rondas, timer, pausa, entrenamiento y game over no cambian respecto al comportamiento actual.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 
@@ -278,6 +267,4 @@ Validacion local ejecutada:
 - `git diff --check`: correcto.
 - Smoke visual en navegador: menu desktop a 1440x900, menu portrait a 390x844 con configuracion colapsada, partida desktop con HUD/toolbar y pause; no se observaron errores de pagina.
 
-Riesgo residual aceptado:
-
-- Falta una comprobacion manual con dispositivo tactil fisico y un viewport landscape movil dedicado; los contratos existentes de Pointer Events/resize y las comprobaciones previas de `0022`/`0032` siguen cubriendo esas rutas.
+Plan cerrado en alcance automatico. La comprobacion humana con touch fisico, landscape, zoom, contraste y AT se transfirio exclusivamente al plan `0043`.

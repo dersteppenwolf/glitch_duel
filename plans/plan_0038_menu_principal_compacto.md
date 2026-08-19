@@ -146,17 +146,7 @@ Pruebas unitarias/estaticas nuevas o ajustadas:
 - El orden DOM de botones sigue siendo Inicio, Entrenamiento, Ayuda y Controles.
 - Las pruebas existentes de idioma, preview de arena, preferencias, foco modal, zoom/viewport y acciones siguen pasando.
 
-Smoke test manual:
-
-- Abrir el menu a `1366x768` en español e ingles: la tarjeta mide como objetivo `600-640px` de alto, no tiene scroll interno y deja margen visible respecto del viewport.
-- Abrir a `1024x768`: configuracion/preview siguen en dos columnas, Estilo/Rival y las tres acciones secundarias comparten sus respectivas filas sin truncamiento.
-- Probar `760x800`, `600x800`, `560x800` y `390x844`: no hay overflow horizontal; la reorganizacion ocurre antes de comprimir textos o controles.
-- Probar zoom del navegador al 200%: todo el menu es alcanzable mediante scroll vertical y ninguna accion queda fuera del ancho visible.
-- Cambiar idioma y seleccionar las ocho arenas, cuatro estilos y cuatro rivales; nombres y descripciones permanecen dentro de sus tarjetas.
-- Navegar solo con Tab y Shift+Tab: el foco visible, orden, containment y restauracion actuales no cambian.
-- Verificar con puntero/touch que idioma, selects, `Reducir movimiento`, botones y GitHub mantienen objetivos de al menos 44 px donde corresponde.
-- Abrir Ayuda, Controles, onboarding, Pausa y game over: sus dimensiones y comportamiento no fueron alterados por selectores CSS demasiado amplios.
-- Iniciar juego y entrenamiento: seleccion, persistencia y transiciones de `gameState` permanecen iguales.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 
@@ -237,6 +227,4 @@ Validacion local ejecutada:
   - Viewport equivalente a zoom 200% (`683x768` CSS): contenido alcanzable por scroll vertical, sin overflow horizontal.
 - Smoke visual Chrome: captura desktop limpia revisada; se conservaron CTA amarillo, bordes arcade, foco visible, textos ES/EN y GitHub.
 
-Riesgo residual aceptado:
-
-- La medicion de zoom se hizo con viewport CSS equivalente en Chrome headless; el zoom interactivo del navegador queda cubierto por el smoke test manual documentado en `AGENTS.md`.
+Plan cerrado. El zoom interactivo y la revision humana responsive se transfirieron exclusivamente al plan `0043`.

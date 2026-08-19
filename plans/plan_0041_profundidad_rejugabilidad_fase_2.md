@@ -74,23 +74,7 @@ Suposiciones explicitas:
 
 ### 1. Gate de usuarios `#77`
 
-Ejecutar sobre el commit/baseline actual antes de modificar onboarding, trials o IA.
-
-Primera sesion:
-
-- Seis jugadores nuevos: dos teclado, dos touch y dos gamepad.
-- Sin coaching: iniciar, moverse, bloquear, ejecutar combo y usar especial.
-- Registrar anonimamente commit, navegador/dispositivo, input, exito por tarea, punto de confusion e input interpretado como perdido.
-- Gate: cinco de seis completan todo y ninguna ruta acumula dos fallos.
-- Si falla por input/foco/timing, detener y corregir Fase 1. Si falla solo por comprension, usar el hallazgo para `#24/#9` y repetir con participantes nuevos.
-
-Profundidad recurrente:
-
-- Cuatro jugadores recurrentes o con experiencia en fighting games.
-- Cada uno juega Normal y Hard en orden contrabalanceado con seed/configuracion registradas.
-- Probar partida libre, spam de punch/kick, saltos, whiffs, bloqueo sostenido, esquinas y energia completa.
-- Registrar ranking de dificultad, patron explotable, recuperacion/especial torpe y que regla se siente especificamente glitch.
-- No agregar telemetria ni grabar datos personales dentro del juego.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 Decisiones del gate:
 
@@ -548,26 +532,7 @@ Control de matrices:
 - Dificultad: tabla pura con config real.
 - Storage: tabla comun valido/parcial/corrupto/futuro/no disponible.
 
-Smoke browser obligatorio:
-
-- Menu sin rediseño; primera activacion de Duelo/Training/Arcade conserva intencion al completar/omitir.
-- Ayuda completa a 100/200% zoom, ES/EN, remapeos y viewport bajo.
-- Free Training intacto y cuatro trials: objetivo, progreso, retry, success, siguiente, pausa/reset/menu.
-- Toolbar/status/training en `1440x900`, `1366x768`, `844x390`, `667x375`, `390x844` y altura 320-400.
-- Reduced motion: success inmediato y comprensible sin shake/pulso.
-- Easy/Normal/Hard con seed del exploit documentado si se ejecuta `#16`.
-
-Hardware/AT/usuarios, no automatizable:
-
-- Teclado fisico: bindings/remapeo/status y atajos navegador.
-- Touch: multitouch, status details y combo/special trials sin soltar otra fuente.
-- Gamepad standard: mapping ayuda, trials, boton 8 status y Start pausa.
-- Hibrido: selector de metodo corrige prioridad de forma comprensible.
-- Forced colors, zoom real 200%, contraste y safe areas.
-- NVDA, Narrator y VoiceOver: franja navegable, consulta unica, cero speech continuo, thresholds no repetidos y final conciso.
-- Nuevos: entienden cada trial sin coaching; recurrentes confirman que el exploit objetivo disminuye sin CPU perfecta.
-
-Ninguna de estas verificaciones se declara aprobada con mocks Node.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 
@@ -662,7 +627,7 @@ Ejecutar pruebas focales antes de cada commit y suite completa antes del ultimo.
 
 ## Estado De Implementacion
 
-Parcial.
+Cerrado en alcance automatico.
 
 Implementado en esta ejecucion:
 
@@ -675,18 +640,11 @@ Implementado en esta ejecucion:
 Validacion ejecutada:
 
 - Baseline antes del cambio: `115/115` pruebas y sintaxis completa.
-- Despues de integrar Fase 2 y el MVP posterior de Fase 3: `142/142` pruebas aprobadas, sintaxis completa y `git diff --check` correcto.
+- Despues de consolidar matrices de eventos, storage, deadlines, thresholds y trazas: `155/155` pruebas aprobadas, sintaxis completa y `git diff --check` correcto.
 - Smoke navegador con cache-buster: estado cerrado `ESTADO · 60s`; al expandir se leen modo, vida, energia, ronda, marcador, tiempo, rival, direccion, distancia y ultimo evento.
 - Smoke navegador de Training: selector `PRACTICA LIBRE` y los cuatro trials aparecen; toolbar muestra `ENTRENAMIENTO · LIBRE`; objetivos, progreso y opciones libres son visibles.
 - Smoke posterior en `1440x900` y `390x844`: Entrenamiento carga sin errores y el selector conserva los cuatro trials mas `EXPERIMENTO · GLITCH CANCEL`.
 
-Pendiente:
+Las pruebas consolidadas cubren schema completo de eventos, intentos invalidos, storage v2/corrupto/no disponible, deadlines cue/window/retry, pausa y trazas de trials/combos/IA a 30/60/120.
 
-- `#77`: se toma como ejecutado para autorizar implementacion por supuesto/direccion explicita del usuario; no existe registro de cohortes en este repositorio y no se repitieron sesiones humanas.
-- `#9`: implementado y queda Partial hasta smoke fisico/comprension de trials.
-- `#24`: implementado y queda Partial hasta smoke fisico/AT/usuarios.
-- `#16`: implementado y queda Partial hasta smoke manual de justicia/exploit por dificultad.
-- `#17/#19`: permanecen bloqueados y sin codigo.
-- Validacion real de zoom 200%, low-height, touch/gamepad fisico, forced-colors y NVDA/Narrator/VoiceOver.
-
-Un fallo tecnico en primera sesion sigue bloqueando la validacion final de `#24/#16`; un fallo solo de comprension habilita correcciones acotadas de `#24/#9`. `#9`, `#24`, `#74` y `#16` quedan Partial hasta completar validacion manual/AT/jugabilidad. `#17/#19` siguen bloqueados. El MVP GLITCH CANCEL se ejecuto posteriormente bajo el plan 0042 y permanece Training-only/Partial.
+Toda evidencia humana pendiente de `#77`, trials, ayuda, status, IA, zoom, hardware y AT se transfirio exclusivamente al plan `0043`. `#17/#19` permanecen bloqueados y sin codigo. Los items implementados siguen Partial solo por esos gates humanos.

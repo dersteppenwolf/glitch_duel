@@ -80,10 +80,8 @@ Suposiciones explicitas:
 
 Antes de codigo:
 
-- Ejecutar smoke fisico de `#73` con teclado, touch y gamepad: cinco oportunidades de segundo input por fuente, sin dos fallos percibidos.
-- Ejecutar cohortes `#77`: seis nuevos y cuatro recurrentes, con hallazgos/seed/configuracion registrados.
-- Confirmar que la falta de decision de energia/recuperacion aparece en al menos dos recurrentes o que tres de cuatro desean explorar esa decision tras explicarla.
-- Confirmar smoke/comprension de `#9` y usar su selector/brief/progreso real. No crear infraestructura de trial paralela.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
+
 - Confirmar que el trial de Especial de `#9` sigue exigiendo ataque special real y gasto 100->0; GLITCH CANCEL no puede completarlo.
 - Reconciliar BACKLOG: `#76` solo pasa de Blocked a Ready si `#73/#77` estan aceptados y existe trial host.
 
@@ -326,22 +324,7 @@ Invariantes:
 
 ### 10. Piloto y gates de expansion
 
-Piloto Training con cuatro recurrentes, despues de `#77`, orden contrabalanceado:
-
-- Baseline sin trial/regla.
-- MVP trial GLITCH CANCEL.
-- Teclado, touch y gamepad representados; cada fuente ejecuta cinco oportunidades.
-- Microescenarios: energia 24/25/100, whiff, hit, blocked, pending combo, Special neutral y ahorrar energia.
-
-Gate para continuar:
-
-- 4/4 explican whiff-only, coste 25, una vez por secuencia y Special neutral 100.
-- 4/4 ejecutan Cancel y Special completo con su input.
-- Al menos 3/4 prefieren una revancha con la regla.
-- Maximo 1/4 la considera obligatoria/dominante.
-- Ninguna fuente acumula dos fallos de activacion percibidos.
-- Cada participante identifica al menos un caso para ahorrar energia y no cancelar.
-- Regresiones no muestran loop determinista de energia/presion/daño.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 Si falla:
 
@@ -507,25 +490,7 @@ Fixed-step/modos:
 - En specialSpend, feature deshabilitada: recovery+Special no gasta25; Special neutral real 100->0 completa.
 - Reset Training limpia outcome/cuota/feedback/progreso.
 
-Smoke browser:
-
-- Training trial en ES/EN, energia 24/25/75/99/100, primero/ultimo tick perceptible.
-- Estado touch/Canvas/status, pausa/hidden/reset/KO, reduced motion y audio no inicializado.
-- `1440x900`, `1366x768`, `844x390`, `667x375`, `390x844`, low height y zoom200.
-- Ocho arenas, serverDown, nombres largos y feedback simultaneo.
-- Sin errores consola ni recursos cacheados antiguos.
-
-Hardware/AT/usuarios:
-
-- Teclado real: binding/remap/repeat/rollover y shortcuts navegador.
-- Touch: movimiento/bloqueo + Cancel, taps cortos, safe area, cancel/capture loss.
-- Gamepad: boton3 hold/release, disconnect/reconnect y Start.
-- Hibrido: dos fuentes sin doble gasto.
-- NVDA/Narrator/VoiceOver: instruccion, ready/used/coste, exito una vez y consulta sin spam.
-- Forced colors, audio off y reduced motion manual/sistema.
-- Gate piloto 4 recurrentes y repetition con nuevos para Special dual.
-
-Estas verificaciones permanecen no verificadas hasta ejecutarse fisicamente; Node no las sustituye.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 
@@ -621,7 +586,7 @@ Ejecutar pruebas focales antes de cada commit y suite completa antes del ultimo.
 
 ## Estado De Implementacion
 
-Parcial: MVP Training-only implementado; expansiones bloqueadas.
+Cerrado en alcance automatico: MVP Training-only implementado; expansiones bloqueadas.
 
 La direccion explicita del usuario se tomo como aceptacion de Gate0 para ejecutar codigo, sin inventar evidencia humana. El repositorio sigue sin registros de las seis sesiones nuevas, cuatro recurrentes, timing fisico `#73`, hardware o lectores de pantalla.
 
@@ -639,13 +604,9 @@ Desviacion documentada:
 
 Validacion ejecutada:
 
-- `142/142` pruebas Node aprobadas, incluida traza GLITCH CANCEL equivalente a 30/60/120 FPS y descarte del click AT en ticks congelados.
+- `155/155` pruebas Node aprobadas. GLITCH CANCEL cubre estilos, stats/historial/medallas, specialSpend, long-frame, fuentes, economia y traza 30/60/120.
 - Todos los `src/*.js` pasan `node --check`; `git diff --check` correcto salvo avisos LF/CRLF de Windows.
 - Smoke servido por HTTP en `1440x900` y `390x844`: menu/Training cargan sin errores y el experimento aparece en el selector.
 - Revision estatica de accesibilidad corrigio activacion click de AT, nombre localizado del selector, anuncios discretos de fase, contraste/patron y proyeccion de pending.
 
-Pendiente:
-
-- Teclado/touch/gamepad fisicos, zoom real200%, forced colors y NVDA/Narrator/VoiceOver.
-- Piloto de cuatro recurrentes para comprension, preferencia, no-obligatoriedad y decision Retain/Promote/Reject.
-- Versus y Carrera permanecen deshabilitados; CPU/aire/hit/block/combos permanecen fuera de alcance.
+Toda validacion humana de hardware, AT y el piloto Retain/Promote/Reject se transfirio exclusivamente al plan `0043`. Versus y Carrera permanecen deshabilitados; CPU/aire/hit/block/combos permanecen fuera de alcance y requieren un plan posterior si el gate promueve la regla.

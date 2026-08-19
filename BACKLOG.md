@@ -4,6 +4,8 @@ Prioritization favors correctness and release safety first, then player onboardi
 
 Modern browser APIs must use capability detection, preserve graceful fallbacks, and avoid new dependencies. AI work must preserve the lightweight rule-based approach until measured behavior shows that a larger architecture is justified.
 
+All pending browser, physical hardware, assistive-technology, performance and player-study evidence is centralized in `plans/plan_0043_validacion_humana_consolidada.md`.
+
 ## Status And Sizing
 
 | Value | Meaning |
@@ -41,17 +43,17 @@ Next recommended improvement: `#72 Preserve native keyboard operation`. The prev
 | --- | --- | --- | --- | --- | --- | --- |
 | 33 | Medium | Ready | L | - | Input replay test harness | Record and replay input sequences only after deterministic simulation and RNG exist. |
 | 31 | Medium | Ready | M | 22 | Local combat telemetry | Capture bounded local aggregate data for balancing combos, blocks, specials, damage, and round duration, with visible reset controls. |
-| 32 | Medium | Partial | S | - | Lightweight performance telemetry | Implemented opt-in bounded debug metrics for RAF/update/simulation/draw work, raw/effective DPR, fixed-step discard buckets, and Web Audio graph lifecycle. Real-browser hardware baselines, 30/60/120 Hz comparisons, and long-session profiling remain manual. |
+| 32 | Medium | Partial | S | - | Lightweight performance telemetry | Implemented bounded debug metrics, warm-up exclusion, raw/effective DPR, separate discard buckets, sample-ring limits and idempotent Web Audio lifecycle tests. Hardware baselines and long-session profiling are centralized in plan `0043`. |
 | 48 | Low | Blocked | M | 31 | Advanced balance | Tune attacks, styles, and difficulty only from observed telemetry and regression scenarios. |
 | 57 | Low | Partial | S | - | Background organization | Split arena helpers further only when measured file growth makes the current renderer hard to maintain. |
 | 58 | Low | Blocked | S | 32 | CSS compositing optimization | Add containment or targeted layer hints only when performance measurements identify a concrete issue. |
-| 72 | P0 | Partial | S | - | Preserve native keyboard operation | Implemented modifier/native-target policy, Canvas gameplay focus, Canvas/Pause Tab bridge, capture navigation, and deterministic tests. Physical keyboard/browser shortcut smoke remains manual. Evidence: `setupKeyboardControls()` now gates native targets and modifiers in `src/game.js`. |
+| 72 | P0 | Partial | S | - | Preserve native keyboard operation | Implemented modifier/native-target policy, Canvas gameplay focus, visible gameplay Tab order without wrap, capture navigation, and deterministic tests. Physical keyboard/browser evidence is centralized in plan `0043`. |
 
 ## Player Roadmap
 
 | # | Priority | Status | Size | Depends on | Improvement | Acceptance summary |
 | --- | --- | --- | --- | --- | --- | --- |
-| 9 | Medium | Partial | M | 73 | Combo trials | Implemented four localized session-only objectives inside Training: three combos, crouch-punish, block-counter, and combat-earned energy/special spend. Uses real attack outcomes/energy-ready events, fixed-step cues/windows, reset/retry, and no stats/history persistence. Manual keyboard/touch/gamepad and first-use comprehension smoke remains. |
+| 9 | Medium | Partial | M | 73 | Combo trials | Implemented four localized session-only objectives with real events, exact fixed-step boundaries, reset/retry, 30/60/120 equivalence and no stats/history persistence. Physical input and comprehension evidence is centralized in plan `0043`. |
 | 7 | Medium | Ready | M | 14 | Daily/local quick missions | Offer bounded local challenges using the shared match-event model. |
 | 8 | Medium | Completed | L | 14 | Arcade ladder run | Add a five-fight escalating run with deterministic progression and a final summary. |
 | 13 | Medium | Ready | M | 14 | Local achievements | Add first win, blocking, combo, and special goals through the shared local event model. |
@@ -63,8 +65,8 @@ Next recommended improvement: `#72 Preserve native keyboard operation`. The prev
 | 41 | Low | Ready | S | - | New impact phrases and medals | Add content to the existing phrase/medal system without new progression rules. |
 | 47 | Low | Blocked | M | 1 | Additional combos | Add combat depth only after training and collision regression coverage exist. |
 | 60 | Low | Blocked | M | 14, 22 | Export/import local data | Export a versioned schema and validate imports without overwriting unrelated settings. |
-| 73 | P1 | Partial | M | - | Buffer valid second combo inputs | Implemented one fixed-step pending punch/kick, real cooldown boundary tests, full interruption cancellation, and 30/60/120 deterministic coverage. Physical touch/gamepad timing smoke remains manual; taps entirely between ticks remain intentionally unqueued. Evidence: `Fighter.handleAttackCommand()` now records a bounded follow-up instead of silently discarding it. |
-| 76 | P3 | Partial | M | 73, 77 | Validate a GLITCH CANCEL MVP | Training-only experiment implemented: a grounded punch/kick whiff can spend 25 through the existing Special action to end recovery once per sequence. Includes localized trial/status/touch/Canvas/audio feedback, reduced-motion behavior, source-parity tests, exact economy boundaries, and 30/60/120 equivalence. Physical hardware/AT and recurrent-player pilot remain before any Versus/Arcade rollout. |
+| 73 | P1 | Partial | M | - | Buffer valid second combo inputs | Implemented one fixed-step pending punch/kick, exact cooldown/window boundaries, interruption cancellation and canonical 30/60/120 combo traces. Physical timing evidence is centralized in plan `0043`; taps entirely between ticks remain intentionally unqueued. |
+| 76 | P3 | Partial | M | 73, 77 | Validate a GLITCH CANCEL MVP | Training-only experiment implemented with source parity, exact economy/isolation, long-frame safety, accessible feedback and 30/60/120 equivalence. Hardware/AT/pilot evidence and rollout decision are centralized in plan `0043`. |
 
 ## Input, Accessibility, And UX
 
@@ -72,15 +74,15 @@ Next recommended improvement: `#72 Preserve native keyboard operation`. The prev
 | --- | --- | --- | --- | --- | --- | --- |
 | 4 | Medium | Completed | L | - | Action-based input, gamepad, and remapping | Canonical action layer, standard Gamepad API input, source-safe lifecycle cleanup, and persistent physical-key mappings with accessible remapping UI. Absorbs former `#5`. |
 | 12 | Medium | Ready | S | - | Fullscreen and wake lock | Use capability detection, release wake lock outside play, and preserve current layout fallback. |
-| 24 | Medium | Partial | M | 69 | Input-aware help and onboarding | Implemented session-only recent/manual input guidance, mode-preserving onboarding, localized keyboard/touch/gamepad guides, and title focus per onboarding step. Physical hardware, screen-reader and first-use validation remain. |
-| 25 | Medium | Partial | L | - | Advanced accessibility preferences | Implemented Canvas gameplay focus, long-dialog focus targets/scroll hooks, game-over concise naming, summary/details focus handling, forced-colors CSS fallback, compact HUD labels, and safe fighter marker layout. Real zoom/contrast/forced-colors/AT smoke and configurable preferences remain. |
+| 24 | Medium | Partial | M | 69 | Input-aware help and onboarding | Implemented session-only recent/manual input guidance, mode-preserving onboarding, localized keyboard/touch/gamepad guides, and title focus per step. Hardware/AT/first-use evidence is centralized in plan `0043`. |
+| 25 | Medium | Partial | L | - | Advanced accessibility preferences | Implemented gameplay/dialog focus, concise Game Over naming, summary/details handling, forced-colors fallback, compact HUD and safe markers. Configurable preferences remain product work; human zoom/contrast/AT evidence is in plan `0043`. |
 | 26 | Medium | Ready | M | - | Colorblind-safe combat feedback | Differentiate hit, block, special, danger, fighter posture, and energy using contrast plus shape, text, pattern, and motion. Verify at least 3:1 for essential non-text fighter/action marks on every arena, including dark `serverDown`, and provide DOM values for information that becomes physically too small in portrait. Coordinate with the small-HUD work in `#25` without blocking independent contrast fixes. |
 | 29 | Medium | Ready | S | - | Haptic feedback | Add optional capability-detected vibration for hits, blocks, special, and match events. |
 | 30 | Medium | Ready | M | - | Separate audio controls | Add persisted combat/UI volume controls; do not invent ambient or voice channels until those sounds exist. |
-| 69 | Low | Partial | S | - | Complete localized accessibility labels | Implemented remaining touch/training group and select labels, localized touch spans, functional combo/special/victory feedback, localized key names, action/slot binding names, and ES/EN key/placeholder tests. Real screen-reader output remains manual. |
-| 74 | P1 | Partial | M | 69 | Expose consultable semantic combat status | Implemented non-live DOM status, localized values, edge-triggered keyboard/gamepad query, v1-to-v2 binding migration, optional unassigned status key, and threshold deduplication tests. Real zoom, touch/gamepad hardware, forced-colors and NVDA/Narrator/VoiceOver validation remain. Evidence: `#combat-status` and `announceCombatStatus()` now expose the Canvas state without per-frame announcements. |
-| 75 | P1 | Partial | S | 69 | Clarify active mode and touch special state | Implemented mode/progress toolbar and pause text, localized touch state, ARIA readiness, pattern/border state, cached DOM writes, and automated state tests. Physical touch, hybrid hardware, and pixel-level responsive verification remain manual. |
-| 77 | P2 | Partial | S | - | Validate first-session comprehension and recurring depth | Treated as executed for implementation by explicit user direction, enabling `#16` and the Training-only `#76` prototype. The repository still lacks anonymized records for six new and four recurring players, so comprehension, fairness, preference, and rollout gates remain open. |
+| 69 | Low | Partial | S | - | Complete localized accessibility labels | Implemented localized touch/training labels, functional feedback, key/action/slot names and ES/EN parity tests. Screen-reader evidence is centralized in plan `0043`. |
+| 74 | P1 | Partial | M | 69 | Expose consultable semantic combat status | Implemented non-live status, localized values, explicit keyboard/gamepad query, safe binding migration and once-per-round thresholds. Zoom/hardware/forced-colors/AT evidence is centralized in plan `0043`. |
+| 75 | P1 | Partial | S | 69 | Clarify active mode and touch special state | Implemented mode/progress context, localized touch state, ARIA readiness, non-color pattern and cached DOM writes. Physical/hybrid/pixel evidence is centralized in plan `0043`. |
+| 77 | P2 | Partial | S | - | Validate first-session comprehension and recurring depth | Accepted as an implementation gate by explicit direction, but human evidence is not complete. The six-new/four-recurrent cohorts and decisions are centralized in plan `0043`. |
 
 ## Measured AI Roadmap
 
@@ -88,7 +90,7 @@ AI changes stay inside the current rule-based architecture. Each stage must incl
 
 | # | Priority | Status | Size | Depends on | Improvement | Remaining scope |
 | --- | --- | --- | --- | --- | --- | --- |
-| 16 | Medium | Partial | M | - | Contextual AI tactics | Implemented rule-based whiff punish, mid-range bait, punch-pattern crouch defense, and legal air punch/kick choices with four difficulty tunables, single-sequence whiff consumption, real hitboxes, and 30/60/120 deterministic coverage. Manual per-difficulty fairness/exploit smoke remains. |
+| 16 | Medium | Partial | M | - | Contextual AI tactics | Implemented rule-based whiff punish, bait, punch-pattern crouch defense and legal air attacks with deterministic 30/60/120 coverage. Fairness/exploit evidence is centralized in plan `0043`. |
 | 17 | Medium | Blocked | M | 16 | Timer tempo and anti-turtle behavior | Add timer-aware forced approach, stop retreating when behind late, and respond to excessive blocking only after a reproducible late-round/turtle scenario. |
 | 18 | Medium | Blocked | M | 16 | Style-aware AI adaptation | Adjust tactics against fast, heavy, balanced, and technical styles after contextual actions are stable. |
 | 19 | Medium | Blocked | M | 16 | Positional AI special usage | Add hit-stun confirmation, corner pressure, range safety, and timer context only after a reproducible unsafe/wasted-special scenario. |

@@ -307,20 +307,7 @@ Pruebas nuevas o ajustadas:
 - Duelo normal sigue terminando al ganar dos rondas y `REINICIAR` sigue creando versus.
 - La suite actual de IA, semilla, 30/60/120 FPS, combate, input, touch, gamepad, foco, i18n y persistencia sigue pasando.
 
-Smoke test manual:
-
-- Iniciar Carrera desde menu ES y EN; confirmar `COMBATE 1/5`, rival, Facil y arena correctos.
-- Ganar combates 1-4; cada intermision muestra resultado/proximo rival, detiene simulacion y enfoca `SIGUIENTE COMBATE`.
-- Confirmar secuencia exacta: Null Pointer, Lag Spike, Merge Conflict, rematch Lag Spike y Boss 500.
-- Perder en combate 1 y en combate 3; la carrera termina, lista solo lo disputado y ofrece reintento/menu.
-- Ganar los cinco; resumen final muestra `5/5`, cinco scores y Boss 500 final.
-- Reintentar despues de ganar/perder; vuelve a etapa 1 sin resultados anteriores.
-- Volver al menu desde intermision, final y pausa; dificultad/arena/rival originales reaparecen y un duelo rapido los usa.
-- Comparar Facil/Normal/Dificil: Facil deja ventanas amplias y retrocede menos; Normal escala; Dificil reacciona mejor sin bloqueo perfecto.
-- Confirmar que Boss 500 no tiene vida, dano, energia o cooldown extra.
-- Probar menu y resumen a `1366x768`, `760x800`, `390x844`, landscape bajo y zoom 200%; no hay overflow horizontal y el resumen permite scroll.
-- Navegar Carrera, intermision, final y menu con teclado/gamepad; foco y cancelacion respetan dialogos actuales.
-- Ejecutar versus normal y entrenamiento despues de una carrera; ambos conservan comportamiento previo.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 
@@ -409,6 +396,4 @@ Validacion local ejecutada:
 - Smoke navegador: `CARRERA ARCADE` aparece y comienza el combate; pausa muestra resumen de la etapa; `MENU` restaura selecciones; menu movil a `390x844` conserva scroll vertical y no muestra overflow horizontal en el snapshot.
 - Pruebas automatizadas de flujo: versus normal, entrenamiento, derrota arcade, avance entre etapas y cinco victorias con `5/5` e historial de cinco matches.
 
-Riesgo residual aceptado:
-
-- El recorrido completo se cubre con pruebas de estado; la comprobacion visual del navegador cubre entrada, pausa, salida al menu y responsive. El combate manual prolongado queda fuera del smoke automatizado porque requiere jugar cada match.
+Plan cerrado. El recorrido de estado queda automatizado; cualquier sesion humana prolongada se registra exclusivamente en el plan `0043`.

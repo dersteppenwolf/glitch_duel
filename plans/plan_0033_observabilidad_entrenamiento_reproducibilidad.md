@@ -153,15 +153,7 @@ Pruebas unitarias nuevas o ajustadas:
 - Mismo escenario + misma seed + mismos inputs => snapshot identico; diferente seed puede diferir; render adicional no consume RNG de simulacion.
 - Seeds invalidas, mayores que `uint32`, negativas, texto y APIs de URL ausentes no rompen inicio y caen en una fuente segura.
 
-Smoke test manual:
-
-- Revisar las ocho arenas con P1/CPU en centro y esquinas, HUD, foreground, alto contraste y `Reducir movimiento` activado.
-- Abrir `?debug=1`, confirmar cajas, estados, cooldowns, IA, FPS/ticks y seed; alternar con `` ` `` sin impedir movimiento ni pausa.
-- Iniciar entrenamiento, variar los tres presets de posicion, CPU idle/block/normal y timer; usar reset, salud y energia; forzar KO/time y confirmar restauracion sin score o estadisticas.
-- Probar panel de entrenamiento en desktop, movil landscape, portrait degradado y viewport bajo junto a touch controls, pausa y menu.
-- Borrar solo `glitchDuelOnboardingSeen`, recargar y recorrer/omitir onboarding en espanol e ingles; confirmar que no reaparece en recarga ni al volver de una partida.
-- Abrir dos sesiones con el mismo `?seed=<valor>`, misma dificultad/arena/estilo e inputs; confirmar secuencia de CPU y resultado equivalentes. Cambiar seed y confirmar que puede variar.
-- Repetir inicio normal sin `seed`, pausa, pestaña oculta, restart, menu y game-over para asegurar que las rutas existentes no regresan.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 
@@ -229,6 +221,4 @@ Implementado localmente el 2026-07-31.
 
 Plan cerrado el 2026-07-31 con validacion automatizada completa por solicitud del usuario.
 
-Riesgo residual aceptado:
-
-- Revisar las ocho arenas, panel de entrenamiento y onboarding en navegador de escritorio y movil real; confirmar la reproduccion visual entre sesiones con la misma seed.
+La validacion humana residual de arenas, Training, onboarding y percepcion visual se transfirio exclusivamente al plan `0043`.

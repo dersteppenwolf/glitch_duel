@@ -89,7 +89,7 @@ git diff --check
 
 La suite debe cubrir: acciones canonicas, dos fuentes para una accion, pointer cancellation, `KeyboardEvent.code`, persistencia valida/invalida, reset/conflictos/reservadas, ausencia de Gamepad API, mapping estandar, deadzone/histeresis, Start sin repeticion, desconexion, neutralizacion despues de blur/visibility y routing de confirm/cancel por modal.
 
-Smoke manual: remapear golpe y pausa, recargar, confirmar textos dinamicos, jugar con teclado/tactil, conectar/desconectar un mando estandar, pausar/reanudar, operar menu/ayuda/pausa/game-over y confirmar que las acciones retenidas no reaparecen al volver al foco.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 
@@ -146,4 +146,4 @@ Completado.
 - `src/index.html`, `src/styles.css` y `src/i18n.js` agregan el dialogo responsive y textos dinamicos en espanol/ingles.
 - `tests/game.test.js` cubre la migracion y eleva la suite de 87 a 93 pruebas.
 - Validacion ejecutada: `node --check` de todo `src/*.js`, `node --test tests\\game.test.js` (93/93), `git diff --check` y smoke browser de menu, controles, ayuda, inicio y pausa en viewport movil.
-- Riesgo residual: no se probo un mando fisico en el navegador; el mapping estandar y los ciclos de desconexion/neutralizacion estan cubiertos con mocks.
+- La prueba humana con mando fisico se transfirio exclusivamente al plan `0043`; mapping, desconexion y neutralizacion permanecen cubiertos por automatizacion.

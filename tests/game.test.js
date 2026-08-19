@@ -37,7 +37,7 @@ function createMockContext() {
     return ctx;
 }
 
-function createMockAudioContext(audioEvents = []) {
+function createMockAudioContext(audioEvents = [], options = {}) {
     return class MockAudioContext {
         constructor() {
             this.destination = {};
@@ -50,7 +50,13 @@ function createMockAudioContext(audioEvents = []) {
                 connect() { return this; },
                 disconnect() { audioEvents.push({ event: 'disconnect', type: 'oscillator' }); },
                 start() { audioEvents.push({ event: 'start', type: this.type, frequency: this.frequency.value }); },
-                stop() { audioEvents.push({ event: 'stop', type: this.type, frequency: this.frequency.value }); }
+                stop() {
+                    audioEvents.push({ event: 'stop', type: this.type, frequency: this.frequency.value });
+                    const onended = this.onended;
+                    for (let index = 0; index < (options.audioOnendedCalls || 0); index++) {
+                        if (typeof onended === 'function') onended();
+                    }
+                }
             };
         }
 
@@ -274,7 +280,7 @@ function loadGame(options = {}) {
     const documentListeners = {};
     const storage = new Map();
     Object.entries(options.storage || {}).forEach(([key, value]) => storage.set(key, value));
-    const MockAudioContext = createMockAudioContext(audioEvents);
+    const MockAudioContext = createMockAudioContext(audioEvents, options);
     const navigatorMock = {
         maxTouchPoints: options.touchPoints || 0,
         language: options.language,
@@ -310,8 +316,14 @@ function loadGame(options = {}) {
             AudioContext: MockAudioContext,
             webkitAudioContext: MockAudioContext,
             localStorage: {
-                getItem(key) { return storage.has(key) ? storage.get(key) : null; },
-                setItem(key, value) { storage.set(key, value); },
+                getItem(key) {
+                    if (options.storageGetThrows) throw new Error('storage get unavailable');
+                    return storage.has(key) ? storage.get(key) : null;
+                },
+                setItem(key, value) {
+                    if (options.storageSetThrows) throw new Error('storage set unavailable');
+                    storage.set(key, value);
+                },
                 clear() { storage.clear(); }
             },
             navigator: navigatorMock,
@@ -376,6 +388,11 @@ function loadGame(options = {}) {
             refillTraining,
             toggleDebugOverlay,
             getDebugData,
+            pushDebugSampleForTest: (list, value) => {
+                debugMetrics.active = true;
+                pushDebugSample(debugMetrics[list], value);
+            },
+            getDebugMetricBufferForTest: (list) => [...debugMetrics[list]],
             setMatchRandomSeed,
             createSeededRandom,
             showOnboardingIfNeeded,
@@ -405,6 +422,8 @@ function loadGame(options = {}) {
             renderTouchSpecialState,
             getSpecialActionState,
             getSpecialActionStateText,
+            getGameplayFocusableElements,
+            updateCombatStatusThresholds,
             GLITCH_CANCEL_ENERGY_COST,
             getFighterMarkerLayout,
              getFocusableElements,
@@ -493,6 +512,7 @@ function loadGame(options = {}) {
                 visualFrame,
                 impactFlash,
                 specialFlash,
+                lastCombatEvent: lastCombatEvent && typeof lastCombatEvent === 'object' ? { ...lastCombatEvent } : lastCombatEvent,
                 vsIntroTimer,
                 matchStats,
                 canvasWidth: canvas.width,
@@ -812,6 +832,18 @@ test('Web Audio diagnostics clean each tone graph exactly once', () => {
     assert.equal(after.gainsCreated - after.gainsDisconnected, 0);
 });
 
+test('Web Audio cleanup stays idempotent when onended is delivered repeatedly', () => {
+    const { api, audioEvents } = loadGame({ audioOnendedCalls: 2 });
+
+    api.playAttackSound('punch');
+
+    const diagnostics = api.getAudioDiagnostics();
+    assert.equal(diagnostics.createdGraphs, 1);
+    assert.equal(diagnostics.endedGraphs, 1);
+    assert.equal(diagnostics.activeGraphs, 0);
+    assert.equal(audioEvents.filter((event) => event.event === 'disconnect').length, 2);
+});
+
 test('simple combos increase damage and cooldown', () => {
     const { api } = loadGame();
     const { player, opponent } = createFighters(api, 100, 170);
@@ -1122,6 +1154,69 @@ test('crouch lowers body box under punches but remains vulnerable to kicks', () 
     assert.equal(defender.health, 86);
 });
 
+test('combat events expose the stable attackResolved and energyReady schemas', () => {
+    const attackCases = [
+        { name: 'hit', x: 170, defenderState: 'idle', outcome: 'hit', damageApplied: 8, evadedByCrouch: false },
+        { name: 'blocked', x: 170, defenderState: 'block', outcome: 'blocked', damageApplied: 1, evadedByCrouch: false },
+        { name: 'whiff', x: 500, defenderState: 'idle', outcome: 'whiff', damageApplied: 0, evadedByCrouch: false },
+        { name: 'crouch evade', x: 220, defenderState: 'crouch', outcome: 'whiff', damageApplied: 0, evadedByCrouch: true }
+    ];
+
+    for (const expected of attackCases) {
+        const { api } = loadGame();
+        const attacker = new api.Fighter(100, true);
+        const defender = new api.Fighter(expected.x, false);
+        defender.state = expected.defenderState;
+
+        attacker.attack('punch', defender);
+
+        assert.deepEqual({ ...api.getState().lastCombatEvent }, {
+            type: 'attackResolved',
+            frame: 0,
+            actor: 'player',
+            target: 'cpu',
+            attackType: 'punch',
+            outcome: expected.outcome,
+            damageApplied: expected.damageApplied,
+            defenderState: expected.defenderState === 'idle' ? 'standing' : expected.defenderState,
+            evadedByCrouch: expected.evadedByCrouch,
+            energyBefore: 0,
+            energyAfter: expected.outcome === 'whiff' ? 0 : 14,
+            sequence: 1
+        }, expected.name);
+    }
+
+    for (const source of ['hit', 'block', 'damage']) {
+        const { api } = loadGame();
+        const fighter = new api.Fighter(100, source !== 'damage');
+        fighter.energy = 90;
+        fighter.gainEnergy(20, source);
+        assert.deepEqual({ ...api.getState().lastCombatEvent }, {
+            type: 'energyReady', frame: 0, actor: source === 'damage' ? 'cpu' : 'player', source, energyBefore: 90, energyAfter: 100
+        }, source);
+    }
+});
+
+test('invalid attack and energy attempts do not publish combat events', () => {
+    const cases = [
+        (attacker, defender) => { attacker.attackCooldown = 1; attacker.attack('punch', defender); },
+        (attacker, defender) => { attacker.state = 'block'; attacker.attack('punch', defender); },
+        (attacker, defender) => { attacker.state = 'crouch'; attacker.attack('kick', defender); },
+        (attacker, defender) => attacker.attack('missing', defender),
+        (attacker, defender) => attacker.attack('special', defender),
+        (attacker) => { attacker.energy = 90; attacker.gainEnergy(20, 'refill'); }
+    ];
+
+    cases.forEach((attempt, index) => {
+        const { api } = loadGame();
+        const attacker = new api.Fighter(100, true);
+        const defender = new api.Fighter(170, false);
+        api.recordCombatEvent({ type: 'sentinel', index });
+        attempt(attacker, defender);
+        assert.deepEqual({ ...api.getState().lastCombatEvent }, { type: 'sentinel', index });
+    });
+});
+
 test('fighters expose distinct hurtboxes and pushboxes by posture', () => {
     const { api } = loadGame();
     const fighter = new api.Fighter(160, true);
@@ -1366,19 +1461,48 @@ test('pause binding is consumed only during playing or paused states', () => {
     assert.equal(active.api.getState().gameState, 'gameOver');
 });
 
-test('keyboard Tab routes between the gameplay canvas and pause button', () => {
+test('keyboard Tab advances through visible gameplay controls without wrapping', () => {
     const { api, canvas, elements, windowListeners } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
     api.setupKeyboardControls();
     startPlayingGame(api);
     assert.equal(canvas.focused, true);
+    const status = elements.get('combat-status-summary');
+    const pause = elements.get('pause-button');
+    assert.deepEqual(Array.from(api.getGameplayFocusableElements(), (element) => element.id), ['game', 'combat-status-summary', 'pause-button']);
 
     const forward = dispatchKey(windowListeners, { key: 'Tab', code: 'Tab', target: canvas });
     assert.equal(forward.prevented, true);
-    assert.equal(elements.get('pause-button').focused, true);
+    assert.equal(status.focused, true);
 
-    const backward = dispatchKey(windowListeners, { key: 'Tab', code: 'Tab', shiftKey: true, target: elements.get('pause-button') });
+    const toPause = dispatchKey(windowListeners, { key: 'Tab', code: 'Tab', target: status });
+    assert.equal(toPause.prevented, true);
+    assert.equal(pause.focused, true);
+
+    const afterLast = dispatchKey(windowListeners, { key: 'Tab', code: 'Tab', target: pause });
+    assert.equal(afterLast.prevented, false);
+
+    const backward = dispatchKey(windowListeners, { key: 'Tab', code: 'Tab', shiftKey: true, target: pause });
     assert.equal(backward.prevented, true);
-    assert.equal(canvas.focused, true);
+    assert.equal(status.focused, true);
+
+    canvas.focus();
+    const beforeFirst = dispatchKey(windowListeners, { key: 'Tab', code: 'Tab', shiftKey: true, target: canvas });
+    assert.equal(beforeFirst.prevented, false);
+    const browserShortcut = dispatchKey(windowListeners, { key: 'Tab', code: 'Tab', ctrlKey: true, target: canvas });
+    assert.equal(browserShortcut.prevented, false);
+
+    const training = loadGame({ touchPoints: 1, storage: { glitchDuelOnboardingSeen: '1' } });
+    training.api.startTraining();
+    training.api.skipVsIntro();
+    training.api.setupMobileControls();
+    const ids = Array.from(training.api.getGameplayFocusableElements(), (element) => element.id);
+    assert.deepEqual(ids.slice(0, 3), ['game', 'combat-status-summary', 'pause-button']);
+    assert.deepEqual(ids.slice(3, 11), ['btn-left', 'btn-right', 'btn-jump', 'btn-crouch', 'btn-block', 'btn-punch', 'btn-kick', 'btn-special']);
+    assert(ids.includes('training-trial-select'));
+    assert(ids.includes('training-position-select'));
+    assert(ids.includes('training-cpu-select'));
+    assert(ids.includes('training-timer-select'));
+    assert(ids.includes('training-reset-button'));
 });
 
 test('binding capture cancels on Tab and keeps an equivalent focus target', () => {
@@ -1552,6 +1676,16 @@ test('static HTML contract preserves local assets, script order, controls, and a
         assert.ok(api.I18N.es[config.introKey]);
         assert.ok(api.I18N.en[config.introKey]);
     });
+});
+
+test('Pages workflow validates pull requests and gates deployment on validation', () => {
+    const workflow = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'pages.yml'), 'utf8');
+
+    assert.match(workflow, /^\s*pull_request:\s*$/m);
+    assert.match(workflow, /^\s*push:\s*\n\s*branches:\s*\n\s*- main\s*$/m);
+    assert.match(workflow, /^\s*deploy:\s*\n\s*needs: validate\s*\n\s*if: github\.event_name != 'pull_request'\s*$/m);
+    assert.match(workflow, /run: node --test tests\/game\.test\.js/);
+    assert.doesNotMatch(workflow, /uses:\s*[^\s#]+@(?![0-9a-f]{40}(?:\s|$))/);
 });
 
 test('arcade route and difficulty caps are declarative and valid', () => {
@@ -1780,6 +1914,46 @@ test('binding version one migrates without losing remapped keys and leaves statu
     assert.equal(statusRow.children[1].children[0].textContent, conflicted.api.t('bindingUnassigned'));
 });
 
+test('binding storage v2 preserves an empty status binding and rejects invalid payloads', () => {
+    const defaults = loadGame().api.getInputBindings();
+    const valid = { version: 2, bindings: { ...defaults, left: ['KeyQ'], status: [] } };
+    const first = loadGame({ storage: { glitchDuelKeyboardBindings: JSON.stringify(valid) } });
+    assert.deepEqual(Array.from(first.api.getInputBindings().status), []);
+    assert.equal(first.api.getInputActionForCode('KeyQ'), 'left');
+
+    assert.equal(first.api.setInputBinding('left', 0, 'KeyZ').ok, true);
+    const saved = first.context.window.localStorage.getItem('glitchDuelKeyboardBindings');
+    const reloaded = loadGame({ storage: { glitchDuelKeyboardBindings: saved } });
+    assert.deepEqual(Array.from(reloaded.api.getInputBindings().status), []);
+    assert.equal(reloaded.api.getInputActionForCode('KeyZ'), 'left');
+
+    const invalidPayloads = [
+        { version: 2, bindings: { left: ['KeyQ'], status: [] } },
+        { version: 99, bindings: defaults },
+        '{malformed'
+    ];
+    for (const payload of invalidPayloads) {
+        const value = typeof payload === 'string' ? payload : JSON.stringify(payload);
+        const game = loadGame({ storage: { glitchDuelKeyboardBindings: value } });
+        assert.equal(game.api.getInputActionForCode('KeyA'), 'left');
+        assert.equal(game.api.getInputActionForCode('KeyQ'), null);
+        assert.deepEqual(Array.from(game.api.getInputBindings().status), ['Digit0']);
+    }
+});
+
+test('binding storage falls back when getItem or setItem throws', () => {
+    const unreadable = loadGame({
+        storageGetThrows: true,
+        storage: { glitchDuelKeyboardBindings: JSON.stringify({ version: 2, bindings: {} }) }
+    });
+    assert.equal(unreadable.api.getInputActionForCode('KeyJ'), 'punch');
+
+    const unwritable = loadGame({ storageSetThrows: true });
+    assert.doesNotThrow(() => unwritable.api.setInputBinding('punch', 0, 'KeyQ'));
+    assert.equal(unwritable.api.getInputActionForCode('KeyQ'), 'punch');
+    assert.equal(unwritable.api.getInputActionForCode('KeyJ'), null);
+});
+
 test('standard gamepad button eight emits status edge without changing Start pause', () => {
     const buttons = Array.from({ length: 16 }, () => ({ pressed: false, value: 0 }));
     let pad = { mapping: 'standard', buttons, axes: [0, 0] };
@@ -1905,6 +2079,49 @@ test('training mode reuses fighters with configurable CPU, reset, timer, health,
     assert.equal(api.getState().player1.health, 100);
 });
 
+test('health and timer warnings announce once per round and only round reset rearms them', () => {
+    const { api, elements } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining();
+    api.skipVsIntro();
+    api.update();
+    const announcer = elements.get('game-announcer');
+    const state = api.getState();
+
+    state.player1.health = 30;
+    api.updateCombatStatusThresholds();
+    assert.match(announcer.textContent, /peligro/i);
+    api.refillTraining('health');
+    announcer.textContent = 'health-marker';
+    state.player1.health = 30;
+    api.updateCombatStatusThresholds();
+    assert.equal(announcer.textContent, 'health-marker');
+
+    api.setTrainingTimer('on');
+    api.setRoundTimeMs(10000);
+    api.updateCombatStatusThresholds();
+    assert.match(announcer.textContent, /10/);
+    announcer.textContent = 'ten-marker';
+    api.updateCombatStatusThresholds();
+    assert.equal(announcer.textContent, 'ten-marker');
+    api.setRoundTimeMs(5000);
+    api.updateCombatStatusThresholds();
+    assert.match(announcer.textContent, /5/);
+    announcer.textContent = 'five-marker';
+    api.updateCombatStatusThresholds();
+    assert.equal(announcer.textContent, 'five-marker');
+
+    api.startRound();
+    api.skipVsIntro();
+    const nextRound = api.getState();
+    nextRound.player1.health = 30;
+    api.setRoundTimeMs(5000);
+    announcer.textContent = 'round-marker';
+    api.update();
+    assert.match(announcer.textContent, /peligro/i);
+    assert.match(announcer.textContent, /10/);
+    assert.match(announcer.textContent, /5/);
+});
+
 test('training trials use explicit selectors, session progress, and four reducers', () => {
     const { api, context, elements } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
     api.startTraining();
@@ -1994,6 +2211,98 @@ test('training trial reducers consume real Fighter attack and energy events', ()
     assert.equal(specialCase.api.getState().trialState.completed, true);
 });
 
+test('trial cue, response window, and retry clocks honor exact tick and pause boundaries', () => {
+    for (const { trial, action } of [
+        { trial: 'crouchPunish', action: 'crouch' },
+        { trial: 'blockCounter', action: 'block' }
+    ]) {
+        const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+        api.startTraining();
+        api.setTrainingTrial(trial);
+        api.skipVsIntro();
+        api.setInputSource(`test:${action}`, action, true);
+        advanceFrames(api, 59);
+        assert.deepEqual(
+            { phase: api.getState().trialState.phase, cueTicks: api.getState().trialState.cueTicks },
+            { phase: 'cue', cueTicks: 59 },
+            trial
+        );
+
+        api.pauseGame();
+        api.advanceSimulation(1000);
+        assert.equal(api.getState().trialState.cueTicks, 59, `${trial} paused cue`);
+        api.resumeGame();
+        api.setInputSource(`test:${action}`, action, true);
+        api.update();
+        assert.equal(api.getState().trialState.phase, 'window', `${trial} cue tick 60`);
+    }
+
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining();
+    api.setTrainingTrial('crouchPunish');
+    api.skipVsIntro();
+    api.recordCombatEvent({ type: 'attackResolved', actor: 'cpu', target: 'player', attackType: 'punch', outcome: 'whiff', evadedByCrouch: true });
+    advanceFrames(api, 44);
+    assert.deepEqual(
+        { phase: api.getState().trialState.phase, windowTicks: api.getState().trialState.windowTicks },
+        { phase: 'window', windowTicks: 44 }
+    );
+
+    api.pauseGame();
+    api.advanceSimulation(1000);
+    assert.equal(api.getState().trialState.windowTicks, 44);
+    api.resumeGame();
+    api.update();
+    assert.deepEqual(
+        { phase: api.getState().trialState.phase, retryTicksRemaining: api.getState().trialState.retryTicksRemaining, failureReason: api.getState().trialState.failureReason },
+        { phase: 'retry', retryTicksRemaining: 120, failureReason: 'timeout' }
+    );
+
+    advanceFrames(api, 119);
+    assert.equal(api.getState().trialState.retryTicksRemaining, 1);
+    api.pauseGame();
+    api.advanceSimulation(1000);
+    assert.equal(api.getState().trialState.retryTicksRemaining, 1);
+    api.resumeGame();
+    api.update();
+    assert.deepEqual(
+        { phase: api.getState().trialState.phase, cueTicks: api.getState().trialState.cueTicks, retryTicksRemaining: api.getState().trialState.retryTicksRemaining },
+        { phase: 'cue', cueTicks: 0, retryTicksRemaining: 0 }
+    );
+});
+
+test('block-counter trial trace is equivalent at 30, 60, and 120 FPS', () => {
+    function run(fps) {
+        const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+        api.startTraining();
+        api.setTrainingTrial('blockCounter');
+        api.skipVsIntro();
+        api.setInputSource('test:block', 'block', true);
+        for (let frame = 0; frame < fps; frame++) api.advanceSimulation(1000 / fps);
+        assert.equal(api.getState().trialState.phase, 'window');
+
+        api.clearInputSource('test:block');
+        api.setInputSource('test:punch', 'punch', true);
+        for (let frame = 0; frame < fps / 5; frame++) api.advanceSimulation(1000 / fps);
+        const state = api.getState();
+        return {
+            phase: state.trialState.phase,
+            completed: state.trialState.completed,
+            playerHealth: state.player1.health,
+            playerEnergy: state.player1.energy,
+            cpuHealth: state.player2.health,
+            playerAttack: state.player1.lastAttackType,
+            playerSequence: state.player1.attackSequence,
+            elapsed: state.matchElapsedFrames
+        };
+    }
+
+    const traces = [30, 60, 120].map(run);
+    assert.equal(traces[0].completed, true);
+    assert.deepEqual(traces[0], traces[1]);
+    assert.deepEqual(traces[1], traces[2]);
+});
+
 test('glitch cancel core enforces cost, whiff, attack, grounded, actor, and post-decrement boundaries', () => {
     function run({ type = 'punch', outcome = 'whiff', cooldown = 2, energy = 25, grounded = true, player = true } = {}) {
         const { api } = loadGame();
@@ -2057,6 +2366,54 @@ test('glitch cancel core enforces cost, whiff, attack, grounded, actor, and post
         assert.equal(fighter.energy, 25, JSON.stringify(invalid));
         assert.equal(fighter.glitchCancelUsed, false, JSON.stringify(invalid));
     }
+});
+
+test('glitch cancel costs 25 for every style without changing records or match awards', () => {
+    for (const style of ['balanced', 'fast', 'heavy', 'technical']) {
+        const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+        api.setFighterStyle(style);
+        api.startTraining();
+        api.setTrainingTrial('glitchCancel');
+        api.skipVsIntro();
+        const state = api.getState();
+        const beforeStats = { ...state.stats };
+        const beforeMatchStats = { ...state.matchStats };
+        const beforeMedal = api.getPostMatchMedal(true).id;
+        state.player2.x = 800;
+        state.player1.attack('punch', state.player2);
+
+        assert.equal(state.player1.tryGlitchCancel(), true, style);
+        assert.equal(state.player1.energy, 75, style);
+        assert.deepEqual({ ...api.getState().stats }, beforeStats, style);
+        assert.deepEqual({ ...api.getState().matchStats }, beforeMatchStats, style);
+        assert.equal(api.getMatchHistory().length, 0, style);
+        assert.equal(api.getPostMatchMedal(true).id, beforeMedal, style);
+    }
+});
+
+test('special-spend trial cannot use a 25-energy cancel and long frames spend a cancel once', () => {
+    const specialSpend = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    specialSpend.api.startTraining();
+    specialSpend.api.setTrainingTrial('specialSpend');
+    specialSpend.api.skipVsIntro();
+    let state = specialSpend.api.getState();
+    state.player1.energy = 100;
+    state.player2.x = 800;
+    state.player1.attack('punch', state.player2);
+    specialSpend.api.setInputSource('test:special', 'special', true);
+    specialSpend.api.update();
+    assert.equal(state.player1.energy, 100);
+    assert.equal(state.player1.glitchCancelUsed, false);
+    assert.equal(state.trialState.completed, false);
+
+    const capped = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    state = prepareGlitchCancelInputCase(capped.api);
+    capped.api.setInputSource('test:special', 'special', true);
+    capped.api.advanceSimulation(1000);
+    assert.equal(state.player1.energy, 75);
+    assert.equal(capped.api.getState().trialState.phase, 'followup');
+    capped.api.advanceSimulation(1000);
+    assert.equal(state.player1.energy, 75);
 });
 
 test('glitch cancel has exact pending, simultaneous-input, posture, and one-use sequence precedence', () => {
@@ -2448,13 +2805,46 @@ test('debug timing metrics are opt-in and account for raw frame discard', () => 
     const on = loadGame({ search: '?debug=1&seed=42', storage: { glitchDuelOnboardingSeen: '1' } });
     on.api.initGame();
     on.api.gameLoop(0);
+    assert.equal(on.api.getDebugData().metrics.samples, 0);
     on.api.gameLoop(1000);
-    const metrics = on.api.getDebugData().metrics;
-    assert.equal(metrics.samples, 2);
+    let metrics = on.api.getDebugData().metrics;
+    assert.equal(metrics.samples, 1);
     assert.equal(metrics.frameClampDiscardMs, 900);
     assert.equal(metrics.maxStepsPerFrame, 6);
     assert.equal(metrics.deviceDpr, 2);
     assert.equal(metrics.effectiveDpr, 2);
+
+    on.api.pauseGame();
+    on.api.resumeGame();
+    on.api.gameLoop(2000);
+    assert.equal(on.api.getDebugData().metrics.samples, 1);
+    on.api.gameLoop(2016);
+    assert.equal(on.api.getDebugData().metrics.samples, 2);
+
+    const activated = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    activated.api.initGame();
+    activated.api.toggleDebugOverlay();
+    activated.api.gameLoop(0);
+    assert.equal(activated.api.getDebugData().metrics.samples, 0);
+    activated.api.gameLoop(16);
+    metrics = activated.api.getDebugData().metrics;
+    assert.equal(metrics.samples, 1);
+});
+
+test('debug metric sample rings retain exactly the newest 1200 finite values', () => {
+    const { api } = loadGame({ search: '?debug=1' });
+    for (let value = 1; value <= 1200; value++) api.pushDebugSampleForTest('rafDeltaMs', value);
+    let samples = api.getDebugMetricBufferForTest('rafDeltaMs');
+    assert.equal(samples.length, 1200);
+    assert.equal(samples[0], 1);
+
+    api.pushDebugSampleForTest('rafDeltaMs', 1201);
+    api.pushDebugSampleForTest('rafDeltaMs', Number.NaN);
+    samples = api.getDebugMetricBufferForTest('rafDeltaMs');
+    assert.equal(samples.length, 1200);
+    assert.equal(samples[0], 2);
+    assert.equal(samples[1199], 1201);
+    assert.equal(api.getDebugData().metrics.p95RafMs, 1141);
 });
 
 test('first-run onboarding persists its skip decision', () => {
@@ -3690,6 +4080,50 @@ test('round timer uses delta time and pauses outside playing', () => {
     api.pauseGame();
     api.advanceSimulation(100);
     assert(Math.abs(api.getState().roundTimeMs - 57500) < 0.001);
+});
+
+test('canonical buffered punch-kick trace is equivalent at 30, 60, and 120 FPS', () => {
+    function run(fps) {
+        const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+        api.startTraining();
+        api.skipVsIntro();
+        const state = api.getState();
+        state.player1.x = 100;
+        state.player2.x = 170;
+        const trace = [];
+        const advanceTicks = (ticks) => {
+            const frames = ticks * fps / 60;
+            for (let frame = 0; frame < frames; frame++) api.advanceSimulation(1000 / fps);
+            const current = api.getState();
+            trace.push({
+                elapsed: current.matchElapsedFrames,
+                attack: current.player1.lastAttackType,
+                outcome: current.player1.lastAttackOutcome,
+                cooldown: current.player1.attackCooldown,
+                comboTimer: current.player1.comboTimer,
+                pending: current.player1.pendingComboInput,
+                sequence: current.player1.attackSequence,
+                opponentHealth: current.player2.health
+            });
+        };
+
+        api.setInputSource('test:punch', 'punch', true);
+        advanceTicks(2);
+        api.clearInputSource('test:punch');
+        advanceTicks(8);
+        api.setInputSource('test:kick', 'kick', true);
+        advanceTicks(2);
+        api.clearInputSource('test:kick');
+        advanceTicks(12);
+        return trace;
+    }
+
+    const traces = [30, 60, 120].map(run);
+    assert.equal(traces[0][2].pending, 'kick');
+    assert.equal(traces[0][3].attack, 'comboKick');
+    assert.equal(traces[0][3].opponentHealth, 74);
+    assert.deepEqual(traces[0], traces[1]);
+    assert.deepEqual(traces[1], traces[2]);
 });
 
 test('fixed-step simulation keeps combat state equivalent at 30, 60, and 120 FPS', () => {

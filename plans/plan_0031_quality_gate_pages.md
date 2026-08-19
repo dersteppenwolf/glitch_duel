@@ -104,12 +104,7 @@ Inspeccion local del workflow:
 - Confirmar que `deploy` declara tanto `needs: validate` como la condicion que excluye pull requests.
 - Confirmar que el shell de CI expande `src/*.js` y falla si cualquier `node --check` devuelve error.
 
-Validacion remota en GitHub Actions:
-
-- Abrir o actualizar una pull request y confirmar que `validate` ejecuta syntax check y todas las pruebas, mientras `deploy` queda omitido.
-- Fusionar o ejecutar manualmente el workflow y confirmar que `validate` termina antes de configure/upload/deploy.
-- Introducir solo en una rama temporal un error de sintaxis o una prueba fallida y confirmar que `deploy` no se ejecuta; no fusionar ese cambio.
-- Confirmar que el sitio publicado sigue sirviendo `src/` como raiz cuando todos los checks pasan.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 
@@ -175,8 +170,8 @@ Validacion local ejecutada:
 - Inspeccion estatica: no hay `pull_request_target`, `npm install`, cache de paquetes ni referencias `uses:` mediante tags movibles.
 - Inspeccion de permisos: globalmente solo `contents: read`; `pages: write`, `id-token: write` y concurrencia `pages` aparecen solo en `deploy`.
 
-Pendiente de validacion operativa:
+Plan cerrado.
 
-- Publicar los cambios y confirmar en GitHub Actions que una ejecucion de `main` completa `validate -> deploy`.
-- Confirmar en una pull request que `validate` se ejecuta y `deploy` queda omitido.
-- Ejecutar la prueba negativa en una rama temporal para comprobar remotamente que un fallo bloquea el despliegue.
+- El run remoto `32202168953` confirma `validate -> deploy` exitoso en `main`.
+- La suite consolidada verifica de forma permanente los triggers `pull_request`/`push`, `deploy.needs: validate`, la omision de deploy en PR, el comando de tests y los SHA fijados.
+- La dependencia declarativa impide iniciar deploy cuando validate falla; no se crea una rama remota defectuosa solo para repetir ese contrato.

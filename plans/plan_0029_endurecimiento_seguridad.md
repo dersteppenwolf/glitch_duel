@@ -104,13 +104,7 @@ Validacion de workflow:
 git diff --check
 ```
 
-Smoke test manual:
-
-- Servir `src/` con `python -m http.server 8000` y abrir `http://localhost:8000/src/`.
-- Confirmar que consola no informa violaciones CSP ni errores de carga de CSS/scripts.
-- Inyectar temporalmente, desde DevTools solo durante la prueba, un JSON con `bestStreak` HTML en `glitchDuelStats`; recargar, perder una partida y confirmar que no se interpreta ni ejecuta HTML.
-- Confirmar que estadisticas validas, idioma, arena, estilo y movimiento reducido siguen persistiendo y que una partida completa muestra el panel final con el mismo layout.
-- Tras publicar, comprobar en GitHub Actions que el workflow Pages con acciones fijadas termina correctamente y que el sitio publicado carga sin errores CSP.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 
@@ -172,7 +166,7 @@ Validacion ejecutada:
 - `git diff --check`: correcto.
 - Revision estatica: no quedan usos de `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `document.write`, `eval` o `Function` en `src`; las referencias `uses:` del workflow no usan etiquetas movibles.
 
-Pendiente de validacion operativa:
+Plan cerrado en alcance automatico.
 
-- Smoke test en navegador servido localmente para confirmar que no hay violaciones CSP y que el panel final conserva su apariencia.
-- Ejecucion publicada del workflow de GitHub Pages para confirmar el despliegue con las acciones fijadas.
+- La publicacion con Actions fijadas quedo confirmada por el run `32202168953`, con `validate -> deploy` exitoso.
+- La validacion humana residual de CSP/consola, inyeccion desde DevTools y apariencia final se transfirio exclusivamente al plan `0043`.

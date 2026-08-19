@@ -84,13 +84,7 @@ node --check src\game.js
 node --test tests\game.test.js
 ```
 
-Smoke test manual:
-
-- Iniciar una partida en cada una de las ocho arenas y confirmar una lectura distinguible de fondo, plano medio y primer plano.
-- Confirmar que los props frontales quedan en bordes/base y no ocultan pies, ataques, barras, textos flotantes, flashes ni paneles de estado.
-- Probar salto, agacharse, bloqueo, combos, especial, pausa, cierre de round y game over con el primer plano visible; gameplay y controles deben permanecer iguales.
-- Activar `Reducir movimiento` y confirmar que el primer plano permanece legible y que las animaciones de fondo existentes siguen estabilizadas.
-- Probar mobile landscape y una altura reducida para confirmar que el canvas conserva proporcion y los nuevos detalles no generan solapamientos visuales criticos.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 
@@ -148,6 +142,4 @@ Validacion ejecutada:
 - `node --check` para todos los archivos `src\*.js`: correcto.
 - `git diff --check`: correcto.
 
-Pendiente de validacion operativa:
-
-- Smoke visual en navegador para las ocho arenas en desktop y mobile landscape, incluyendo legibilidad de luchadores, HUD y feedback sobre los props frontales.
+Plan cerrado en alcance automatico. La revision humana de las ocho arenas, desktop/mobile y legibilidad se transfirio exclusivamente al plan `0043`.

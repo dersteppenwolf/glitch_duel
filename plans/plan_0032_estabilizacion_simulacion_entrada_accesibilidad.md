@@ -128,16 +128,7 @@ Pruebas unitarias nuevas o ajustadas:
 - Pointer Events soportan down/up/cancel/lost capture y multitouch; los mocks incluyen `document.hidden`, eventos de `document`, captura de puntero y opciones de listener necesarias.
 - El contrato HTML confirma que los controles tactiles son ocho `button[type=button]`, no `div[role=button]`, conservan IDs y etiquetas accesibles.
 
-Smoke test manual:
-
-- En escritorio, mantener movimiento, bloquear y atacar; cambiar de ventana y volver: no queda accion retenida.
-- Con una partida activa, ocultar la pestana o minimizar; al volver aparece pausa y el juego solo continua tras `RESUMIR`/`RESUME`.
-- Comparar visualmente un segundo de movimiento y un cooldown a 30, 60 y 120 FPS mediante throttling de DevTools: distancia, recuperacion y tiempo de ronda se mantienen equivalentes.
-- Probar personajes de pie, uno agachado, uno en aire y ambos junto a bordes: no atraviesan al rival ni salen del arena.
-- En movil, mantener movimiento y pulsar ataque simultaneamente; soltar fuera del boton y cancelar un gesto: las acciones se liberan correctamente.
-- Navegar con Tab a los controles tactiles y activar con Espacio/Enter: se ve el foco y no queda entrada retenida.
-- En movil vertical y en viewport bajo, desplazar menu, ayuda, pausa y game-over; el contenido llega a sus acciones y no se desplaza la superficie de combate.
-- Repetir inicio, pausa, ronda, game over, restart y menu en espanol e ingles; teclado y controles tactiles siguen funcionando.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 
@@ -208,6 +199,4 @@ Validacion local ejecutada:
 
 Plan cerrado el 2026-07-31 con validacion automatizada completa por solicitud del usuario.
 
-Riesgo residual aceptado:
-
-- El smoke test visual en escritorio y movil real sigue recomendado para confirmar controles, pushboxes, overlays, pestana oculta, gestos cancelados y throttling de 30/60/120 FPS.
+La validacion humana residual de escritorio, movil, gestos y hardware se transfirio exclusivamente al plan `0043`.

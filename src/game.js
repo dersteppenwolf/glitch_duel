@@ -56,6 +56,7 @@ let debugStepCount = 0;
 let debugTimestamp = null;
 let debugFps = 0;
 let debugTicksPerSecond = 0;
+let debugWarmupPending = debugOverlayEnabled;
 const DEBUG_SAMPLE_LIMIT = 1200;
 let debugMetrics = createDebugMetrics();
 let onboardingStep = 0;
@@ -121,6 +122,7 @@ function getDebugNow() {
 
 function resetDebugMetrics() {
     debugMetrics = createDebugMetrics();
+    debugWarmupPending = true;
 }
 
 function pushDebugSample(list, value) {
@@ -184,6 +186,7 @@ function setRoundTimeMs(value) {
 function resetSimulationClock() {
     lastFrameTimestamp = null;
     simulationAccumulator = 0;
+    if (debugOverlayEnabled) debugWarmupPending = true;
 }
 
 function getDebugQueryEnabled() {
@@ -1568,8 +1571,6 @@ function updateCombatStatusThresholds() {
     if (player1.health <= 30 && !playerHealthDangerAnnounced) {
         playerHealthDangerAnnounced = true;
         announce(t('combatStatusHealthWarning'), 'threshold');
-    } else if (player1.health > 30) {
-        playerHealthDangerAnnounced = false;
     }
 
     const seconds = getCombatStatusTime();
@@ -2639,7 +2640,10 @@ function advanceSimulation(deltaMs) {
 function gameLoop(timestamp = 0) {
     const deltaMs = lastFrameTimestamp === null ? 0 : Math.max(0, timestamp - lastFrameTimestamp);
     lastFrameTimestamp = timestamp;
-    const collecting = debugOverlayEnabled && gameState === 'playing';
+    const debugEligible = debugOverlayEnabled && gameState === 'playing';
+    const skipDebugFrame = debugEligible && debugWarmupPending;
+    if (skipDebugFrame) debugWarmupPending = false;
+    const collecting = debugEligible && !skipDebugFrame;
     debugMetrics.active = collecting;
     const frameStart = collecting ? getDebugNow() : null;
 
@@ -2678,6 +2682,33 @@ function gameLoop(timestamp = 0) {
 }
 
 let touchInputTrackingSetup = false;
+
+function isGameplayFocusableVisible(element) {
+    if (!element || element.hidden || element.inert || element.disabled || hasNegativeTabIndex(element)) return false;
+    if (element.getAttribute && element.getAttribute('aria-hidden') === 'true') return false;
+    if (element.style && (element.style.display === 'none' || element.style.visibility === 'hidden')) return false;
+    return true;
+}
+
+function getGameplayFocusableElements() {
+    const elements = [
+        canvas,
+        document.getElementById('combat-status-summary'),
+        document.getElementById('pause-button')
+    ];
+    const touchControls = document.getElementById('controls');
+    if (mobileControlsEnabled && isGameplayFocusableVisible(touchControls)) {
+        ['btn-left', 'btn-right', 'btn-jump', 'btn-crouch', 'btn-block', 'btn-punch', 'btn-kick', 'btn-special']
+            .forEach((id) => elements.push(document.getElementById(id)));
+    }
+    const trainingPanel = document.getElementById('training-panel');
+    if (gameMode === 'training' && isGameplayFocusableVisible(trainingPanel)) {
+        ['training-trial-select', 'training-position-select', 'training-cpu-select', 'training-timer-select',
+            'training-reset-button', 'training-health-button', 'training-energy-button', 'training-trial-next']
+            .forEach((id) => elements.push(document.getElementById(id)));
+    }
+    return elements.filter(isGameplayFocusableVisible);
+}
 
 function setupTouchInputTracking() {
     const ids = [
@@ -2801,17 +2832,13 @@ function setupKeyboardControls() {
         const activeElement = document.activeElement && document.activeElement !== document.body
             ? document.activeElement
             : e.target;
-        const pauseButton = document.getElementById('pause-button');
         if (gameState === 'playing' && code === 'Tab') {
-            if (!e.shiftKey && isElementWithin(activeElement, canvas)) {
+            const focusables = getGameplayFocusableElements();
+            const currentIndex = focusables.indexOf(activeElement);
+            const nextIndex = currentIndex + (e.shiftKey ? -1 : 1);
+            if (currentIndex !== -1 && nextIndex >= 0 && nextIndex < focusables.length) {
                 if (e.preventDefault) e.preventDefault();
-                if (pauseButton && typeof pauseButton.focus === 'function') pauseButton.focus({ preventScroll: true });
-                recordRecentInputMethod('keyboard');
-                return;
-            }
-            if (e.shiftKey && isElementWithin(activeElement, pauseButton)) {
-                if (e.preventDefault) e.preventDefault();
-                focusGameplayCanvas();
+                focusables[nextIndex].focus({ preventScroll: true });
                 recordRecentInputMethod('keyboard');
                 return;
             }

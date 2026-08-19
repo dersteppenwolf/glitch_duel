@@ -130,14 +130,7 @@ Pruebas unitarias nuevas o ajustadas:
 - HUD/VS usan el nombre localizado del rival y la introducción contiene una frase localizada.
 - El render invoca primitivas para cada detalle y conserva los rasgos de dificultad CPU existentes.
 
-Smoke test manual:
-
-- Alternar los cuatro rivales y las tres dificultades desde el menú; iniciar partidas y confirmar que rival y dificultad se comunican por separado.
-- Verificar cada rival en ambas orientaciones, ataque, bloqueo, crouch, salto, especial, hit, victoria y derrota.
-- Cambiar ES/EN antes y durante menú: selector, nombre, frase VS y HUD se actualizan y no desbordan.
-- Iniciar entrenamiento con cada rival y CPU idle/block/normal; confirmar que el aspecto no cambia el comportamiento configurado.
-- En móvil landscape, confirmar que selector y menú siguen siendo navegables y que badge/HUD no se solapan con touch controls.
-- Abrir `?debug=1&seed=42`: el overlay permanece útil, el rival se mantiene visual y la seed no cambia por seleccionarlo.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentación
 
@@ -194,6 +187,4 @@ Implementado localmente el 2026-07-31.
 
 Plan cerrado el 2026-07-31 con validación automatizada completa por solicitud del usuario.
 
-Riesgo residual aceptado:
-
-- Verificar los cuatro rivales en desktop y móvil real, con cada dificultad y estado de combate.
+La validacion humana residual de los cuatro rivales, dispositivos y estados se transfirio exclusivamente al plan `0043`.

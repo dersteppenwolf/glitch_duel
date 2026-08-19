@@ -182,13 +182,7 @@ Suposiciones explicitas:
 
 ### 9. Validacion de primera sesion
 
-- Ejecutar despues de pasar automatizacion y smoke, no antes de estabilizar el build.
-- Reclutar al menos seis jugadores nuevos: dos teclado, dos touch y dos gamepad.
-- Pedir sin coaching: iniciar, moverse, bloquear, ejecutar un combo y usar el especial.
-- Registrar exito/fallo, input utilizado, punto de confusion y si el participante interpreta algun input como perdido.
-- La puerta de salida es al menos cinco de seis completando todas las tareas y ninguna ruta con dos fallos.
-- Si falla la puerta, corregir solo copy, foco, estado o buffer directamente relacionados y repetir el caso fallido. No introducir tutorial jugable ni ampliar a `#24` dentro de este plan.
-- Mantener `#77` parcial: el estudio de profundidad con jugadores recurrentes pertenece a Fase 2/3.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Archivos A Modificar
 
@@ -309,49 +303,11 @@ Cobertura nueva de diagnostico/audio:
 - Debug apagado no llama `performance.now()` ni toma muestras; off->on/reset/resume omite primer delta y reinicia de forma determinista.
 - `advanceSimulation(1000)` conserva seis pasos y reporta 900 ms de frame clamp, mas caps separados, sin alterar estado esperado.
 - `frameWorkMs` se mide directo y no se calcula sumando percentiles.
+- En Node, objetivo de simulacion: misma traza por tiempo de simulacion produce estado final identico a 30/60/120 y el tiempo aceptado concuerda con ticks, acumulador y `FIXED_STEP_MS`.
 - Cada tono deja created=1 y active=1 antes de `fireEnded()`; despues desconecta oscilador/gain una vez, active=0, limpia handler y un segundo ended es no-op.
 - Audio no disponible sigue siendo un no-op sin excepcion.
 
-Smoke manual de escritorio:
-
-- Probar menu, onboarding, ayuda, controles, inicio, pausa, ronda, Game Over, reinicio, Entrenamiento y cinco combates de Carrera.
-- Usar Tab/Shift+Tab, Escape, Enter/Space, remapeos y atajos Ctrl/Alt/Meta; confirmar click nativo, cambio real de selects y cambio de pestaña/historial del navegador.
-- Confirmar que Canvas recibe foco al iniciar/reanudar, los bindings funcionan desde el y Tab alcanza Pausa; abrir Pausa desde Canvas y boton restaura el origen correcto.
-- Confirmar que un combo pulsado rapido ya no pierde el segundo input y que fuera de ventana sale el ataque normal.
-- Cambiar ES/EN durante menu, pausa y despues de remapear; no quedan etiquetas funcionales en el idioma anterior.
-- Activar debug con query y backtick; revisar metricas acotadas y que desactivarlo no cambia simulacion.
-
-Smoke manual responsive/accesible:
-
-- Viewports `390x844`, `844x390`, `667x375`, `1366x768` y `1440x900`.
-- Zoom real de navegador 200% en escritorio y altura 320-400 CSS px: overlays sin overflow horizontal, acciones alcanzables, indicador de foco completo visible y scroll vertical usable.
-- Cuatro rivales en suelo, salto y ambas esquinas; energia vacia/llena; reduced motion on/off.
-- Touch simultaneo real, cancelacion de pointer y boton especial charging/ready.
-- Gamepad estandar para combate, pausa, summary y dialogos.
-- Windows High Contrast/forced-colors para foco y controles DOM; la auditoria completa del Canvas queda en `#26`.
-- Pinch zoom movil iniciado sobre Canvas/controles permanece fuera de alcance y no se presenta como verificado.
-- NVDA/Narrator/VoiceOver: Game Over recibe un nombre corto y un unico anuncio de resultado, no el resumen completo repetido.
-
-Medicion tecnica:
-
-- Antes de medir, registrar navegador/version, OS, CPU/GPU, alimentacion, viewport CSS, zoom, Hz real/emulado, DPR raw/efectivo, arena, reduced motion y estado del AudioContext.
-- Escenario: `?debug=1&seed=42`, Entrenamiento, posicion close, CPU normal, timer off, arena serverDown, 10 s de calentamiento, reset de muestra y 60 s de captura. Indicar si las cinco corridas son por cada celda disponible.
-- Medir raw DPR 1/2/3 como effective 1/2/2; DPR 3 valida el cap y no se presenta como coste de backing DPR 3.
-- En Node, objetivo de simulacion: misma traza por tiempo de simulacion produce estado final identico a 30/60/120 y el tiempo aceptado concuerda con ticks, acumulador y `FIXED_STEP_MS`.
-- En navegador, reportar `p95 frameWorkMs / (1000 / targetHz)`; debe ser menor que 1 en el equipo nombrado. Margenes adicionales se deciden despues de la baseline, no se presuponen.
-- Reportar gaps RAF >25/50 ms como intervalos absolutos. Solo atribuirlos al juego si una traza de Performance muestra script/draw del juego como causa; a 30 Hz, >25 ms no es por si mismo fallo.
-- Comparar debug off/on con profiler para cuantificar overhead de instrumentacion; no convertirlo en assert portable de CI.
-- Objetivo de audio: despues de recibir todos los `ended` con pagina visible y contexto running, `activeGraphs`, osciladores pendientes y gains pendientes vuelven a cero. Un contexto suspended se registra y no cuenta como exito/fallo.
-- Repetir el escenario de audio 20 min + 5 min de reposo y registrar created/ended/residuos. Los totales created/ended pueden crecer; los residuos activos no.
-- Registrar resultados en el plan. No introducir quality preset, containment o workers si los umbrales se cumplen.
-
-Validacion con usuarios:
-
-- Dos nuevos con teclado, dos con touch y dos con gamepad.
-- Tareas sin coaching: iniciar, mover, bloquear, combo, especial.
-- Exito: cinco de seis completan todo y ningun dispositivo acumula dos fallos.
-- Fracaso: input interpretado como perdido, imposibilidad de identificar especial listo, foco/contexto perdido o label incomprensible.
-- Un fracaso mantiene Fase 1 abierta y solo habilita correcciones dentro del alcance definido.
+Toda validacion humana pendiente de este alcance se centraliza en plans/plan_0043_validacion_humana_consolidada.md.
 
 ## Documentacion
 
@@ -445,7 +401,7 @@ Ejecutar pruebas focales antes de cada commit y la validacion completa antes del
 
 ## Estado De Implementacion
 
-Parcial.
+Cerrado en alcance automatico.
 
 Implementado y validado automaticamente:
 
@@ -456,19 +412,13 @@ Implementado y validado automaticamente:
 - `#75`: contexto de modo/progreso, estado tactil charging/ready y mutaciones DOM cacheadas.
 - `#32`: metricas debug locales acotadas, descarte bruto/caps, DPR raw/efectivo y cleanup idempotente de Web Audio.
 
-Evidencia ejecutada en esta implementacion:
+Evidencia ejecutada y consolidada:
 
-- `node --test tests\game.test.js`: 115 pruebas aprobadas, 0 fallos.
+- `node --test tests\game.test.js`: baseline original 115; suite consolidada `155/155`.
 - `node --check` sobre todos los `src/*.js`: correcto.
 - `git diff --check`: correcto, con solo advertencias de conversion LF/CRLF del entorno.
 - Smoke de navegador local: menu, Ayuda, inicio de partida y Pausa cargaron; la pausa mostro contexto `DUELO`, ronda, score, tiempo, dificultad, arena, rival y controles.
 
-Pendiente antes de cerrar Fase 1:
+El cierre automatico adicional cubre orden de foco gameplay sin wrap, warm-up del primer RAF, ring debug, combo canonico 30/60/120, lifecycle de audio idempotente y umbrales una vez por ronda.
 
-- Teclado fisico y atajos del navegador en un browser real.
-- Touch multitactil fisico, gamepad real y estado charging/ready en dispositivos hibridos.
-- Zoom real 200%, forced-colors, contraste pixel-real y lectores de pantalla.
-- Medicion de rendimiento en hardware nombrado a 30/60/120 Hz y DPR raw/efectivo, incluida sesion Web Audio de 20 minutos mas reposo.
-- Piloto de seis primeras sesiones de `#77`.
-
-No se deben marcar `#72`, `#73`, `#69`, `#75` ni `#32` como completados hasta registrar esas verificaciones manuales/tecnicas. `#25` y `#77` conservan trabajo posterior por diseño.
+Toda validacion humana pendiente de teclado, touch/gamepad, zoom/forced-colors/AT, rendimiento/audio y cohortes se transfirio exclusivamente al plan `0043`. Los items asociados permanecen Partial hasta registrar esa evidencia alli.
