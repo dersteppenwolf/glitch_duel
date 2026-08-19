@@ -63,12 +63,12 @@ Clasificar cada hallazgo como legible/justo, inefectivo, sobrerreactivo, explota
 
 Salida:
 
-- Si no existe fallo reproducible, cerrar `#16` cuando la evidencia humana restante pase y detener esta hoja de ruta.
+- Si no existe fallo reproducible, cerrar `#16` cuando la evidencia humana restante pase y detener esta hoja de ruta, salvo autorizacion explicita para una mejora acotada como la Fase 1 ejecutada aqui.
 - Si existe fallo, crear primero una caracterizacion Node que falle con estado explicito.
 
 ### Fase 1. `#17` tempo tardio y anti-turtle acotado
 
-Solo si el gate se activa, derivar contexto minimo:
+La Fase 1 requiere el gate de evidencia o una autorizacion explicita de direccion; en esta ejecucion se autorizo de forma proactiva sin reabrir `plan_0043`. Derivar contexto minimo:
 
 ```text
 timedRound: boolean
@@ -152,9 +152,9 @@ No se preven cambios en input, audio, efectos, renderers, HTML, CSS, persistenci
 
 ## Plan De Implementacion
 
-1. Ejecutar Fase 0 y congelar el escenario exacto antes de codigo.
+1. Ejecutar Fase 0 y congelar el escenario exacto antes de codigo, o registrar una autorizacion explicita si se decide avanzar sin exploit humano.
 2. Escribir tabla de caracterizacion con el comportamiento defectuoso actual.
-3. Si el fallo es tempo/turtle, implementar solo Fase 1.
+3. Si el fallo es tempo/turtle o existe autorizacion explicita, implementar solo Fase 1.
 4. Ejecutar suite, sintaxis, diff-check y traza 30/60/120.
 5. Repetir el escenario humano; si no mejora o crea frustracion, revertir tuning en plan separado.
 6. Revaluar Especial; solo entonces autorizar el residuo de Fase 2.
@@ -233,7 +233,7 @@ Se cargo y aplico `karpathy-guidelines` antes de finalizar.
 
 ## Criterios De Aceptacion
 
-- Ninguna fase de codigo empieza sin caracterizacion reproducible.
+- Ninguna fase de codigo empieza sin caracterizacion reproducible o autorizacion explicita registrada.
 - `#17`, si se ejecuta, evita pasividad tardia solo cuando CPU pierde y no altera Training sin timer.
 - `#19`, si se ejecuta, mejora el escenario de meter sin gastar fuera de rango ni crear confirmacion perfecta.
 - `#18` se cierra/fusiona o se reduce a un defecto concreto; no aparece una matriz completa sin evidencia.
@@ -267,10 +267,18 @@ Caracterizacion automatizada ejecutada:
 
 Decision actual:
 
-- No se implementa `#17` ni el residuo de `#19`: la validacion asumida no registro un escenario humano reproducible de fallo.
+- La direccion autorizo explicitamente implementar de forma proactiva la Fase 1 de `#17`, aun sin un exploit humano reproducible adicional; el gate de evidencia de `#16` no se reabre ni se modifica.
+- El residuo de `#19` no se implementa: Especial conserva su regla actual y no recibe contexto posicional nuevo.
 - `#18`, `#23` y `#49` permanecen pospuestos según la priorización.
 
 Resultado de ejecucion:
 
 - Fase 0 completada; `#16` queda validado sin tuning adicional.
-- Fases 1-3 de codigo no se activan por falta de un problema de jugador reproducible.
+- Fase 1 de codigo completada en `src/config.js`, `src/ai.js`, `src/fighter.js` y `src/game.js`, con regresiones enfocadas en `tests/game.test.js`.
+- El puente compacto entrega `timedRound`, `lateRound` y `cpuBehind` al CPU desde `roundTimerFrames`, el timer efectivo de Training y la brecha de salud; la frontera tardia es inclusiva (`roundTimerFrames <= lateRoundThresholdFrames`).
+- Tuning inicial por dificultad: `lateRoundThresholdFrames` Easy/Normal/Hard `600/720/900`; `lateRoundHealthGap` `24/18/12`; `antiTurtleBlockThreshold` `0.80/0.72/0.64`; `antiTurtleChance` `0.10/0.18/0.28`. Todas las probabilidades estan acotadas y `antiTurtleChance` conserva Easy < Normal < Hard.
+- La presion tardia cancela retreat/bait almacenado solo cuando el round tiene timer, la CPU esta en la ventana tardia y pierde por la brecha configurada; usa punch/kick legal en rango o approach fuera de rango. Whiff punish y defensa viva conservan precedencia.
+- Anti-turtle observa `opponentBlockBias` acumulado y usa la unica muestra `rand` de decision; por debajo o en la frontera de umbral conserva las reglas previas, y no lee un input sostenido directamente.
+- La suite automatizada pasa `162/162` pruebas despues de esta fase; el resultado de validacion humana de justicia/legibilidad sigue siendo exclusivamente el de `plan_0043`.
+- La revision posterior preservo la precedencia de crouch, counter y Especial lethal frente a la presion tardia.
+- Smoke browser local con seed `17`: Training conserva `ESTADO · SIN TIEMPO`, trials y pausa/menú; Duelo conserva `ESTADO · 60s`; no se observaron errores de pagina.

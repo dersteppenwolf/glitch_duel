@@ -210,7 +210,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - `J,J`, `J,K`, and `K,K` combos.
 - Special attack on `L` with full energy and stronger visual feedback.
 - Fighter styles: balanced, fast, heavy, and technical.
-- AI with difficulty-based reactions, range-aware attacks, tactical specials, counter windows, attack-type/zone memory, wall-aware defense, one-shot whiff punish opportunities, mid-range bait, punch-pattern crouch defense, and legal air attacks.
+- AI with difficulty-based reactions, range-aware attacks, tactical specials, counter windows, attack-type/zone memory, wall-aware defense, one-shot whiff punish opportunities, mid-range bait, punch-pattern crouch defense, legal air attacks, timed late-round pressure while behind, and bounded anti-turtle pressure from accumulated block memory.
 - Visual CPU rivals: `NULL POINTER`, `LAG SPIKE`, `MERGE CONFLICT`, and `BOSS 500`. Rival selection changes presentation only; difficulty remains responsible for CPU behavior.
 
 ### UI/UX

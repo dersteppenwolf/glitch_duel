@@ -366,6 +366,7 @@ function loadGame(options = {}) {
             setLanguage,
             getLanguage,
             chooseAIAction,
+            getCPUAIContext,
             drawFighter,
             draw,
             resizeCanvas,
@@ -3180,7 +3181,8 @@ test('contextual AI tunables are exact finite probabilities ordered by difficult
         baitChance: [0.06, 0.14, 0.24],
         crouchDefenseChance: [0.08, 0.18, 0.30],
         whiffPunishChance: [0.18, 0.42, 0.68],
-        airAttackChance: [0.20, 0.40, 0.60]
+        airAttackChance: [0.20, 0.40, 0.60],
+        antiTurtleChance: [0.10, 0.18, 0.28]
     };
 
     Object.entries(expected).forEach(([field, values]) => {
@@ -3188,6 +3190,20 @@ test('contextual AI tunables are exact finite probabilities ordered by difficult
         assert.deepEqual(actual, values, field);
         actual.forEach((value) => assert(Number.isFinite(value) && value >= 0 && value <= 1, `${field}: ${value}`));
         assert(actual[0] < actual[1] && actual[1] < actual[2], field);
+    });
+
+    const thresholds = ['lateRoundThresholdFrames', 'lateRoundHealthGap', 'antiTurtleBlockThreshold'];
+    thresholds.forEach((field) => {
+        ['easy', 'normal', 'hard'].forEach((level) => {
+            const value = api.DIFFICULTIES[level][field];
+            assert(Number.isFinite(value), `${field}: ${value}`);
+            assert(value >= 0, `${field}: ${value}`);
+        });
+    });
+    ['easy', 'normal', 'hard'].forEach((level) => {
+        assert(api.DIFFICULTIES[level].lateRoundThresholdFrames <= 3600);
+        assert(api.DIFFICULTIES[level].lateRoundHealthGap <= 100);
+        assert(api.DIFFICULTIES[level].antiTurtleBlockThreshold <= 1);
     });
 });
 
@@ -3604,32 +3620,178 @@ test('CPU stale retreat action stops at arena wall', () => {
     assert.equal(cpu.aiAction, 'block');
 });
 
-test('AI roadmap characterization: stored retreat ignores late timer and round lead', () => {
-    function runCase(cpuHealth, playerHealth) {
+test('CPU AI context uses the exact late boundary, health gap, and effective timer', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.setDifficulty('normal');
+    api.initGame();
+    api.skipVsIntro();
+    const state = api.getState();
+    state.player1.health = 100;
+    state.player2.health = 82;
+
+    api.setRoundTimerFrames(api.DIFFICULTIES.normal.lateRoundThresholdFrames + 1);
+    assert.deepEqual({ ...api.getCPUAIContext() }, { timedRound: true, lateRound: false, cpuBehind: true });
+
+    api.setRoundTimerFrames(api.DIFFICULTIES.normal.lateRoundThresholdFrames);
+    assert.deepEqual({ ...api.getCPUAIContext() }, { timedRound: true, lateRound: true, cpuBehind: true });
+
+    state.player1.health = 82;
+    state.player2.health = 100;
+    assert.deepEqual({ ...api.getCPUAIContext() }, { timedRound: true, lateRound: true, cpuBehind: false });
+
+    const training = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    training.api.startTraining();
+    training.api.skipVsIntro();
+    const trainingState = training.api.getState();
+    trainingState.player1.health = 100;
+    trainingState.player2.health = 82;
+    training.api.setRoundTimerFrames(training.api.DIFFICULTIES.normal.lateRoundThresholdFrames);
+    assert.deepEqual({ ...training.api.getCPUAIContext() }, { timedRound: false, lateRound: false, cpuBehind: true });
+});
+
+test('CPU AI cancels stored retreat only when late, timed, and behind', () => {
+    function runCase({ cpuHealth, playerHealth, timerOn = true }) {
         const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
-        api.initGame();
+        if (timerOn) api.initGame();
+        else {
+            api.startTraining();
+            api.setTrainingCpu('normal');
+        }
         api.skipVsIntro();
-        api.setRoundTimerFrames(300);
+        api.setDifficulty('normal');
+        api.setRoundTimerFrames(api.DIFFICULTIES.normal.lateRoundThresholdFrames);
         const state = api.getState();
         const cpu = state.player2;
         const player = state.player1;
         cpu.x = 500;
-        player.x = 700;
+        player.x = 570;
+        cpu.facingRight = true;
         cpu.health = cpuHealth;
         player.health = playerHealth;
         cpu.aiAction = 'retreat';
         cpu.aiDecisionTimer = 99;
-        cpu.updateAI(player);
-        return { x: cpu.x, velX: cpu.velX, aiAction: cpu.aiAction, timer: state.roundTimerFrames };
+        cpu.updateAI(player, api.getCPUAIContext());
+        return { x: cpu.x, velX: cpu.velX, aiAction: cpu.aiAction, attack: cpu.lastAttackType, timer: state.roundTimerFrames };
     }
 
-    const cpuLosingLate = runCase(40, 100);
-    const cpuLeadingLate = runCase(100, 40);
+    const cpuLosingLate = runCase({ cpuHealth: 82, playerHealth: 100 });
+    const cpuLeadingLate = runCase({ cpuHealth: 100, playerHealth: 82 });
+    const cpuLosingTraining = runCase({ cpuHealth: 82, playerHealth: 100, timerOn: false });
 
-    assert.deepEqual(cpuLosingLate, cpuLeadingLate);
-    assert.equal(cpuLosingLate.timer, 300);
-    assert(cpuLosingLate.velX < 0);
-    assert.equal(cpuLosingLate.aiAction, 'retreat');
+    assert.equal(cpuLosingLate.aiAction, 'punch');
+    assert.equal(cpuLosingLate.attack, 'punch');
+    assert.equal(cpuLosingLate.velX, 0);
+    assert.equal(cpuLeadingLate.aiAction, 'retreat');
+    assert(cpuLeadingLate.velX < 0);
+    assert.equal(cpuLosingTraining.aiAction, 'retreat');
+    assert(cpuLosingTraining.velX < 0);
+    assert.equal(cpuLosingLate.timer, 720);
+});
+
+test('anti-turtle pressure uses accumulated block memory threshold and the single decision rand', () => {
+    const { api } = loadGame();
+    const difficulty = {
+        ...api.DIFFICULTIES.normal,
+        specialChance: 0,
+        punchClose: 0,
+        kickClose: 0,
+        blockClose: 0,
+        lowHealthRetreat: 0
+    };
+    const base = {
+        dist: 80,
+        health: 100,
+        energy: 0,
+        onGround: true,
+        opponentAttacking: false,
+        canPunch: true,
+        canKick: false,
+        opponentBlockBias: difficulty.antiTurtleBlockThreshold,
+        difficulty
+    };
+
+    assert.equal(api.chooseAIAction({ ...base, opponentBlockBias: difficulty.antiTurtleBlockThreshold - 0.01, rand: 0.1 }), 'retreat');
+    assert.equal(api.chooseAIAction({ ...base, rand: difficulty.antiTurtleChance - 0.0001 }), 'punch');
+    assert.equal(api.chooseAIAction({ ...base, rand: difficulty.antiTurtleChance }), 'retreat');
+});
+
+test('late pressure and anti-turtle rules preserve whiff, live defense, and wall precedence', () => {
+    const { api } = loadGame();
+    const difficulty = api.DIFFICULTIES.normal;
+    const base = {
+        dist: 130,
+        health: 80,
+        energy: 0,
+        onGround: true,
+        canPunch: false,
+        canKick: true,
+        opponentBlockBias: 1,
+        timedRound: true,
+        lateRound: true,
+        cpuBehind: true,
+        difficulty,
+        rand: 0.99
+    };
+
+    assert.equal(api.chooseAIAction({ ...base, opponentAttacking: true }), 'block');
+    assert.equal(api.chooseAIAction({ ...base, opponentAttacking: false, opponentWhiffed: true, opponentRecovery: 10, rand: 0.1 }), 'kick');
+    assert.equal(api.chooseAIAction({ ...base, opponentAttacking: false, canKick: false, x: 60, opponentX: 180, nearLeftWall: true }), 'approach');
+});
+
+test('late pressure preserves existing crouch defense, counter, and lethal Special precedence', () => {
+    const { api } = loadGame();
+    const difficulty = api.DIFFICULTIES.normal;
+
+    assert.equal(api.chooseAIAction({
+        dist: 80,
+        health: 100,
+        energy: 0,
+        onGround: true,
+        opponentAttacking: false,
+        canPunch: true,
+        canKick: true,
+        opponentPunchBias: 0.8,
+        opponentKickBias: 0.1,
+        opponentSpecialBias: 0.1,
+        timedRound: true,
+        lateRound: true,
+        cpuBehind: true,
+        difficulty,
+        rand: 0.1
+    }), 'crouch');
+
+    assert.equal(api.chooseAIAction({
+        dist: 80,
+        health: 80,
+        energy: 0,
+        onGround: true,
+        opponentAttacking: false,
+        canPunch: true,
+        canKick: true,
+        counterTimer: 8,
+        timedRound: true,
+        lateRound: true,
+        cpuBehind: true,
+        difficulty,
+        rand: 0.1
+    }), 'punch');
+
+    assert.equal(api.chooseAIAction({
+        dist: 80,
+        health: 40,
+        energy: 100,
+        onGround: true,
+        opponentAttacking: false,
+        canPunch: true,
+        canKick: true,
+        canSpecial: true,
+        opponentHealth: 20,
+        timedRound: true,
+        lateRound: true,
+        cpuBehind: true,
+        difficulty,
+        rand: 0.99
+    }), 'special');
 });
 
 test('AI roadmap characterization: Special decision has no hit-stun or corner context yet', () => {
@@ -4289,6 +4451,56 @@ test('contextual AI trace is equivalent at 30, 60, and 120 FPS', () => {
 
     assert.equal(at30[0].player2.lastObservedAttackSequence, 1);
     assert(at30.some((sample) => sample.player1.health < 100));
+    assert.deepEqual(at30, at60);
+    assert.deepEqual(at60, at120);
+});
+
+test('late pressure trace is equivalent at 30, 60, and 120 FPS', () => {
+    function runAtFrameRate(frameMs, framesPerSample) {
+        const { api } = loadGame({ search: '?seed=17' });
+        api.setDifficulty('normal');
+        api.initGame();
+        api.skipVsIntro();
+        api.setMatchRandomSeed(17);
+        const initial = api.getState();
+        initial.player1.x = 570;
+        initial.player2.x = 500;
+        initial.player1.health = 100;
+        initial.player2.health = 82;
+        initial.player2.aiAction = 'retreat';
+        initial.player2.aiDecisionTimer = 40;
+        api.setRoundTimerFrames(api.DIFFICULTIES.normal.lateRoundThresholdFrames);
+        const trace = [];
+
+        for (let sample = 0; sample < 5; sample++) {
+            for (let frame = 0; frame < framesPerSample; frame++) api.advanceSimulation(frameMs);
+            const state = api.getState();
+            const context = api.getCPUAIContext();
+            trace.push({
+                cpuX: state.player2.x,
+                cpuHealth: state.player2.health,
+                cpuState: state.player2.state,
+                cpuAction: state.player2.aiAction,
+                lastAttackType: state.player2.lastAttackType,
+                attackCooldown: state.player2.attackCooldown,
+                timer: state.roundTimerFrames,
+                timedRound: context.timedRound,
+                lateRound: context.lateRound,
+                cpuBehind: context.cpuBehind,
+                elapsed: state.matchElapsedFrames
+            });
+        }
+
+        return trace;
+    }
+
+    const at30 = runAtFrameRate(1000 / 30, 3);
+    const at60 = runAtFrameRate(1000 / 60, 6);
+    const at120 = runAtFrameRate(1000 / 120, 12);
+
+    assert.equal(at30[0].lastAttackType, 'punch');
+    assert.equal(at30[0].cpuHealth, 82);
+    assert(at30.some((sample) => sample.timer <= 720));
     assert.deepEqual(at30, at60);
     assert.deepEqual(at60, at120);
 });

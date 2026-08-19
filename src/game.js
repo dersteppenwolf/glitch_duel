@@ -163,6 +163,17 @@ function getDifficultyConfig() {
     return DIFFICULTIES[selectedDifficulty] || DIFFICULTIES.normal;
 }
 
+function getCPUAIContext() {
+    const difficulty = getDifficultyConfig();
+    const timedRound = gameMode !== 'training' || getEffectiveTrainingConfig().timer === true;
+    const hasRoundFighters = !!player1 && !!player2;
+    const effectiveTimerFrames = timedRound ? roundTimerFrames : 0;
+    const lateRound = hasRoundFighters && timedRound && effectiveTimerFrames <= difficulty.lateRoundThresholdFrames;
+    const cpuBehind = hasRoundFighters && player1.health - player2.health >= difficulty.lateRoundHealthGap;
+
+    return { timedRound, lateRound, cpuBehind };
+}
+
 function setDifficulty(value) {
     selectedDifficulty = DIFFICULTIES[value] ? value : 'normal';
 }
@@ -2259,7 +2270,7 @@ function update() {
     const trialPhaseBeforeTick = isTrainingTrial() && trialState ? trialState.phase : 'none';
     player1.update(actions, player2);
     advanceTrainingTrialBeforeCpu(trialPhaseBeforeTick);
-    if (hitStopFrames === 0) player2.update(actions, player1);
+    if (hitStopFrames === 0) player2.update(actions, player1, getCPUAIContext());
     finishTrainingTrialTick(trialPhaseBeforeTick);
     if (isTrainingTrial()) renderTrainingTrial();
     if (hitStopFrames === 0) checkCollision();

@@ -27,6 +27,9 @@ function chooseAIAction({
     canAirPunch = false,
     canAirKick = false,
     airAttackUsed = false,
+    timedRound = false,
+    lateRound = false,
+    cpuBehind = false,
     difficulty,
     rand
 }) {
@@ -36,6 +39,7 @@ function chooseAIAction({
     const specialReady = canAttack && canSpecial && energy >= SPECIAL_ENERGY_COST;
     const retreatBlocked = (x < opponentX && nearLeftWall) || (x > opponentX && nearRightWall);
     const inMidRange = dist > 110 && dist <= 250;
+    const latePressure = timedRound && lateRound && cpuBehind;
     const typeAttackBias = Math.max(opponentPunchBias, opponentKickBias, opponentSpecialBias, opponentAirBias);
     const blockReaction = Math.min(
         difficulty.maxBlockReaction ?? 0.96,
@@ -65,7 +69,7 @@ function chooseAIAction({
         return 'crouch';
     }
 
-    if (!opponentAttacking && inMidRange && !retreatBlocked && (opponentAttackBias > 0.5 || repeatedAttackBias > 0.5) && rand < (difficulty.baitChance ?? 0)) {
+    if (!latePressure && !opponentAttacking && inMidRange && !retreatBlocked && (opponentAttackBias > 0.5 || repeatedAttackBias > 0.5) && rand < (difficulty.baitChance ?? 0)) {
         return 'retreat';
     }
 
@@ -86,8 +90,18 @@ function chooseAIAction({
     }
 
     if (health <= 30 && dist < 190) {
-        if (!retreatBlocked && rand < (difficulty.lowHealthRetreat ?? 0.7)) return 'retreat';
-        return 'block';
+        if (!latePressure) {
+            if (!retreatBlocked && rand < (difficulty.lowHealthRetreat ?? 0.7)) return 'retreat';
+            return 'block';
+        }
+    }
+
+    if (latePressure && !opponentAttacking) {
+        return chooseAIPressureAction(dist, punchReady, kickReady);
+    }
+
+    if (!opponentAttacking && opponentBlockBias >= (difficulty.antiTurtleBlockThreshold ?? 1) && rand < (difficulty.antiTurtleChance ?? 0)) {
+        return chooseAIPressureAction(dist, punchReady, kickReady);
     }
 
     if (opponentAttackBias > 0.5 && dist < 170 && onGround && rand < blockReaction) return 'block';
@@ -117,4 +131,10 @@ function chooseAIAction({
     if (rand < difficulty.blockClose) return 'block';
     if (retreatBlocked) return onGround && rand < (difficulty.cornerJump ?? 0.45) ? 'jump' : 'block';
     return punchReady || kickReady ? 'retreat' : 'approach';
+}
+
+function chooseAIPressureAction(dist, punchReady, kickReady) {
+    if (punchReady && dist <= ATTACKS.punch.range) return 'punch';
+    if (kickReady && dist <= ATTACKS.kick.range) return 'kick';
+    return 'approach';
 }

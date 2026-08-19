@@ -86,7 +86,7 @@ class Fighter {
         this.rivalDetail = rival.detail;
     }
 
-    update(keys, opponent) {
+    update(keys, opponent, aiContext) {
         this.facingRight = opponent.x >= this.x;
 
         const wasInHitStun = this.hitStun > 0;
@@ -130,7 +130,7 @@ class Fighter {
         if (this.isPlayer1) {
             this.updatePlayerControls(keys, opponent);
         } else {
-            this.updateAI(opponent);
+            this.updateAI(opponent, aiContext);
         }
 
         this.applyPhysics();
@@ -356,7 +356,13 @@ class Fighter {
         floatingTexts.push(new FloatingText(this.x, this.y - 122, labels[type], colors[type]));
     }
 
-    updateAI(opponent) {
+    updateAI(opponent, aiContext = null) {
+        const context = aiContext || {};
+        const timedRound = context.timedRound === true;
+        const lateRound = context.lateRound === true;
+        const cpuBehind = context.cpuBehind === true;
+        const latePressure = timedRound && lateRound && cpuBehind;
+
         if (this.trainingBehavior === 'idle') {
             this.aiAction = 'idle';
             this.velX = 0;
@@ -413,12 +419,27 @@ class Fighter {
                 opponentAttackBias: this.aiMemory.attack / 100,
                 opponentBlockBias: this.aiMemory.block / 100,
                 ...this.getAIMemoryBiases(dist, opponent),
+                timedRound,
+                lateRound,
+                cpuBehind,
                 difficulty,
                 rand
             });
             if (opponentSequenceChanged) this.aiMemory.lastObservedAttackSequence = opponent.attackSequence;
         } else if (opponentSequenceChanged && !opponentWhiffed) {
             this.aiMemory.lastObservedAttackSequence = opponent.attackSequence;
+        }
+
+        if (latePressure && this.onGround && this.aiAction === 'retreat') {
+            if (opponentAttacking) {
+                this.aiAction = 'block';
+            } else {
+                this.aiAction = chooseAIPressureAction(
+                    dist,
+                    this.attackCooldown === 0 && canPunch,
+                    this.attackCooldown === 0 && canKick
+                );
+            }
         }
 
         if (this.aiAction === 'approach') {
