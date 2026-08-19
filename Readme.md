@@ -93,8 +93,8 @@ No `npm install`, `package.json`, bundler, or backend server is required.
 ## How To Play
 
 1. Open `src/index.html` directly or serve the project from `http://localhost:8000/src/`.
-2. Choose language, difficulty, arena, and fighter style from the menu.
-3. Press `INICIAR JUEGO` / `START GAME`.
+2. Press `JUGAR AHORA` / `PLAY NOW` to use the visible Normal, Notebook, Balanced, and Null Pointer setup, or open `PERSONALIZAR PARTIDA / CUSTOMIZE MATCH` to change it.
+3. Use `CARRERA ARCADE / ARCADE RUN` or `ENTRENAMIENTO / TRAINING` for the alternate modes. Language, reduced motion, Help, Controls, stats, shortcuts, and GitHub are under `AJUSTES, AYUDA Y CONTROLES / SETTINGS, HELP & CONTROLS`.
 4. Win rounds by reducing the CPU health to `0%` or having more health when time runs out.
 5. Win 2 rounds to finish the match.
 
@@ -215,10 +215,10 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 
 ### UI/UX
 
-- Compact main menu with a dominant start action, grouped duel settings, a shorter arena preview, parallel style/rival summary, one-row secondary actions on wide screens, compact stats, and a responsive two-column desktop layout.
+- Progressive-disclosure main menu with one dominant `JUGAR AHORA / PLAY NOW` action, a visible difficulty/arena/style/rival summary, closed-by-default match customization, separate Arcade/Training modes, and a closed-by-default settings/help disclosure.
 - Action-based input with persistent keyboard remapping, standard gamepad combat/UI input, and source-safe keyboard/touch/gamepad release handling.
 - Dedicated controls dialog with localized action rows, conflict/reserved-key feedback, reset-to-defaults, visible focus, and internal scrolling on short screens.
-- Duel settings can collapse on narrow screens so starting a match stays discoverable.
+- Match customization and global utilities use native `<details>` disclosures on every viewport; opening them does not change `gameState` or persist disclosure state.
 - Help screen.
 - Help and onboarding show localized keyboard, touch, and standard gamepad guides; the selected/recent guide is session-only and all alternatives remain available.
 - Persistent language selector.
@@ -356,7 +356,7 @@ Post-deploy verification:
 
 - The URL should load the main menu without `/src/` in the path.
 - Styles should be applied.
-- The language, difficulty, arena, and fighter style selectors should work.
+- `JUGAR AHORA / PLAY NOW` and the two collapsed disclosures should be visible; opening them should expose language, reduced motion, difficulty, arena, style, and rival controls.
 - Starting a match should load the canvas and respond to keyboard input.
 - If the page shows 404, check that `Source` is `GitHub Actions` and that the latest workflow completed successfully.
 
@@ -384,8 +384,9 @@ node --test tests\game.test.js
 ### Basic Smoke
 
 - The main menu loads.
+- `PERSONALIZAR PARTIDA` / `CUSTOMIZE MATCH` and `AJUSTES, AYUDA Y CONTROLES` / `SETTINGS, HELP & CONTROLS` start closed and open with mouse, touch, Enter, or Space.
 - `CONTROLES` / `CONTROLS` opens remapping; a valid key change persists after reload and reset restores defaults.
-- `INICIAR JUEGO` / `START GAME` starts a match.
+- `JUGAR AHORA` / `PLAY NOW` starts a Versus match with the visible configuration summary.
 - `AYUDA` / `HELP` opens help.
 - `VOLVER` / `BACK` returns to the menu.
 - `P` / `Esc` pauses and resumes.
@@ -409,6 +410,7 @@ node --test tests\game.test.js
 ### Visual And Accessibility Smoke
 
 - `Tab` shows visible focus.
+- The collapsed main-menu focus order is Play Now, Customize Match, Arcade Run, Training, and Settings/Help/Controls; closed disclosure contents are skipped.
 - Help, onboarding, pause, and game over move focus into the dialog, contain it, and restore it when the flow closes.
 - Browser zoom at 200% keeps the menu and overlay actions usable without horizontal overflow.
 - The language selector switches Spanish/English and persists after reload.
@@ -502,7 +504,7 @@ The tests cover, among other points:
 - Arenas, fallback, and background rendering.
 - Detected language, manual change, and persistence.
 - Pause, help, stats, rounds, timer, and game over.
-- Modal focus, inert background surfaces, system reduced-motion preference precedence, menu contracts, and localized style/rival descriptors.
+- Modal focus, closed-disclosure focus filtering, inert background surfaces, system reduced-motion preference precedence, menu contracts, and localized match/style/rival summaries.
 - Fixed-step combat equivalence, posture-specific pushbox resolution, interrupted input recovery, hidden-page pause, and native Pointer Event controls.
 - Visual identity for human/CPU.
 - Enriched final summary, post-match medals, UI sounds, and arcade-style messages.

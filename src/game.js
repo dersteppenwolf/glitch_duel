@@ -176,6 +176,7 @@ function getCPUAIContext() {
 
 function setDifficulty(value) {
     selectedDifficulty = DIFFICULTIES[value] ? value : 'normal';
+    renderMatchConfigurationSummary();
 }
 
 function showStatusMessage(text, frames = 80) {
@@ -552,6 +553,7 @@ function skipVsIntro() {
 function setArena(value) {
     selectedArena = ARENAS[value] ? value : 'notebook';
     renderArenaPreview();
+    renderMatchConfigurationSummary();
 }
 
 function setFighterStyle(value) {
@@ -559,12 +561,14 @@ function setFighterStyle(value) {
     if (matchStats) matchStats.fighterStyle = selectedFighterStyle;
     renderStylePreference();
     renderSelectionSummary();
+    renderMatchConfigurationSummary();
 }
 
 function setRival(value) {
     selectedRival = CPU_RIVALS[value] ? value : 'nullPointer';
     renderRivalPreference();
     renderSelectionSummary();
+    renderMatchConfigurationSummary();
 }
 
 function getRivalConfig() {
@@ -1246,6 +1250,18 @@ function renderSelectionSummary() {
     if (rivalText) rivalText.textContent = t(getRivalConfig().introKey);
 }
 
+function renderMatchConfigurationSummary() {
+    const summary = document.getElementById('match-configuration-summary');
+    if (!summary) return;
+
+    summary.textContent = t('matchConfigurationSummary', {
+        difficulty: getDifficultyLabelFor(selectedDifficulty),
+        arena: getArenaLabelFor(selectedArena),
+        style: t(FIGHTER_STYLES[selectedFighterStyle].labelKey),
+        rival: getRivalLabelFor(selectedRival)
+    });
+}
+
 function getArenaConfig() {
     return ARENAS[selectedArena] || ARENAS.notebook;
 }
@@ -1665,6 +1681,7 @@ function renderLanguage() {
     renderStats();
     renderArenaPreview();
     renderSelectionSummary();
+    renderMatchConfigurationSummary();
     renderInputBindings();
     renderInputGuidance('onboarding');
     renderInputGuidance('help');
@@ -1995,6 +2012,7 @@ function restoreArcadeMenuSelection() {
     renderRivalPreference();
     renderArenaPreview();
     renderSelectionSummary();
+    renderMatchConfigurationSummary();
 }
 
 function retryArcadeRun() {

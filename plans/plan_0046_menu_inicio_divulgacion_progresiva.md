@@ -293,9 +293,36 @@ Se cargo y aplico `karpathy-guidelines` antes de finalizar este ExecPlan.
 
 ## Estado De Implementacion
 
-Plan propuesto el 2026-08-19. No implementado.
+Implementado localmente el 2026-08-19.
+
+- Completado: `JUGAR AHORA / PLAY NOW` es el unico CTA amarillo y conserva el flujo Versus/onboarding existente.
+- Completado: resumen visible de dificultad, arena, estilo y rival, derivado de las variables `selected*` y actualizado por setters, idioma y restauracion de Arcade.
+- Completado: `#duel-settings` inicia cerrado y contiene los cuatro selects, preview de arena y descriptores de estilo/rival.
+- Completado: Arcade y Entrenamiento forman un grupo secundario visible y separado de utilidades.
+- Completado: `#menu-utilities` inicia cerrado y contiene idioma, movimiento reducido, Ayuda, Controles, stats estaticas, resumen de teclas y GitHub.
+- Completado: orden DOM/foco alineado, descendientes cerrados omitidos, retorno de Ayuda/Controles preservado y objetivos interactivos del menu de al menos 44 px.
+- Completado: CSS responsive sin overflow horizontal y con scroll interno cuando ambas divulgaciones exceden la altura disponible.
+- Completado: contrato HTML, i18n, foco, resumen por setter y restauracion de Arcade cubiertos por pruebas; README y AGENTS actualizados.
 
 Baseline verificado al crear el plan:
 
 - `node --test tests\game.test.js`: `162/162` pruebas superadas.
 - `git diff --check`: correcto.
+
+Validacion de implementacion:
+
+- Pruebas focalizadas nuevas/ajustadas: `8/8` superadas durante implementacion.
+- Smoke Chrome headless con menu colapsado y ambas divulgaciones abiertas:
+  - `1366x768` colapsado: tarjeta `820x465.2px`, sin scroll ni overflow horizontal.
+  - `1366x768` expandido: tarjeta `820x744px`, scroll interno disponible y sin overflow horizontal.
+  - `844x390` colapsado/expandido: scroll interno disponible, CTA visible y sin overflow horizontal.
+  - `390x844` colapsado: tarjeta `358x558.9px`, sin scroll ni overflow horizontal.
+  - `390x844` y `320x400` expandidos: todo alcanzable por scroll interno, sin overflow horizontal.
+- El orden navegable observado coincide con Inicio, Personalizar, Arcade, Entrenamiento y Utilidades; al abrir se insertan los controles de cada disclosure en orden DOM.
+- El foco inicial conserva fondo amarillo en Jugar ahora.
+
+- Validacion automatica final: `node --check` correcto para todos los archivos `src/*.js` y `tests/game.test.js`; `node --test tests\game.test.js` con `163/163` pruebas superadas; `git diff --check` correcto, con solo advertencias locales de normalizacion LF/CRLF.
+- Revision especializada final: sin regresiones WCAG 2.2 AA verificadas; se corrigio el unico hallazgo funcional elevando `#language-select` de 36 a 44 px en todos los viewports.
+- Limitaciones: lector de pantalla, forced colors, hardware touch/gamepad y zoom nativo interactivo permanecen como validacion humana formal exclusiva del plan `0043`.
+
+Plan cerrado.

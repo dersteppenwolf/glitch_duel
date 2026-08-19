@@ -115,6 +115,7 @@ function loadGame(options = {}) {
         'help-guide-touch-text': 'p',
         'help-guide-gamepad-text': 'p',
         'duel-settings': 'details',
+        'menu-utilities': 'details',
         'controls-screen': 'div',
         'help-screen': 'div',
         'main-menu': 'div',
@@ -201,6 +202,7 @@ function loadGame(options = {}) {
             attributes: {},
             hidden: false,
             inert: false,
+            open: String(tagName).toLowerCase() === 'details' ? false : undefined,
             focused: false,
             addEventListener(type, handler) {
                 this.listeners[type] = handler;
@@ -1554,18 +1556,45 @@ test('focus trap includes summary, excludes closed details content, and recovers
     const dialog = context.document.createElement('div');
     const title = context.document.createElement('h1');
     title.setAttribute('tabindex', '-1');
-    const first = context.document.createElement('button');
-    const details = context.document.createElement('details');
-    details.open = false;
-    const summary = context.document.createElement('summary');
-    const closedButton = context.document.createElement('button');
-    details.append(summary, closedButton);
-    dialog.append(title, first, details);
+    const start = context.document.createElement('button');
+    const duelDetails = context.document.createElement('details');
+    const duelSummary = context.document.createElement('summary');
+    const duelSelects = Array.from({ length: 4 }, () => context.document.createElement('select'));
+    duelDetails.append(duelSummary, ...duelSelects);
+    const arcade = context.document.createElement('button');
+    const training = context.document.createElement('button');
+    const utilitiesDetails = context.document.createElement('details');
+    const utilitiesSummary = context.document.createElement('summary');
+    const language = context.document.createElement('select');
+    const motion = context.document.createElement('input');
+    const help = context.document.createElement('button');
+    const controls = context.document.createElement('button');
+    const staticStats = context.document.createElement('div');
+    const staticControls = context.document.createElement('div');
+    const github = context.document.createElement('a');
+    github.setAttribute('href', 'https://example.test');
+    utilitiesDetails.append(utilitiesSummary, language, motion, help, controls, staticStats, staticControls, github);
+    dialog.append(title, start, duelDetails, arcade, training, utilitiesDetails);
 
-    const focusables = api.getFocusableElements(dialog);
-    assert.equal(focusables.length, 2);
-    assert.equal(focusables[0], first);
-    assert.equal(focusables[1], summary);
+    assert.deepEqual([...api.getFocusableElements(dialog)], [start, duelSummary, arcade, training, utilitiesSummary]);
+
+    duelDetails.open = true;
+    assert.deepEqual([...api.getFocusableElements(dialog)], [start, duelSummary, ...duelSelects, arcade, training, utilitiesSummary]);
+
+    utilitiesDetails.open = true;
+    assert.deepEqual([...api.getFocusableElements(dialog)], [
+        start,
+        duelSummary,
+        ...duelSelects,
+        arcade,
+        training,
+        utilitiesSummary,
+        language,
+        motion,
+        help,
+        controls,
+        github
+    ]);
 
     api.setupKeyboardControls();
     api.showControlsScreen();
@@ -1612,16 +1641,24 @@ test('standard gamepad maps combat actions, UI edges, and neutralizes held input
 });
 
 test('gamepad cancel follows controls and help modal policy', () => {
-    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    const { api, context, elements } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    const utilities = context.document.getElementById('menu-utilities');
+    assert.equal(utilities.tagName, 'DETAILS');
+    assert.equal(utilities.open, false);
+    utilities.open = true;
 
     api.showControlsScreen();
     assert.equal(api.getState().modalId, 'controls-screen');
     api.handleGamepadEvents({ cancel: true });
     assert.equal(api.getState().modalId, 'main-menu');
+    assert.equal(utilities.open, true);
+    assert.equal(context.document.activeElement, elements.get('controls-button'));
 
     api.showHelpScreen();
     api.handleGamepadEvents({ cancel: true });
     assert.equal(api.getState().modalId, 'main-menu');
+    assert.equal(utilities.open, true);
+    assert.equal(context.document.activeElement, elements.get('help-button'));
 });
 
 test('touch controls are native buttons with stable accessible IDs', () => {
@@ -1636,22 +1673,59 @@ test('touch controls are native buttons with stable accessible IDs', () => {
 
 test('static HTML contract preserves local assets, script order, controls, and arena inventory', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.html'), 'utf8');
-    const requiredIds = ['game', 'main-menu', 'help-screen', 'controls-screen', 'pause-screen', 'onboarding-screen', 'training-panel', 'training-trial-select', 'training-trial-brief', 'training-trial-progress', 'training-trial-next', 'training-free-options', 'start-button', 'training-button', 'controls-button', 'arena-select', 'rival-select'];
+    const requiredIds = ['game', 'main-menu', 'help-screen', 'controls-screen', 'pause-screen', 'onboarding-screen', 'training-panel', 'training-trial-select', 'training-trial-brief', 'training-trial-progress', 'training-trial-next', 'training-free-options', 'start-button', 'training-button', 'arcade-run-button', 'controls-button', 'arena-select', 'rival-select', 'match-configuration-summary', 'duel-settings', 'menu-utilities'];
     const scripts = ['i18n.js', 'config.js', 'input.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'arena_render.js', 'hud_render.js', 'game.js'];
     const { api } = loadGame();
+    const openingTagForId = (id) => html.match(new RegExp(`<[^>]+\\bid="${id}"[^>]*>`))[0];
+    const detailsBlock = (id) => html.match(new RegExp(`<details id="${id}"[^>]*>([\\s\\S]*?)<\\/details>`))[0];
+    const mainMenu = html.slice(html.indexOf('<div id="main-menu"'), html.indexOf('<div id="help-screen"'));
+    const duelBlock = detailsBlock('duel-settings');
+    const utilitiesBlock = detailsBlock('menu-utilities');
 
     requiredIds.forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
     assert.match(html, /<label class="training-trial-picker" for="training-trial-select">/);
     assert.match(html, /<select id="training-trial-select">/);
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260818-glitch-cancel">/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260819-menu-disclosure">/);
+    assert.match(html, /<script src="i18n\.js\?v=20260819-menu-disclosure"><\/script>/);
+    assert.match(html, /<script src="game\.js\?v=20260819-menu-disclosure"><\/script>/);
     assert.match(html, /<option value="glitchCancel" data-i18n="trainingGlitchCancelOption">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
-    ['arena-shell', 'game-toolbar', 'game-announcer', 'duel-settings', 'selection-summary', 'menu-footer', 'arcade-run-button'].forEach((id) => {
+    ['arena-shell', 'game-toolbar', 'game-announcer', 'selection-summary', 'menu-footer'].forEach((id) => {
         assert.match(html, new RegExp(`id="${id}"`));
     });
-    assert.match(html, /<details id="duel-settings" class="duel-settings" open>/);
+    assert.doesNotMatch(openingTagForId('duel-settings'), /\sopen(?:\s|=|>)/);
+    assert.doesNotMatch(openingTagForId('menu-utilities'), /\sopen(?:\s|=|>)/);
+    assert.match(duelBlock, /<summary data-i18n="duelSettings">PERSONALIZAR PARTIDA<\/summary>/);
+    assert.match(utilitiesBlock, /<summary data-i18n="menuUtilities">AJUSTES, AYUDA Y CONTROLES · ES\/EN<\/summary>/);
+    assert.doesNotMatch(duelBlock + utilitiesBlock, /aria-expanded=|role="menu(?:item)?"/);
+    assert.match(openingTagForId('start-button'), /aria-describedby="match-configuration-summary"/);
+    assert.match(openingTagForId('match-configuration-summary'), /class="match-configuration-summary"/);
+    assert.doesNotMatch(openingTagForId('match-configuration-summary'), /role="status"|aria-live=/);
+    assert.doesNotMatch(openingTagForId('stats-summary'), /role="status"|aria-live=/);
+    ['difficulty-select', 'arena-select', 'style-select', 'rival-select', 'arena-preview', 'selection-summary'].forEach((id) => {
+        assert.match(duelBlock, new RegExp(`id="${id}"`));
+    });
+    assert.doesNotMatch(duelBlock, /id="reduce-motion-toggle"/);
+    const utilityOrder = ['language-select', 'reduce-motion-toggle', 'help-button', 'controls-button', 'stats-summary', 'controls-summary'];
+    utilityOrder.forEach((id) => assert.match(utilitiesBlock, new RegExp(`id="${id}"`)));
+    utilityOrder.slice(1).forEach((id, index) => {
+        assert(utilitiesBlock.indexOf(`id="${utilityOrder[index]}"`) < utilitiesBlock.indexOf(`id="${id}"`));
+    });
+    assert.match(utilitiesBlock, /class="github-link"/);
+    assert.doesNotMatch(utilitiesBlock, /id="arcade-run-button"|id="training-button"/);
+    const collapsedOrder = ['start-button', 'duel-settings', 'arcade-run-button', 'training-button', 'menu-utilities'];
+    collapsedOrder.slice(1).forEach((id, index) => {
+        assert(mainMenu.indexOf(`id="${collapsedOrder[index]}"`) < mainMenu.indexOf(`id="${id}"`));
+    });
+    assert.doesNotMatch(mainMenu, /tabindex="[1-9]\d*"/);
+    assert.match(html, /<option value="es" lang="es">Español<\/option>/);
+    assert.match(html, /<option value="en" lang="en">English<\/option>/);
+    assert.equal(api.I18N.es.duelSettings, 'PERSONALIZAR PARTIDA');
+    assert.equal(api.I18N.en.duelSettings, 'CUSTOMIZE MATCH');
+    assert.equal(api.I18N.es.menuUtilities, 'AJUSTES, AYUDA Y CONTROLES · ES/EN');
+    assert.equal(api.I18N.en.menuUtilities, 'SETTINGS, HELP & CONTROLS · ES/EN');
     assert.match(html, /id="arena-select" aria-describedby="arena-preview-text"/);
     assert.match(html, /id="style-select" aria-describedby="style-preview-text"/);
     assert.match(html, /id="rival-select" aria-describedby="rival-preview-text"/);
@@ -2017,6 +2091,29 @@ test('selection summary localizes style and rival descriptors', () => {
     assert.match(state.stylePreviewText, /mobility/i);
     assert.equal(state.rivalPreviewTitle, 'MERGE CONFLICT');
     assert.match(state.rivalPreviewText, /branches/i);
+});
+
+test('match configuration summary derives localized values from every selection setter', () => {
+    const { api, context } = loadGame();
+    const summary = context.document.getElementById('match-configuration-summary');
+
+    api.renderLanguage();
+    assert.equal(summary.textContent, 'Dificultad: NORMAL · Arena: CUADERNO · Estilo: BALANCEADO · Rival: NULL POINTER');
+
+    api.setDifficulty('hard');
+    assert.equal(summary.textContent, 'Dificultad: DIFICIL · Arena: CUADERNO · Estilo: BALANCEADO · Rival: NULL POINTER');
+
+    api.setArena('meeting');
+    assert.equal(summary.textContent, 'Dificultad: DIFICIL · Arena: REUNION PRESENCIAL · Estilo: BALANCEADO · Rival: NULL POINTER');
+
+    api.setFighterStyle('technical');
+    assert.equal(summary.textContent, 'Dificultad: DIFICIL · Arena: REUNION PRESENCIAL · Estilo: TECNICO · Rival: NULL POINTER');
+
+    api.setRival('mergeConflict');
+    assert.equal(summary.textContent, 'Dificultad: DIFICIL · Arena: REUNION PRESENCIAL · Estilo: TECNICO · Rival: MERGE CONFLICT');
+
+    api.setLanguage('en');
+    assert.equal(summary.textContent, 'Difficulty: HARD · Arena: IN-PERSON MEETING · Style: TECHNICAL · Rival: MERGE CONFLICT');
 });
 
 test('visual rival selection applies identity without changing CPU combat tuning', () => {
@@ -3071,11 +3168,11 @@ test('language preference detects browser language and persists manual changes',
 
     api.renderLanguage();
     assert.equal(api.getLanguage(), 'en');
-    assert.equal(api.getState().startButtonText, 'START GAME');
+    assert.equal(api.getState().startButtonText, 'PLAY NOW');
 
     api.setLanguage('es');
     assert.equal(api.getLanguage(), 'es');
-    assert.equal(api.getState().startButtonText, 'INICIAR JUEGO');
+    assert.equal(api.getState().startButtonText, 'JUGAR AHORA');
     assert.equal(context.window.localStorage.getItem('glitchDuelLanguage'), 'es');
 });
 
@@ -4172,12 +4269,16 @@ test('arcade run advances one match at a time with deterministic stages', () => 
 });
 
 test('arcade loss ends the run and retry restores menu selection', () => {
-    const { api } = loadGame();
+    const { api, context } = loadGame();
+    const summary = context.document.getElementById('match-configuration-summary');
 
     api.setDifficulty('hard');
     api.setArena('lab');
+    api.setFighterStyle('technical');
     api.setRival('boss500');
     api.startArcadeRun();
+    api.renderLanguage();
+    assert.equal(summary.textContent, 'Dificultad: FACIL · Arena: CUADERNO · Estilo: TECNICO · Rival: NULL POINTER');
     api.skipVsIntro();
     api.getState().player1.health = 0;
     assert.equal(api.getState().player1.health, 0);
@@ -4203,7 +4304,9 @@ test('arcade loss ends the run and retry restores menu selection', () => {
     assert.equal(state.gameMode, 'versus');
     assert.equal(state.selectedDifficulty, 'hard');
     assert.equal(state.selectedArena, 'lab');
+    assert.equal(state.selectedFighterStyle, 'technical');
     assert.equal(state.selectedRival, 'boss500');
+    assert.equal(summary.textContent, 'Dificultad: DIFICIL · Arena: LABORATORIO · Estilo: TECNICO · Rival: BOSS 500');
 });
 
 test('arcade can complete five matches without adding a separate run win', () => {
