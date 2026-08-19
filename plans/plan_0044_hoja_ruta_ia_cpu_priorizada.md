@@ -253,6 +253,8 @@ Se cargo y aplico `karpathy-guidelines` antes de finalizar.
 
 ## Estado De Implementacion
 
+Estado final: `Completed` por direccion explicita del usuario.
+
 Fase 0 cerrada por la aceptacion explicita de `plan_0043`; no se activo una fase de codigo.
 
 Baseline congelada:
@@ -286,3 +288,11 @@ Resultado de ejecucion:
 - `#19` queda `Completed` con el alcance actual aceptado; no se modificaron `src/` ni `tests/` para cerrarlo.
 - `#18` queda `Completed`, fusionado funcionalmente con `#16`; no se modificaron `src/` ni `tests/` para cerrarlo.
 - Smoke browser local con seed `17`: Training conserva `ESTADO · SIN TIEMPO`, trials y pausa/menú; Duelo conserva `ESTADO · 60s`; no se observaron errores de pagina.
+
+Cierre:
+
+- Las Fases 0 y 1 estan completadas; las Fases 2 y 3 quedaron cerradas sin ampliacion por ausencia de defectos reproducibles.
+- `#23` y `#49` son trabajo diferido del backlog, no alcance pendiente de este plan.
+- Cualquier reapertura de `#18/#19` o activacion de `#23/#49` requiere cumplir sus gates y crear un ExecPlan separado.
+
+El plan 0044 queda cerrado.
