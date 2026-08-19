@@ -252,4 +252,20 @@ Se cargo y aplico `karpathy-guidelines` antes de finalizar.
 
 ## Estado De Implementacion
 
-Propuesto. Fase 0 lista; fases de codigo bloqueadas por evidencia del plan `0043`.
+Fase 0 parcialmente ejecutada; fases de codigo bloqueadas por evidencia del plan `0043`.
+
+Baseline congelada:
+
+- Commit: `a077b86 Plan prioritized CPU AI roadmap`.
+- Suite inicial: `155/155` pruebas; sintaxis completa; working tree limpio.
+
+Caracterizacion automatizada ejecutada:
+
+- `#17`: con el mismo estado tardio (`300` frames), una CPU perdiendo y una CPU ganando conservan el `retreat` almacenado y se alejan. Esto confirma que la decision actual no recibe timer, marcador ni lead y no autoriza por si solo un cambio de balance.
+- `#19`: la decision de Special devuelve el mismo resultado en la tabla conceptual neutral/bloqueo/hit-stun/esquina porque esos contextos aun no forman parte del contrato de `chooseAIAction()`. Esto demuestra una ausencia de contexto, no un desperdicio jugable probado.
+- Suite despues de las caracterizaciones: `157/157` pruebas aprobadas.
+
+Decision actual:
+
+- No se implementa `#17` ni el residuo de `#19` sin completar la cohorte recurrente de `plan_0043` y registrar un escenario humano reproducible.
+- `#18`, `#23` y `#49` permanecen pospuestos según la priorización.

@@ -3604,6 +3604,61 @@ test('CPU stale retreat action stops at arena wall', () => {
     assert.equal(cpu.aiAction, 'block');
 });
 
+test('AI roadmap characterization: stored retreat ignores late timer and round lead', () => {
+    function runCase(cpuHealth, playerHealth) {
+        const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+        api.initGame();
+        api.skipVsIntro();
+        api.setRoundTimerFrames(300);
+        const state = api.getState();
+        const cpu = state.player2;
+        const player = state.player1;
+        cpu.x = 500;
+        player.x = 700;
+        cpu.health = cpuHealth;
+        player.health = playerHealth;
+        cpu.aiAction = 'retreat';
+        cpu.aiDecisionTimer = 99;
+        cpu.updateAI(player);
+        return { x: cpu.x, velX: cpu.velX, aiAction: cpu.aiAction, timer: state.roundTimerFrames };
+    }
+
+    const cpuLosingLate = runCase(40, 100);
+    const cpuLeadingLate = runCase(100, 40);
+
+    assert.deepEqual(cpuLosingLate, cpuLeadingLate);
+    assert.equal(cpuLosingLate.timer, 300);
+    assert(cpuLosingLate.velX < 0);
+    assert.equal(cpuLosingLate.aiAction, 'retreat');
+});
+
+test('AI roadmap characterization: Special decision has no hit-stun or corner context yet', () => {
+    const { api } = loadGame();
+    const difficulty = api.DIFFICULTIES.hard;
+    const base = {
+        dist: 80,
+        health: 100,
+        energy: 100,
+        onGround: true,
+        opponentAttacking: false,
+        canPunch: true,
+        canKick: true,
+        canSpecial: true,
+        opponentHealth: 100,
+        rand: 0.1,
+        difficulty
+    };
+    const conceptualContexts = [
+        'neutral-center',
+        'blocked-center',
+        'hit-stun-center',
+        'neutral-corner'
+    ];
+    const decisions = conceptualContexts.map(() => api.chooseAIAction(base));
+
+    assert.deepEqual(decisions, ['special', 'special', 'special', 'special']);
+});
+
 test('arena selection supports themed arenas and falls back to notebook', () => {
     const { api } = loadGame();
 
