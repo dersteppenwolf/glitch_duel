@@ -30,7 +30,7 @@ All pending browser, physical hardware, assistive-technology, performance and pl
 | 4 | 3 | PWA offline install | Add install/offline support with cache-version tests and safe update behavior. |
 | 5 | 20 | HUD theme selector | Add arcade, console and notebook presentation without changing gameplay information. |
 
-Next recommended improvement: `#12 Fullscreen and wake lock`. AI residual `#19` remains blocked because no reproducible positional Special scenario was identified by the accepted `plan_0043` gate; `#17` was proactively authorized and implemented in plan `0044`.
+Next recommended improvement: `#12 Fullscreen and wake lock`. AI items `#18/#19` are closed at their current scope because no reproducible style or positional Special problem was identified; `#17` was proactively authorized and implemented in plan `0044`.
 
 ## Correctness And Release Safety
 
@@ -89,8 +89,8 @@ Prioritized execution and evidence gates are defined in `plans/plan_0044_hoja_ru
 | --- | --- | --- | --- | --- | --- | --- |
 | 16 | Medium | Completed | M | - | Contextual AI tactics | Implemented rule-based whiff punish, bait, punch-pattern crouch defense and legal air attacks with deterministic 30/60/120 coverage and accepted fairness/exploit validation in plan `0043`. |
 | 17 | Medium | Completed | M | 16 | Timer-aware late-round pressure and bounded anti-turtle behavior | Uses fixed-step timer/health context to suppress stored retreat only when the timed round is late and CPU is behind; accumulated block memory can probabilistically choose existing punch, kick, or approach actions. Training without a timer and early/ahead rounds retain the baseline. |
-| 18 | Medium | Blocked | M | 16 | Style-aware AI adaptation | Adjust tactics against fast, heavy, balanced, and technical styles after contextual actions are stable. |
-| 19 | Medium | Partial | M | 16, 17 | Positional AI special usage | Real hitbox safety, lethal and comeback use already exist. Remaining hit-stun/corner context is blocked by a reproducible meter scenario; timer context is shared with `#17`. |
+| 18 | Medium | Completed | M | 16 | Style-aware AI adaptation | Existing type, zone and repetition memory is accepted as sufficient because no style-specific exploit was demonstrated. The CPU does not read `styleKey`; any future expansion requires new evidence and a separate plan. |
+| 19 | Medium | Completed | M | 16, 17 | Positional AI special usage | Real hitbox safety, lethal and comeback use are accepted as sufficient. No reproducible meter waste or passivity justified hit-stun/corner context; any future expansion requires new evidence and a separate plan. |
 | 23 | Low | Blocked | L | 16, 17 | Selectable AI personalities | Add rushdown, zoning, defensive, or chaotic personalities independent of difficulty; difficulty personas already exist. |
 | 49 | Low | Blocked | M | 31, 16 | Round-to-round AI adaptation | Carry bounded previous-round observations only after local telemetry and contextual tactics are stable. |
 

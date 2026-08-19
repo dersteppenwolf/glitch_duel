@@ -38,8 +38,8 @@ Suposiciones explicitas:
 | --- | --- | --- | --- |
 | 0 | `#16` | Validar, sin codigo | Completar matriz recurrente de plan `0043` y obtener fallo reproducible o aceptar baseline. |
 | 1 | `#17` | Primera implementacion condicional | CPU perdiendo se retira/espera tarde o bloqueo sostenido produce estrategia dominante. |
-| 2 | `#19` residual | Implementar solo contexto probado | Especial desperdiciado/pasivo en hit-stun o esquina despues de estabilizar `#17`. |
-| 3 | `#18` | Revaluar y probablemente fusionar | Un estilo concreto derrota la adaptacion conductual actual con traza reproducible. |
+| 2 | `#19` residual | Cerrar sin ampliacion | No se demostro Especial desperdiciado o pasivo en hit-stun/esquina despues de estabilizar `#17`. |
+| 3 | `#18` | Cerrar y fusionar con `#16` | Ningun estilo concreto demostro derrotar la adaptacion conductual actual con una traza reproducible. |
 | 4 | `#49` | Posponer | `#31` telemetry con reset visible y exploit que sobreviva al cambio de ronda. |
 | 5 | `#23` | Posponer indefinidamente | Jugadores distinguen y solicitan perfiles seleccionables a igual dificultad. |
 
@@ -92,7 +92,7 @@ Implementacion minima:
 - Reutilizar el unico `rand` de decision; no consumir RNG extra.
 - Agregar solo tunables demostrados por el escenario, con orden Easy < Normal < Hard cuando sean probabilidades.
 
-### Fase 2. `#19` uso posicional residual del Especial
+### Fase 2 cerrada. `#19` uso posicional residual del Especial
 
 Ya estan implementados rango real, energia, cooldown, lethal y comeback. El residuo permitido es:
 
@@ -102,20 +102,20 @@ opponentCornered: boolean
 lateRound/cpuBehind: contexto compartido de #17
 ```
 
-Solo agregar una regla si existe traza de meter desperdiciado o pasividad:
+La caracterizacion solo demostro ausencia de contexto, no un defecto jugable. Por decision explicita se acepta el comportamiento existente y se cierra `#19` sin agregar estas senales. Una reapertura futura requiere evidencia nueva y un ExecPlan separado; su alcance maximo seria:
 
 - Bonus probabilistico en hit-stun o esquina, nunca confirmacion perfecta por defecto.
 - Fuera de hitbox real no se gasta energia.
 - Lethal actual conserva precedencia.
 - No agregar reserva de meter, combo plan, variante de Special ni nuevo rango.
 
-### Fase 3. Decision sobre `#18`
+### Fase 3 cerrada. Decision sobre `#18`
 
-Evaluar Balanced/Fast/Heavy/Technical con la misma conducta y dificultad.
+No se registro un exploit reproducible de Balanced/Fast/Heavy/Technical que la memoria de tipo, zona y repeticion no cubra. Por decision explicita se acepta la adaptacion conductual existente y `#18` se cierra fusionado con `#16`, sin pasar `styleKey` a la CPU.
 
-- Si memoria de tipo/zona/repeticion ya responde adecuadamente, fusionar/cerrar `#18` como cubierto por adaptacion conductual.
-- Si un estilo produce exploit especifico, pasar un unico signal para ese defecto.
-- No crear matriz cuatro estilos por tres dificultades ni counter-picking completo.
+- La conducta observada sigue prevaleciendo sobre la etiqueta del estilo.
+- No se crea una matriz de cuatro estilos por tres dificultades ni counter-picking silencioso.
+- Cualquier reapertura requiere un exploit especifico, evidencia nueva y un ExecPlan separado.
 
 ### Fases diferidas
 
@@ -157,8 +157,8 @@ No se preven cambios en input, audio, efectos, renderers, HTML, CSS, persistenci
 3. Si el fallo es tempo/turtle o existe autorizacion explicita, implementar solo Fase 1.
 4. Ejecutar suite, sintaxis, diff-check y traza 30/60/120.
 5. Repetir el escenario humano; si no mejora o crea frustracion, revertir tuning en plan separado.
-6. Revaluar Especial; solo entonces autorizar el residuo de Fase 2.
-7. Evaluar estilos y cerrar/fusionar `#18` salvo defecto concreto.
+6. Revaluar Especial; cerrarlo sin codigo si no existe un escenario reproducible, como ocurrio con `#19`.
+7. Evaluar estilos y cerrar/fusionar `#18` si no existe un defecto concreto, como ocurrio en esta ejecucion.
 8. Mantener `#23/#49` bloqueados hasta sus dependencias/evidencia.
 9. Reconciliar backlog con lo ejecutado; no marcar fases opcionales como completadas.
 
@@ -196,7 +196,7 @@ Contratos Fase 2:
 - No Special en cooldown o aire.
 - Comparte timer/lead con Fase 1.
 
-Contratos `#18` si se activa:
+Contratos `#18` si se reabre:
 
 - Solo cambia la regla del estilo defectuoso demostrado.
 - Los otros estilos conservan baseline.
@@ -207,7 +207,7 @@ Toda validacion humana permanece en plan `0043`; Node no demuestra justicia, leg
 
 ## Documentacion
 
-- `BACKLOG.md`: enlazar este plan y rebaselinar `#19` como alcance residual ya parcialmente cubierto.
+- `BACKLOG.md`: enlazar este plan y cerrar `#18/#19` con el comportamiento existente aceptado.
 - `plans/plan_0043_validacion_humana_consolidada.md`: registrar evidencia humana, no duplicarla aqui.
 - `Readme.md`/`AGENTS.md`: actualizar solo despues de implementar comportamiento.
 
@@ -226,8 +226,8 @@ Toda validacion humana permanece en plan `0043`; Node no demuestra justicia, leg
 Se cargo y aplico `karpathy-guidelines` antes de finalizar.
 
 - La ruta principal es evidencia -> un defecto -> una regla, no una reescritura.
-- `#17/#19` comparten contexto; no se duplican timer ni prioridades.
-- `#18/#23/#49` se posponen hasta tener necesidad demostrada.
+- `#17` centraliza el contexto de timer; el cierre de `#19` evita duplicar timer o prioridades sin evidencia.
+- El cierre de `#18` evita leer `styleKey` sin un exploit demostrado; `#23/#49` permanecen pospuestos.
 - Cada fase tiene limites y controles deterministas.
 - No se introducen dependencias, persistencia, nuevas acciones ni arquitectura especulativa.
 
@@ -235,8 +235,8 @@ Se cargo y aplico `karpathy-guidelines` antes de finalizar.
 
 - Ninguna fase de codigo empieza sin caracterizacion reproducible o autorizacion explicita registrada.
 - `#17`, si se ejecuta, evita pasividad tardia solo cuando CPU pierde y no altera Training sin timer.
-- `#19`, si se ejecuta, mejora el escenario de meter sin gastar fuera de rango ni crear confirmacion perfecta.
-- `#18` se cierra/fusiona o se reduce a un defecto concreto; no aparece una matriz completa sin evidencia.
+- `#19` queda cerrado sin senales posicionales porque no se demostro desperdicio o pasividad reproducible; cualquier reapertura exige evidencia y plan nuevos.
+- `#18` queda cerrado y fusionado con `#16` porque no se demostro un exploit por estilo; cualquier reapertura exige evidencia y plan nuevos.
 - `#23/#49` permanecen bloqueados hasta cumplir dependencias.
 - IA sigue rule-based, acotada, sembrable y equivalente a 30/60/120.
 - Suite, sintaxis y `git diff --check` pasan.
@@ -246,7 +246,8 @@ Se cargo y aplico `karpathy-guidelines` antes de finalizar.
 
 - Fase 0: `Record CPU AI validation evidence`.
 - Fase 1: `Improve late-round CPU pressure`.
-- Fase 2: `Refine contextual CPU special use`.
+- Reapertura futura de `#19`: `Refine contextual CPU special use`.
+- Reapertura futura de `#18`: `Refine style-aware CPU adaptation`.
 - No mezclar estilos, personalidades o memoria entre rondas en esos commits.
 - No hacer commit/push salvo solicitud explicita durante la implementacion.
 
@@ -268,8 +269,9 @@ Caracterizacion automatizada ejecutada:
 Decision actual:
 
 - La direccion autorizo explicitamente implementar de forma proactiva la Fase 1 de `#17`, aun sin un exploit humano reproducible adicional; el gate de evidencia de `#16` no se reabre ni se modifica.
-- El residuo de `#19` no se implementa: Especial conserva su regla actual y no recibe contexto posicional nuevo.
-- `#18`, `#23` y `#49` permanecen pospuestos según la priorización.
+- La direccion cerro explicitamente `#19` por ausencia de un problema reproducible: Especial conserva su regla actual y no recibe contexto posicional nuevo.
+- La direccion cerro explicitamente `#18` por ausencia de un exploit reproducible por estilo: la CPU conserva adaptacion conductual y no recibe `styleKey`.
+- `#23` y `#49` permanecen pospuestos según la priorización.
 
 Resultado de ejecucion:
 
@@ -281,4 +283,6 @@ Resultado de ejecucion:
 - Anti-turtle observa `opponentBlockBias` acumulado y usa la unica muestra `rand` de decision; por debajo o en la frontera de umbral conserva las reglas previas, y no lee un input sostenido directamente.
 - La suite automatizada pasa `162/162` pruebas despues de esta fase; el resultado de validacion humana de justicia/legibilidad sigue siendo exclusivamente el de `plan_0043`.
 - La revision posterior preservo la precedencia de crouch, counter y Especial lethal frente a la presion tardia.
+- `#19` queda `Completed` con el alcance actual aceptado; no se modificaron `src/` ni `tests/` para cerrarlo.
+- `#18` queda `Completed`, fusionado funcionalmente con `#16`; no se modificaron `src/` ni `tests/` para cerrarlo.
 - Smoke browser local con seed `17`: Training conserva `ESTADO · SIN TIEMPO`, trials y pausa/menú; Duelo conserva `ESTADO · 60s`; no se observaron errores de pagina.
