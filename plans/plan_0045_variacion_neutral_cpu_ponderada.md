@@ -181,7 +181,7 @@ Reevaluar una extension solo si la seleccion ponderada y la decision anterior pa
 - `tests/game.test.js`: caracterizacion, exposicion test-only del helper/RNG, fronteras ponderadas, legalidad, repeticion, lifecycle y trazas 30/60/120.
 - `Readme.md`: documentar variedad neutral ponderada y reproducibilidad.
 - `AGENTS.md`: registrar prioridad tactica, presupuesto RNG y vida util de la decision anterior.
-- `BACKLOG.md`: agregar `#78` a Measured AI Roadmap como `Ready` solo despues de cumplir el gate; marcarlo `Completed` solo al cumplir criterios.
+- `BACKLOG.md`: promover el `#78` existente desde `Proposed And Evidence-Gated` a `Active Backlog` como `Ready` solo despues de cumplir el gate; archivarlo como `Implemented` solo al cumplir criterios.
 - `plans/plan_0045_variacion_neutral_cpu_ponderada.md`: registrar ejecucion, resultados y cualquier reduccion de alcance.
 
 No se preven cambios en `src/game.js`, HTML, CSS, i18n, input, audio, efectos, renderers, persistencia, stats o historial. `src/game.js` solo se modificara si una prueba demuestra que el lifecycle no puede validarse mediante la construccion existente de Fighters.
@@ -297,7 +297,7 @@ Smoke browser local:
 
 - `Readme.md`: ampliar la descripcion de IA con seleccion neutral ponderada, penalizacion inmediata y reproducibilidad sembrada.
 - `AGENTS.md`: indicar que solo el tramo neutral fuera de la rama close-wall es ponderado, que las prioridades tacticas permanecen first-match, que se mantienen dos draws por decision y que la decision anterior vive con el Fighter.
-- `BACKLOG.md`: crear `#78` dentro de Measured AI Roadmap como `Ready` solo despues de evidencia/autorizacion; cerrarlo solo despues de pruebas, trazas y smoke tecnico.
+- `BACKLOG.md`: promover `#78` desde la tabla gated a `Active Backlog` como `Ready` solo despues de evidencia/autorizacion; archivarlo como `Implemented` despues de pruebas, trazas y smoke tecnico.
 - `plans/plan_0044_hoja_ruta_ia_cpu_priorizada.md`: no reabrir ni modificar; conserva historia cerrada.
 - `plans/plan_0043_validacion_humana_consolidada.md`: no agregar resultados de mocks o smoke como evidencia humana.
 - `PLANS.md`: sin cambios.
@@ -330,7 +330,7 @@ Se cargo y aplico `karpathy-guidelines` antes de finalizar este ExecPlan.
 ## Criterios De Aceptacion
 
 - Existe caracterizacion reproducible o autorizacion explicita antes del primer cambio de codigo.
-- `#78` aparece como `Ready` solo despues del gate y como `Completed` solo despues de implementar y validar el alcance.
+- `#78` aparece en `Active Backlog` como `Ready` solo despues del gate y en el archivo como `Implemented` solo despues de implementar y validar el alcance.
 - Solo las decisiones neutrales far/mid y close fuera de pared usan seleccion ponderada.
 - Las distribuciones con todas las acciones legales conservan los porcentajes baseline documentados dentro de sus fronteras de distancia.
 - El close exterior conserva prioridad de kick y la rama de pared no activa `cornerJump`.
