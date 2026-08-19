@@ -36,6 +36,9 @@ class Fighter {
         this.prevPunchPressed = false;
         this.prevKickPressed = false;
         this.prevSpecialPressed = false;
+        this.glitchCancelEnabled = false;
+        this.glitchCancelUsed = false;
+        this.glitchCancelFeedbackFrames = 0;
         this.aiCounterTimer = 0;
         this.aiMemory = this.createAIMemory();
         this.airAttackUsed = false;
@@ -57,7 +60,8 @@ class Fighter {
             },
             repeatedType: '',
             repeatedCount: 0,
-            observingAttack: false
+            observingAttack: false,
+            lastObservedAttackSequence: 0
         };
     }
 
@@ -107,6 +111,8 @@ class Fighter {
             this.comboFlashTimer--;
         }
 
+        if (this.glitchCancelFeedbackFrames > 0) this.glitchCancelFeedbackFrames--;
+
         if (this.aiCounterTimer > 0) {
             this.aiCounterTimer--;
         }
@@ -135,14 +141,19 @@ class Fighter {
         const blockPressed = !!actions.block;
         const crouchPressed = !!actions.crouch;
         const jumpPressed = !!actions.jump;
+        let postureInterrupted = false;
 
         if (blockPressed) {
             this.clearComboSequence();
             this.state = 'block';
             this.velX = 0;
+            postureInterrupted = true;
         } else if (crouchPressed && this.onGround) {
             this.clearComboSequence();
-            if (this.attackCooldown === 0) this.state = 'crouch';
+            if (this.attackCooldown === 0) {
+                this.state = 'crouch';
+                postureInterrupted = true;
+            }
             this.velX = 0;
         } else {
             if (actions.left) {
@@ -160,20 +171,38 @@ class Fighter {
                 this.velY = -18;
                 this.onGround = false;
                 this.state = 'jump';
+                postureInterrupted = true;
             }
         }
 
         const punchPressed = !!actions.punch;
         const kickPressed = !!actions.kick;
         const specialPressed = !!actions.special;
+        const punchEdge = punchPressed && !this.prevPunchPressed;
+        const kickEdge = kickPressed && !this.prevKickPressed;
+        const specialEdge = specialPressed && !this.prevSpecialPressed;
+
+        if (postureInterrupted) this.endGlitchCancelSequence();
+        if (this.glitchCancelUsed && this.attackCooldown === 0 && !this.pendingComboInput && !punchEdge && !kickEdge) {
+            this.endGlitchCancelSequence();
+        }
 
         // Only edges visible in this fixed-step snapshot are processed. A complete
         // tap between simulation steps is intentionally not queued by the Fighter.
-        this.consumePendingCombo(opponent);
+        let cancelled = false;
+        if (specialEdge && this.attackCooldown > 0 && this.glitchCancelEnabled) {
+            cancelled = this.tryGlitchCancel();
+            if (!cancelled) recordGlitchCancelAttempt(this);
+        }
 
-        if (specialPressed && !this.prevSpecialPressed) this.attack('special', opponent);
-        if (punchPressed && !this.prevPunchPressed) this.handleAttackCommand(this.onGround ? 'punch' : 'airPunch', opponent);
-        if (kickPressed && !this.prevKickPressed) this.handleAttackCommand(this.onGround ? 'kick' : 'airKick', opponent);
+        const pendingExecuted = cancelled ? false : this.consumePendingCombo(opponent);
+
+        if (!cancelled && specialEdge && !pendingExecuted) {
+            if (this.glitchCancelEnabled && this.attackCooldown === 0) recordGlitchCancelAttempt(this);
+            this.attack('special', opponent);
+        }
+        if (!cancelled && punchEdge) this.handleAttackCommand(this.onGround ? 'punch' : 'airPunch', opponent);
+        if (!cancelled && kickEdge) this.handleAttackCommand(this.onGround ? 'kick' : 'airKick', opponent);
 
         this.prevPunchPressed = punchPressed;
         this.prevKickPressed = kickPressed;
@@ -187,13 +216,52 @@ class Fighter {
         this.clearComboHint();
     }
 
+    canGlitchCancel() {
+        const attack = ATTACKS[this.lastAttackType];
+        return this.isPlayer1 && this.glitchCancelEnabled && !this.glitchCancelUsed &&
+            !!attack && attack.glitchCancelable === true && this.lastAttackOutcome === 'whiff' &&
+            this.onGround && this.hitStun === 0 && this.attackCooldown > 0 &&
+            this.state !== 'block' && this.state !== 'crouch' && this.state !== 'jump' &&
+            this.energy >= GLITCH_CANCEL_ENERGY_COST;
+    }
+
+    tryGlitchCancel() {
+        if (!this.canGlitchCancel()) return false;
+        const energyBefore = this.energy;
+        this.energy -= GLITCH_CANCEL_ENERGY_COST;
+        this.attackCooldown = 0;
+        this.state = 'idle';
+        this.velX = 0;
+        this.clearComboSequence();
+        this.glitchCancelUsed = true;
+        this.glitchCancelFeedbackFrames = 10;
+        recordCombatEvent({
+            type: 'glitchCancel',
+            frame: matchElapsedFrames,
+            actor: 'player',
+            attackType: this.lastAttackType,
+            outcome: this.lastAttackOutcome,
+            energyBefore,
+            energyAfter: this.energy,
+            cost: GLITCH_CANCEL_ENERGY_COST,
+            sequence: this.attackSequence
+        });
+        triggerGlitchCancelFeedback(this);
+        playGlitchCancelSound();
+        return true;
+    }
+
+    endGlitchCancelSequence() {
+        this.glitchCancelUsed = false;
+    }
+
     consumePendingCombo(opponent) {
-        if (!this.pendingComboInput) return;
+        if (!this.pendingComboInput) return false;
         if (this.hitStun > 0 || !this.onGround || this.state === 'block' || this.state === 'crouch' || this.state === 'jump' || this.comboTimer <= 0) {
             this.clearComboSequence();
-            return;
+            return false;
         }
-        if (this.attackCooldown > 0) return;
+        if (this.attackCooldown > 0) return false;
 
         const combo = `${this.comboBuffer[0]},${this.pendingComboInput}`;
         const comboType = {
@@ -204,10 +272,11 @@ class Fighter {
 
         if (!comboType) {
             this.clearComboSequence();
-            return;
+            return false;
         }
 
         this.executeComboAttack(comboType, opponent);
+        return true;
     }
 
     handleAttackCommand(input, opponent) {
@@ -307,9 +376,14 @@ class Fighter {
         const canPunch = this.canHitOpponent('punch', opponent);
         const canKick = this.canHitOpponent('kick', opponent);
         const canSpecial = this.canHitOpponent('special', opponent);
+        const canAirPunch = this.canHitOpponent('airPunch', opponent);
+        const canAirKick = this.canHitOpponent('airKick', opponent);
         const nearLeftWall = this.x <= 70;
         const nearRightWall = this.x >= WIDTH - 70;
         this.updateAIMemory(opponent, difficulty);
+        const opponentSequenceChanged = opponent.attackSequence !== this.aiMemory.lastObservedAttackSequence;
+        const opponentWhiffed = opponentSequenceChanged && opponent.lastAttackOutcome === 'whiff' && opponent.attackCooldown > 0;
+        if (opponentWhiffed) this.aiDecisionTimer = 0;
         this.aiDecisionTimer--;
 
         if (this.aiDecisionTimer <= 0) {
@@ -324,7 +398,12 @@ class Fighter {
                 canPunch,
                 canKick,
                 canSpecial,
+                canAirPunch,
+                canAirKick,
+                airAttackUsed: this.airAttackUsed,
                 attackCooldown: this.attackCooldown,
+                opponentWhiffed,
+                opponentRecovery: opponent.attackCooldown,
                 opponentHealth: opponent.health,
                 x: this.x,
                 opponentX: opponent.x,
@@ -337,6 +416,9 @@ class Fighter {
                 difficulty,
                 rand
             });
+            if (opponentSequenceChanged) this.aiMemory.lastObservedAttackSequence = opponent.attackSequence;
+        } else if (opponentSequenceChanged && !opponentWhiffed) {
+            this.aiMemory.lastObservedAttackSequence = opponent.attackSequence;
         }
 
         if (this.aiAction === 'approach') {
@@ -357,14 +439,23 @@ class Fighter {
             this.onGround = false;
             this.state = 'jump';
             this.aiAction = 'idle';
-        } else if (this.aiAction === 'block') {
+        } else if (this.aiAction === 'block' && this.onGround) {
             this.state = 'block';
             this.velX = 0;
-        } else if (this.aiAction === 'punch') {
+        } else if (this.aiAction === 'crouch' && this.onGround) {
+            this.state = 'crouch';
+            this.velX = 0;
+        } else if (this.aiAction === 'airPunch' || this.aiAction === 'airKick') {
+            if (!this.onGround && !this.airAttackUsed) {
+                this.airAttackUsed = true;
+                this.clearComboSequence();
+                this.attack(this.aiAction, opponent);
+            }
+        } else if (this.aiAction === 'punch' && this.onGround) {
             this.attack('punch', opponent);
-        } else if (this.aiAction === 'kick') {
+        } else if (this.aiAction === 'kick' && this.onGround) {
             this.attack('kick', opponent);
-        } else if (this.aiAction === 'special') {
+        } else if (this.aiAction === 'special' && this.onGround) {
             this.attack('special', opponent);
         }
     }
@@ -645,6 +736,7 @@ class Fighter {
         const impactDirection = attacker.facingRight ? 1 : -1;
 
         this.clearComboSequence();
+        this.endGlitchCancelSequence();
 
         if (this.state === 'block') {
             const healthBefore = this.health;

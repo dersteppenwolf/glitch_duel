@@ -136,8 +136,21 @@ canvas:focus-visible,
     background-image: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.14) 0 5px, transparent 5px 10px);
 }
 
-#btn-special[data-state="ready"] {
+#btn-special[data-state="special-ready"] {
     background-color: #ffd447;
+}
+
+#btn-special[data-state="cancel-ready"] {
+    color: #111;
+    background-color: #7ee7ee;
+    background-image: repeating-linear-gradient(45deg, #8b005f 0 3px, transparent 3px 9px);
+    border: 4px double #111;
+}
+
+#btn-special[data-state="cancel-used"] {
+    color: #111;
+    background-color: #e5e7eb;
+    background-image: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.22) 0 3px, transparent 3px 8px);
 }
 
 .touch-state {
@@ -160,8 +173,12 @@ canvas:focus-visible,
         forced-color-adjust: auto;
     }
 
-    #btn-special[data-state="charging"]::after {
-        content: " / CARGA";
+    #btn-special[data-state="charging"],
+    #btn-special[data-state="cancel-ready"],
+    #btn-special[data-state="cancel-used"],
+    #btn-special[data-state="special-ready"] {
+        border: 3px solid ButtonText;
+        forced-color-adjust: auto;
     }
 }
 

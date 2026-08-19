@@ -64,7 +64,7 @@ Next recommended improvement: `#72 Preserve native keyboard operation`. The prev
 | 47 | Low | Blocked | M | 1 | Additional combos | Add combat depth only after training and collision regression coverage exist. |
 | 60 | Low | Blocked | M | 14, 22 | Export/import local data | Export a versioned schema and validate imports without overwriting unrelated settings. |
 | 73 | P1 | Partial | M | - | Buffer valid second combo inputs | Implemented one fixed-step pending punch/kick, real cooldown boundary tests, full interruption cancellation, and 30/60/120 deterministic coverage. Physical touch/gamepad timing smoke remains manual; taps entirely between ticks remain intentionally unqueued. Evidence: `Fighter.handleAttackCommand()` now records a bounded follow-up instead of silently discarding it. |
-| 76 | P3 | Blocked | M | 73, 77 | Validate a GLITCH CANCEL MVP | Prototype, but do not fully roll out, one deterministic recovery cancel per sequence: pressing Special during eligible recovery spends 25 energy, preserves the full-bar special from neutral, and gives localized static/motion-reduced feedback. Test all input sources, simulation equivalence, energy economy, and dominant loops; continue only if recurring players understand the energy tradeoff and prefer it without making it mandatory. |
+| 76 | P3 | Partial | M | 73, 77 | Validate a GLITCH CANCEL MVP | Training-only experiment implemented: a grounded punch/kick whiff can spend 25 through the existing Special action to end recovery once per sequence. Includes localized trial/status/touch/Canvas/audio feedback, reduced-motion behavior, source-parity tests, exact economy boundaries, and 30/60/120 equivalence. Physical hardware/AT and recurrent-player pilot remain before any Versus/Arcade rollout. |
 
 ## Input, Accessibility, And UX
 
@@ -80,7 +80,7 @@ Next recommended improvement: `#72 Preserve native keyboard operation`. The prev
 | 69 | Low | Partial | S | - | Complete localized accessibility labels | Implemented remaining touch/training group and select labels, localized touch spans, functional combo/special/victory feedback, localized key names, action/slot binding names, and ES/EN key/placeholder tests. Real screen-reader output remains manual. |
 | 74 | P1 | Partial | M | 69 | Expose consultable semantic combat status | Implemented non-live DOM status, localized values, edge-triggered keyboard/gamepad query, v1-to-v2 binding migration, optional unassigned status key, and threshold deduplication tests. Real zoom, touch/gamepad hardware, forced-colors and NVDA/Narrator/VoiceOver validation remain. Evidence: `#combat-status` and `announceCombatStatus()` now expose the Canvas state without per-frame announcements. |
 | 75 | P1 | Partial | S | 69 | Clarify active mode and touch special state | Implemented mode/progress toolbar and pause text, localized touch state, ARIA readiness, pattern/border state, cached DOM writes, and automated state tests. Physical touch, hybrid hardware, and pixel-level responsive verification remain manual. |
-| 77 | P2 | Ready | S | - | Validate first-session comprehension and recurring depth | Run a scripted study with at least six new players split across keyboard, touch, and gamepad, plus four recurring/fighting-game players. New players attempt start, move, block, combo, and special without coaching; recurring players rank difficulty, identify exploitable AI/recovery patterns, and describe what feels uniquely glitch. Success for onboarding is at least five of six completing every core task with no input path producing two failures. Record observations and use them to gate `#16`, `#17`, `#24`, attack-phase changes, and `#76`. |
+| 77 | P2 | Partial | S | - | Validate first-session comprehension and recurring depth | Treated as executed for implementation by explicit user direction, enabling `#16` and the Training-only `#76` prototype. The repository still lacks anonymized records for six new and four recurring players, so comprehension, fairness, preference, and rollout gates remain open. |
 
 ## Measured AI Roadmap
 
@@ -88,10 +88,10 @@ AI changes stay inside the current rule-based architecture. Each stage must incl
 
 | # | Priority | Status | Size | Depends on | Improvement | Remaining scope |
 | --- | --- | --- | --- | --- | --- | --- |
-| 16 | Medium | Ready | M | - | Contextual AI tactics | Add missing bait, crouch defense, whiff punish, and air choices using difficulty-config tuning hooks. Absorbs former `#34`. |
-| 17 | Medium | Partial | M | 16 | Timer tempo and anti-turtle behavior | Add timer-aware forced approach, stop retreating when behind late, and respond to excessive blocking; health, corners, range, and memory already exist. |
+| 16 | Medium | Partial | M | - | Contextual AI tactics | Implemented rule-based whiff punish, mid-range bait, punch-pattern crouch defense, and legal air punch/kick choices with four difficulty tunables, single-sequence whiff consumption, real hitboxes, and 30/60/120 deterministic coverage. Manual per-difficulty fairness/exploit smoke remains. |
+| 17 | Medium | Blocked | M | 16 | Timer tempo and anti-turtle behavior | Add timer-aware forced approach, stop retreating when behind late, and respond to excessive blocking only after a reproducible late-round/turtle scenario. |
 | 18 | Medium | Blocked | M | 16 | Style-aware AI adaptation | Adjust tactics against fast, heavy, balanced, and technical styles after contextual actions are stable. |
-| 19 | Medium | Partial | M | 16 | Positional AI special usage | Add hit-stun confirmation, corner pressure, range safety, and timer context; lethal/comeback/energy logic already exists. |
+| 19 | Medium | Blocked | M | 16 | Positional AI special usage | Add hit-stun confirmation, corner pressure, range safety, and timer context only after a reproducible unsafe/wasted-special scenario. |
 | 23 | Low | Blocked | L | 16, 17 | Selectable AI personalities | Add rushdown, zoning, defensive, or chaotic personalities independent of difficulty; difficulty personas already exist. |
 | 49 | Low | Blocked | M | 31, 16 | Round-to-round AI adaptation | Carry bounded previous-round observations only after local telemetry and contextual tactics are stable. |
 

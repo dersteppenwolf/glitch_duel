@@ -669,22 +669,24 @@ Implementado en esta ejecucion:
 - `#74`: `<details>`/`<dl>` no-live, render cacheado de salud/energia/ronda/score/tiempo/rival, consulta por status key/gamepad 8/details, migracion de bindings v1 a v2 sin robar teclas, status sin tecla y thresholds deduplicados.
 - `#9`: selector de practica/trials dentro de Training, resultado canonico `attackResolved`, `energyReady`, cuatro reducers, cues/windows/retry fixed-step, progreso de sesion y exclusion de stats/historial.
 - `#24`: guia de teclado/touch/gamepad visible en Ayuda/onboarding, metodo reciente/manual efimero y pendingStartMode para conservar el modo solicitado.
+- `#16`: whiff punish de una oportunidad, bait en zona media, crouch ante patron punch y ataques aereos legales con tunables por dificultad.
 - Cache-busting de recursos en `src/index.html` para que el navegador no reutilice la version anterior de Fase 1.
 
 Validacion ejecutada:
 
 - Baseline antes del cambio: `115/115` pruebas y sintaxis completa.
-- Despues del cambio: `125/125` pruebas aprobadas, sintaxis completa y `git diff --check` correcto.
+- Despues de integrar Fase 2 y el MVP posterior de Fase 3: `142/142` pruebas aprobadas, sintaxis completa y `git diff --check` correcto.
 - Smoke navegador con cache-buster: estado cerrado `ESTADO · 60s`; al expandir se leen modo, vida, energia, ronda, marcador, tiempo, rival, direccion, distancia y ultimo evento.
 - Smoke navegador de Training: selector `PRACTICA LIBRE` y los cuatro trials aparecen; toolbar muestra `ENTRENAMIENTO · LIBRE`; objetivos, progreso y opciones libres son visibles.
+- Smoke posterior en `1440x900` y `390x844`: Entrenamiento carga sin errores y el selector conserva los cuatro trials mas `EXPERIMENTO · GLITCH CANCEL`.
 
 Pendiente:
 
-- `#77`: se toma como ejecutado por supuesto explicito del usuario; no existe registro de cohortes en este repositorio y no se repitieron sesiones humanas.
+- `#77`: se toma como ejecutado para autorizar implementacion por supuesto/direccion explicita del usuario; no existe registro de cohortes en este repositorio y no se repitieron sesiones humanas.
 - `#9`: implementado y queda Partial hasta smoke fisico/comprension de trials.
 - `#24`: implementado y queda Partial hasta smoke fisico/AT/usuarios.
-- `#16`: no implementado.
+- `#16`: implementado y queda Partial hasta smoke manual de justicia/exploit por dificultad.
 - `#17/#19`: permanecen bloqueados y sin codigo.
 - Validacion real de zoom 200%, low-height, touch/gamepad fisico, forced-colors y NVDA/Narrator/VoiceOver.
 
-Un fallo tecnico en primera sesion sigue bloqueando la validacion final de `#24/#16`; un fallo solo de comprension habilita correcciones acotadas de `#24/#9`. `#9`, `#24` y `#74` quedan Partial hasta completar validacion manual/AT. `#16` queda bloqueado por el gate recurrente; GLITCH CANCEL sigue fuera de esta ejecucion.
+Un fallo tecnico en primera sesion sigue bloqueando la validacion final de `#24/#16`; un fallo solo de comprension habilita correcciones acotadas de `#24/#9`. `#9`, `#24`, `#74` y `#16` quedan Partial hasta completar validacion manual/AT/jugabilidad. `#17/#19` siguen bloqueados. El MVP GLITCH CANCEL se ejecuto posteriormente bajo el plan 0042 y permanece Training-only/Partial.

@@ -144,7 +144,7 @@ Available combos:
 
 The second combo key must be pressed within the combo window. If you wait too long, the normal attack for the pressed key comes out instead. If the second grounded punch or kick arrives during the first attack's recovery, the game buffers one follow-up and executes it on the first legal fixed simulation tick. Blocking, crouching, jumping, being hit, pausing, or resetting cancels the full combo sequence. A tap that begins and ends entirely between fixed simulation ticks is not queued.
 
-Energy charges when hitting, taking damage, or blocking. The special binding is not a normal strike: it only activates the special when the bar is full.
+Energy charges when hitting, taking damage, or blocking. Normally the Special binding activates only with a full bar. The optional `GLITCH CANCEL` Training experiment reuses that binding after a grounded punch/kick whiff: pressing it during remaining recovery spends 25 energy and returns P1 to neutral once for that sequence. This prototype is not enabled in Versus, Arcade, for the CPU, in the air, or after hit/block.
 
 ## Fighter Styles
 
@@ -210,7 +210,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - `J,J`, `J,K`, and `K,K` combos.
 - Special attack on `L` with full energy and stronger visual feedback.
 - Fighter styles: balanced, fast, heavy, and technical.
-- AI with difficulty-based reactions, range-aware attacks, tactical specials, counter windows, attack-type spam memory, zone-aware pattern memory, and wall-aware defense.
+- AI with difficulty-based reactions, range-aware attacks, tactical specials, counter windows, attack-type/zone memory, wall-aware defense, one-shot whiff punish opportunities, mid-range bait, punch-pattern crouch defense, and legal air attacks.
 - Visual CPU rivals: `NULL POINTER`, `LAG SPIKE`, `MERGE CONFLICT`, and `BOSS 500`. Rival selection changes presentation only; difficulty remains responsible for CPU behavior.
 
 ### UI/UX
@@ -243,6 +243,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Active matches pause when the page becomes hidden and require an explicit resume.
 - Training mode with position, CPU, timer, reset, health, and energy controls.
 - Training objectives inside the existing mode: three combo connections, crouch-and-punish, block-and-counter, and combat-earned energy/special spend. Trial progress is session-only and excluded from stats/history.
+- Optional `GLITCH CANCEL` Training experiment outside the `n/4` trial progression, with whiff/cancel/follow-up guidance, `CANCEL 25`/`USED 1/1` states, and no stats/history persistence.
 - First-run onboarding with an immediate skip path.
 
 ### Visual And Audio

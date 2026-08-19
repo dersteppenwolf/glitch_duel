@@ -18,6 +18,7 @@ const TRAINING_POSITIONS = {
     corner: [90, 200]
 };
 const TRAINING_TRIAL_IDS = ['combos', 'crouchPunish', 'blockCounter', 'specialSpend'];
+const TRAINING_EXPERIMENT_IDS = ['glitchCancel'];
 const TRAINING_TRIAL_COUNT = TRAINING_TRIAL_IDS.length;
 const TRAINING_TRIAL_CUE_FRAMES = 60;
 const TRAINING_TRIAL_WINDOW_FRAMES = 45;
@@ -26,17 +27,19 @@ const TRAINING_TRIAL_PRESETS = {
     combos: { positions: [440, 560], cpu: 'idle', timer: false },
     crouchPunish: { positions: [520, 620], cpu: 'idle', timer: false },
     blockCounter: { positions: [440, 560], cpu: 'idle', timer: false },
-    specialSpend: { positions: [440, 560], cpu: 'idle', timer: false, playerEnergy: 80 }
+    specialSpend: { positions: [440, 560], cpu: 'idle', timer: false, playerEnergy: 80 },
+    glitchCancel: { positions: [440, 660], cpu: 'idle', timer: false, playerEnergy: 100 }
 };
 const MAX_ENERGY = 100;
 const SPECIAL_ENERGY_COST = 100;
+const GLITCH_CANCEL_ENERGY_COST = 25;
 const COMBO_WINDOW_FRAMES = 36;
 const ENERGY_GAIN_ON_HIT = 14;
 const ENERGY_GAIN_ON_BLOCK = 6;
 const ENERGY_GAIN_ON_DAMAGE = 8;
 const ATTACKS = {
-    punch: { damage: 8, range: 95, cooldown: 12, height: 36, yOffset: -66, xOffset: 20, animation: 'punch' },
-    kick: { damage: 14, range: 135, cooldown: 24, height: 42, yOffset: -32, xOffset: 18, animation: 'kick' },
+    punch: { damage: 8, range: 95, cooldown: 12, height: 36, yOffset: -66, xOffset: 20, animation: 'punch', glitchCancelable: true },
+    kick: { damage: 14, range: 135, cooldown: 24, height: 42, yOffset: -32, xOffset: 18, animation: 'kick', glitchCancelable: true },
     airPunch: { damage: 9, range: 90, cooldown: 18, height: 42, yOffset: -78, xOffset: 18, animation: 'airPunch' },
     airKick: { damage: 13, range: 125, cooldown: 28, height: 46, yOffset: -48, xOffset: 18, animation: 'airKick' },
     comboPunch: { damage: 12, range: 108, cooldown: 18, height: 38, yOffset: -68, xOffset: 22, animation: 'punch' },
@@ -92,7 +95,11 @@ const DIFFICULTIES = {
         patternTypeBlockBonus: 0.04,
         spamBlockBonus: 0.06,
         zoneBlockBonus: 0.04,
-        airPatternKick: 0.18
+        airPatternKick: 0.18,
+        baitChance: 0.06,
+        crouchDefenseChance: 0.08,
+        whiffPunishChance: 0.18,
+        airAttackChance: 0.20
     },
     normal: {
         decisionMin: 12,
@@ -121,7 +128,11 @@ const DIFFICULTIES = {
         patternTypeBlockBonus: 0.08,
         spamBlockBonus: 0.14,
         zoneBlockBonus: 0.08,
-        airPatternKick: 0.32
+        airPatternKick: 0.32,
+        baitChance: 0.14,
+        crouchDefenseChance: 0.18,
+        whiffPunishChance: 0.42,
+        airAttackChance: 0.40
     },
     hard: {
         decisionMin: 7,
@@ -150,7 +161,11 @@ const DIFFICULTIES = {
         patternTypeBlockBonus: 0.12,
         spamBlockBonus: 0.24,
         zoneBlockBonus: 0.12,
-        airPatternKick: 0.48
+        airPatternKick: 0.48,
+        baitChance: 0.24,
+        crouchDefenseChance: 0.30,
+        whiffPunishChance: 0.68,
+        airAttackChance: 0.60
     }
 };
 const ARENAS = {

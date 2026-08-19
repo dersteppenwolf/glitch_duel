@@ -22,6 +22,11 @@ function chooseAIAction({
     opponentAirBias = 0,
     zoneAttackBias = 0,
     repeatedAttackBias = 0,
+    opponentWhiffed = false,
+    opponentRecovery = 0,
+    canAirPunch = false,
+    canAirKick = false,
+    airAttackUsed = false,
     difficulty,
     rand
 }) {
@@ -30,6 +35,7 @@ function chooseAIAction({
     const kickReady = canAttack && canKick;
     const specialReady = canAttack && canSpecial && energy >= SPECIAL_ENERGY_COST;
     const retreatBlocked = (x < opponentX && nearLeftWall) || (x > opponentX && nearRightWall);
+    const inMidRange = dist > 110 && dist <= 250;
     const typeAttackBias = Math.max(opponentPunchBias, opponentKickBias, opponentSpecialBias, opponentAirBias);
     const blockReaction = Math.min(
         difficulty.maxBlockReaction ?? 0.96,
@@ -39,6 +45,29 @@ function chooseAIAction({
             repeatedAttackBias * (difficulty.spamBlockBonus ?? 0) +
             zoneAttackBias * (difficulty.zoneBlockBonus ?? 0)
     );
+
+    if (!onGround) {
+        if (!canAttack || airAttackUsed || rand >= (difficulty.airAttackChance ?? 0)) return 'idle';
+        if (canAirKick && dist > ATTACKS.airPunch.range) return 'airKick';
+        if (canAirPunch) return 'airPunch';
+        if (canAirKick) return 'airKick';
+        return 'idle';
+    }
+
+    if (opponentWhiffed && opponentRecovery > 0 && rand < (difficulty.whiffPunishChance ?? 0)) {
+        if (kickReady && dist > ATTACKS.punch.range) return 'kick';
+        if (punchReady) return 'punch';
+        if (kickReady) return 'kick';
+        if (inMidRange) return 'approach';
+    }
+
+    if (!opponentAttacking && opponentPunchBias > 0.45 && opponentPunchBias > opponentKickBias && opponentPunchBias > opponentSpecialBias && rand < (difficulty.crouchDefenseChance ?? 0)) {
+        return 'crouch';
+    }
+
+    if (!opponentAttacking && inMidRange && !retreatBlocked && (opponentAttackBias > 0.5 || repeatedAttackBias > 0.5) && rand < (difficulty.baitChance ?? 0)) {
+        return 'retreat';
+    }
 
     if (opponentAttacking && dist < 170 && onGround && rand < blockReaction) {
         return 'block';

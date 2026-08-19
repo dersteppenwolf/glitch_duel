@@ -83,6 +83,7 @@ let canvasDisplayWidth = WIDTH;
 let hudCompactMode = false;
 let modeContextCacheKey = null;
 let touchSpecialStateCacheKey = null;
+const pendingButtonClickSources = new Set();
 let pauseSummaryCacheKey = null;
 const VS_INTRO_FRAMES = 90;
 const MODAL_SURFACE_IDS = ['arena-shell', 'orientation-warning', 'main-menu', 'help-screen', 'controls-screen', 'onboarding-screen', 'pause-screen', 'controls', 'training-panel', 'game-over'];
@@ -669,12 +670,12 @@ function recordCombatStatusEvent(text) {
 }
 
 function isTrainingTrial(id = activeTrialId) {
-    return gameMode === 'training' && TRAINING_TRIAL_IDS.includes(id);
+    return gameMode === 'training' && (TRAINING_TRIAL_IDS.includes(id) || TRAINING_EXPERIMENT_IDS.includes(id));
 }
 
 function createTrialState(id = activeTrialId) {
-    if (!TRAINING_TRIAL_IDS.includes(id)) return null;
-    const completed = !!trainingTrialCompletions[id];
+    if (!TRAINING_TRIAL_IDS.includes(id) && !TRAINING_EXPERIMENT_IDS.includes(id)) return null;
+    const completed = TRAINING_TRIAL_IDS.includes(id) && !!trainingTrialCompletions[id];
     return {
         id,
         phase: completed ? 'complete' : (id === 'crouchPunish' || id === 'blockCounter' ? 'cue' : 'active'),
@@ -683,6 +684,7 @@ function createTrialState(id = activeTrialId) {
         retryTicksRemaining: 0,
         completedSteps: [],
         energyReady: false,
+        glitchSequence: 0,
         completed,
         failureReason: ''
     };
@@ -725,7 +727,7 @@ function markTrialComplete() {
     trialState.completed = true;
     trialState.phase = 'complete';
     trialState.retryTicksRemaining = 0;
-    trainingTrialCompletions[activeTrialId] = true;
+    if (TRAINING_TRIAL_IDS.includes(activeTrialId)) trainingTrialCompletions[activeTrialId] = true;
 }
 
 function retryTrainingTrial(reason = '') {
@@ -736,6 +738,7 @@ function retryTrainingTrial(reason = '') {
     trialState.retryTicksRemaining = TRAINING_TRIAL_RETRY_FRAMES;
     trialState.completedSteps = [];
     trialState.energyReady = false;
+    trialState.glitchSequence = 0;
     trialState.failureReason = reason;
     trialTick = 0;
     resetTrainingFighters();
@@ -810,12 +813,48 @@ function reduceSpecialSpendTrialEvent(event) {
     }
 }
 
+function setGlitchCancelTrialFeedback(reason) {
+    if (activeTrialId !== 'glitchCancel' || !trialState || trialState.completed) return;
+    trialState.failureReason = reason;
+    const message = t(`trainingGlitchCancelError${reason.charAt(0).toUpperCase()}${reason.slice(1)}`);
+    showStatusMessage(message, 70);
+    announce(message, 'special');
+}
+
+function reduceGlitchCancelTrialEvent(event) {
+    if (!trialState || trialState.completed) return;
+    if (event.type === 'glitchCancel' && trialState.phase === 'cancel') {
+        trialState.phase = 'followup';
+        trialState.glitchSequence = event.sequence;
+        trialState.failureReason = '';
+        announce(t('trainingGlitchCancelFollowupBrief'), 'special');
+        return;
+    }
+    if (event.type !== 'attackResolved' || event.actor !== 'player' || event.target !== 'cpu') return;
+    if (trialState.phase === 'active') {
+        if (!['punch', 'kick'].includes(event.attackType)) return;
+        if (event.outcome === 'whiff') {
+            trialState.phase = 'cancel';
+            trialState.glitchSequence = event.sequence;
+            trialState.failureReason = '';
+            announce(t('trainingGlitchCancelCancelBrief'), 'special');
+        } else {
+            setGlitchCancelTrialFeedback('contact');
+        }
+        return;
+    }
+    if (trialState.phase === 'followup' && event.outcome === 'hit' && event.attackType !== 'special' && event.sequence > trialState.glitchSequence) {
+        markTrialComplete();
+    }
+}
+
 function reduceTrainingTrialEvent(event) {
     if (!isTrainingTrial() || !trialState || !event) return;
     if (activeTrialId === 'combos') reduceCombosTrialEvent(event);
     else if (activeTrialId === 'crouchPunish') reduceCrouchPunishTrialEvent(event);
     else if (activeTrialId === 'blockCounter') reduceBlockCounterTrialEvent(event);
     else if (activeTrialId === 'specialSpend') reduceSpecialSpendTrialEvent(event);
+    else if (activeTrialId === 'glitchCancel') reduceGlitchCancelTrialEvent(event);
 }
 
 function recordCombatEvent(event) {
@@ -823,6 +862,16 @@ function recordCombatEvent(event) {
     lastCombatEvent = { ...event };
     combatStatusCacheKey = null;
     reduceTrainingTrialEvent(event);
+}
+
+function recordGlitchCancelAttempt(fighter) {
+    if (!fighter || !fighter.glitchCancelEnabled || activeTrialId !== 'glitchCancel') return;
+    let reason = 'recovery';
+    if (fighter.glitchCancelUsed && fighter.attackCooldown > 0) reason = 'used';
+    else if (fighter.energy < GLITCH_CANCEL_ENERGY_COST) reason = 'energy';
+    else if (fighter.lastAttackOutcome === 'hit' || fighter.lastAttackOutcome === 'blocked') reason = 'contact';
+    else if (fighter.attackCooldown === 0 && fighter.energy >= SPECIAL_ENERGY_COST) reason = 'neutral';
+    setGlitchCancelTrialFeedback(reason);
 }
 
 function resetTrainingFighters() {
@@ -844,6 +893,9 @@ function resetTrainingFighters() {
         fighter.attackSequence = 0;
         fighter.lastAttackOutcome = '';
         fighter.lastAttackType = '';
+        fighter.glitchCancelEnabled = fighter.isPlayer1 && activeTrialId === 'glitchCancel';
+        fighter.glitchCancelUsed = false;
+        fighter.glitchCancelFeedbackFrames = 0;
         fighter.aiDecisionTimer = 0;
     });
     player1.health = Math.round(100 * (FIGHTER_STYLES[player1.styleKey] || FIGHTER_STYLES.balanced).health);
@@ -869,6 +921,7 @@ function startTrainingTrialAttempt() {
     trialState.retryTicksRemaining = 0;
     trialState.completedSteps = [];
     trialState.energyReady = false;
+    trialState.glitchSequence = 0;
     trialState.failureReason = '';
     trialTick = 0;
 }
@@ -925,6 +978,13 @@ function getTrainingTrialProgressText() {
             counter: check(trialState.completed)
         });
     }
+    if (activeTrialId === 'glitchCancel') {
+        return t('trainingGlitchCancelProgress', {
+            whiff: check(['cancel', 'followup', 'complete'].includes(trialState.phase)),
+            cancel: check(['followup', 'complete'].includes(trialState.phase)),
+            followup: check(trialState.completed)
+        });
+    }
     return t('trainingTrialSpecialProgress', {
         charge: check(trialState.energyReady || trialState.completed),
         spend: check(trialState.completed)
@@ -934,6 +994,12 @@ function getTrainingTrialProgressText() {
 function getTrainingTrialBrief() {
     if (!isTrainingTrial() || !trialState) return t('trainingTrialFreeBrief');
     if (trialState.completed) return t('trainingTrialSuccess');
+    if (activeTrialId === 'glitchCancel') {
+        if (trialState.failureReason) return t(`trainingGlitchCancelError${trialState.failureReason.charAt(0).toUpperCase()}${trialState.failureReason.slice(1)}`);
+        if (trialState.phase === 'cancel') return t('trainingGlitchCancelCancelBrief');
+        if (trialState.phase === 'followup') return t('trainingGlitchCancelFollowupBrief');
+        return t('trainingGlitchCancelAttackBrief');
+    }
     if (trialState.phase === 'retry') return t('trainingTrialRetry', { ticks: trialState.retryTicksRemaining });
     if (activeTrialId === 'combos') return t('trainingTrialCombosBrief', {
         jj: t('comboJJ'),
@@ -951,7 +1017,7 @@ function renderTrainingTrial() {
     const progress = document.getElementById('training-trial-progress');
     const next = document.getElementById('training-trial-next');
     const freeOptions = document.getElementById('training-free-options');
-    const uiSignature = `${activeTrialId}|${trialState ? trialState.phase : 'free'}|${trialState ? trialState.completedSteps.join(',') : ''}|${trialState ? trialState.energyReady : false}|${trialState ? trialState.completed : false}|${trialState ? trialState.failureReason : ''}`;
+    const uiSignature = `${activeTrialId}|${trialState ? trialState.phase : 'free'}|${trialState ? trialState.completedSteps.join(',') : ''}|${trialState ? trialState.energyReady : false}|${trialState ? trialState.glitchSequence : 0}|${trialState ? trialState.completed : false}|${trialState ? trialState.failureReason : ''}`;
     if (uiSignature === trainingTrialUiCacheKey) return;
     trainingTrialUiCacheKey = uiSignature;
     if (select) select.value = activeTrialId;
@@ -1058,6 +1124,9 @@ function getCombatEventText(event = lastCombatEvent) {
             sequence: event.sequence
         });
     }
+    if (event.type === 'glitchCancel') {
+        return t('combatEventGlitchCancel', { cost: event.cost, energy: event.energyAfter, sequence: event.sequence });
+    }
     return String(event.type || t('combatStatusNoEvent'));
 }
 
@@ -1078,7 +1147,8 @@ function announceCombatStatus() {
         distance,
         round: currentRound,
         score: `${playerRounds}-${cpuRounds}`,
-        time
+        time,
+        special: getSpecialActionStateText()
     }), 'query');
 }
 
@@ -1096,6 +1166,7 @@ function renderCombatStatus() {
     const distance = getCombatStatusDistanceBucket();
     const mode = getModeContextText();
     const event = getCombatEventText();
+    const specialState = getSpecialActionStateText();
     const summary = document.getElementById('combat-status-summary');
     const signature = [
         getLanguage(),
@@ -1110,7 +1181,8 @@ function renderCombatStatus() {
         mode,
         direction,
         distance,
-        event
+        event,
+        specialState
     ].join('|');
     if (signature === combatStatusCacheKey) return;
 
@@ -1122,7 +1194,7 @@ function renderCombatStatus() {
         mode,
         `${p1Health}%`,
         `${cpuHealth}%`,
-        `${p1Energy}/${MAX_ENERGY}`,
+        `${p1Energy}/${MAX_ENERGY} · ${specialState}`,
         `${cpuEnergy}/${MAX_ENERGY}`,
         currentRound,
         `${playerRounds}-${cpuRounds}`,
@@ -1403,6 +1475,10 @@ function setElementAria(id, key) {
 function getModeContextText() {
     if (gameMode === 'training') {
         if (!isTrainingTrial()) return `${t('modeTraining')} · ${t('trainingTrialFree')}`;
+        if (activeTrialId === 'glitchCancel') {
+            const progress = trialState && trialState.completed ? t('trainingTrialCompleteShort') : getTrainingTrialProgressText();
+            return t('trainingGlitchCancelToolbar', { progress });
+        }
         const progress = trialState && trialState.completed ? t('trainingTrialCompleteShort') : getTrainingTrialProgressText();
         return t('trainingTrialToolbar', { trial: getTrialIndex(), total: TRAINING_TRIAL_COUNT, progress });
     }
@@ -1436,15 +1512,21 @@ function renderTouchSpecialState() {
     if (!button || !stateElement) return;
 
     const energy = Math.max(0, Math.min(MAX_ENERGY, Math.round(player1 ? player1.energy : 0)));
-    const ready = energy >= MAX_ENERGY;
+    const actionState = getSpecialActionState(player1);
     const visible = mobileControlsEnabled && gameState === 'playing';
-    const signature = `${getLanguage()}|${energy}|${ready}|${visible}`;
+    const signature = `${getLanguage()}|${energy}|${actionState}|${player1 ? player1.glitchCancelUsed : false}|${visible}`;
     if (signature === touchSpecialStateCacheKey) return;
 
-    const state = ready ? t('specialReadyShort') : t('specialCharging');
+    const stateKeys = {
+        charging: 'specialCharging',
+        'cancel-ready': 'glitchCancelReadyShort',
+        'cancel-used': 'glitchCancelUsedShort',
+        'special-ready': 'specialReadyShort'
+    };
+    const state = t(stateKeys[actionState]);
     stateElement.textContent = state;
-    button.setAttribute('data-state', ready ? 'ready' : 'charging');
-    button.setAttribute('aria-disabled', ready ? 'false' : 'true');
+    button.setAttribute('data-state', actionState);
+    button.setAttribute('aria-disabled', actionState === 'cancel-ready' || actionState === 'special-ready' ? 'false' : 'true');
     button.setAttribute('aria-label', t('specialButtonStateLabel', {
         action: t('touchSpecialAction'),
         state,
@@ -1452,6 +1534,32 @@ function renderTouchSpecialState() {
         max: MAX_ENERGY
     }));
     touchSpecialStateCacheKey = signature;
+}
+
+function getSpecialActionState(fighter = player1) {
+    if (!fighter) return 'charging';
+    const projectedCooldown = Math.max(0, fighter.attackCooldown - 1);
+    if (projectedCooldown > 0 && fighter.glitchCancelEnabled) {
+        if (fighter.glitchCancelUsed) return 'cancel-used';
+        const attack = ATTACKS[fighter.lastAttackType];
+        if (fighter.isPlayer1 && attack && attack.glitchCancelable === true && fighter.lastAttackOutcome === 'whiff' &&
+            fighter.onGround && fighter.hitStun === 0 && fighter.state !== 'block' && fighter.state !== 'crouch' &&
+            fighter.state !== 'jump' && fighter.energy >= GLITCH_CANCEL_ENERGY_COST) return 'cancel-ready';
+    }
+    const pendingComboExecutable = !!fighter.pendingComboInput && fighter.comboTimer > 1 && fighter.onGround &&
+        fighter.state !== 'block' && fighter.state !== 'crouch' && fighter.state !== 'jump';
+    if (projectedCooldown === 0 && !pendingComboExecutable && fighter.energy >= SPECIAL_ENERGY_COST) return 'special-ready';
+    return 'charging';
+}
+
+function getSpecialActionStateText(fighter = player1) {
+    const keys = {
+        charging: 'glitchCancelStatusUnavailable',
+        'cancel-ready': 'glitchCancelStatusReady',
+        'cancel-used': 'glitchCancelStatusUsed',
+        'special-ready': 'glitchCancelStatusSpecial'
+    };
+    return t(keys[getSpecialActionState(fighter)]);
 }
 
 function updateCombatStatusThresholds() {
@@ -1963,7 +2071,7 @@ function setTrainingTimer(value) {
 }
 
 function setTrainingTrial(value) {
-    const next = value === 'free' ? 'free' : (TRAINING_TRIAL_IDS.includes(value) ? value : 'free');
+    const next = value === 'free' ? 'free' : (TRAINING_TRIAL_IDS.includes(value) || TRAINING_EXPERIMENT_IDS.includes(value) ? value : 'free');
     if (gameMode !== 'training') {
         activeTrialId = next;
         trialState = null;
@@ -2116,12 +2224,21 @@ function checkCollision() {
     right.x += rightPush + Math.min(remaining, Math.max(0, rightCapacity - rightPush));
 }
 
+function clearPendingButtonClickSources() {
+    pendingButtonClickSources.forEach((sourceId) => clearInputSource(sourceId));
+    pendingButtonClickSources.clear();
+}
+
 function update() {
-    if (gameState !== 'playing') return;
+    if (gameState !== 'playing') {
+        clearPendingButtonClickSources();
+        return;
+    }
 
     if (debugMetrics.active) debugStepCount++;
 
     if (vsIntroTimer > 0) {
+        clearPendingButtonClickSources();
         vsIntroTimer--;
         updateEffects();
         return;
@@ -2130,12 +2247,14 @@ function update() {
     matchElapsedFrames++;
 
     if (hitStopFrames > 0) {
+        clearPendingButtonClickSources();
         hitStopFrames--;
         updateEffects();
         return;
     }
 
     const actions = refreshInputSnapshot();
+    clearPendingButtonClickSources();
     const trialPhaseBeforeTick = isTrainingTrial() && trialState ? trialState.phase : 'none';
     player1.update(actions, player2);
     advanceTrainingTrialBeforeCpu(trialPhaseBeforeTick);
@@ -2474,6 +2593,13 @@ function handleGamepadEvents(events) {
     }
 }
 
+function triggerGlitchCancelFeedback(fighter) {
+    showStatusMessage(t('glitchCancelImpact', { cost: GLITCH_CANCEL_ENERGY_COST }), 35);
+    announce(t('glitchCancelAnnounce', { cost: GLITCH_CANCEL_ENERGY_COST }), 'special');
+    combatStatusCacheKey = null;
+    touchSpecialStateCacheKey = null;
+}
+
 function advanceSimulation(deltaMs) {
     if (gameState !== 'playing') return;
 
@@ -2603,7 +2729,7 @@ function setupMobileControls() {
 
         btn.addEventListener('pointerdown', (e) => {
             if (e.button !== undefined && e.button !== 0) return;
-            if (key === 'special' && (!player1 || player1.energy < MAX_ENERGY)) return;
+            if (key === 'special' && !['cancel-ready', 'special-ready'].includes(getSpecialActionState(player1))) return;
             recordTouchPointerdown(e, btn);
             if (e.preventDefault) e.preventDefault();
             initAudio();
@@ -2619,7 +2745,7 @@ function setupMobileControls() {
         btn.addEventListener('lostpointercapture', (e) => releasePointer(e.pointerId));
         btn.addEventListener('keydown', (e) => {
             if (e.repeat || (e.key !== ' ' && e.key !== 'Enter')) return;
-            if (key === 'special' && (!player1 || player1.energy < MAX_ENERGY)) return;
+            if (key === 'special' && !['cancel-ready', 'special-ready'].includes(getSpecialActionState(player1))) return;
             if (e.preventDefault) e.preventDefault();
             setInputSource(`button:${key}:${e.key}`, key, true);
             refreshInputSnapshot();
@@ -2632,6 +2758,12 @@ function setupMobileControls() {
         });
         btn.addEventListener('click', (e) => {
             if (e.preventDefault) e.preventDefault();
+            if (gameState !== 'playing') return;
+            if (key === 'special' && !['cancel-ready', 'special-ready'].includes(getSpecialActionState(player1))) return;
+            const sourceId = `button-click:${key}`;
+            setInputSource(sourceId, key, true);
+            pendingButtonClickSources.add(sourceId);
+            refreshInputSnapshot();
         });
     });
 }
@@ -2956,6 +3088,10 @@ function setupTrainingControls() {
     document.getElementById('training-trial-select').addEventListener('change', (e) => setTrainingTrial(e.target.value));
     document.getElementById('training-trial-next').addEventListener('click', () => {
         if (!isTrainingTrial() || !trialState || !trialState.completed) return;
+        if (activeTrialId === 'glitchCancel') {
+            setTrainingTrial('free');
+            return;
+        }
         const currentIndex = getTrialIndex() - 1;
         setTrainingTrial(TRAINING_TRIAL_IDS[currentIndex + 1] || 'free');
     });

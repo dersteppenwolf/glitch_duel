@@ -14,7 +14,7 @@ function drawHealthBars() {
     ctx.fillStyle = '#000';
     ctx.textAlign = 'left';
     ctx.fillText(`${hudCompactMode ? 'P1' : t('human')}: ${player1.health}%`, 50, 26);
-    drawEnergyBar(52, 67, player1.energy, false, player1.accentColor);
+    drawEnergyBar(52, 67, player1.energy, false, player1.accentColor, getSpecialActionState(player1));
     ctx.fillStyle = '#000';
     ctx.textAlign = 'right';
     ctx.fillText(`${hudCompactMode ? 'CPU' : (player2.labelKey ? t(player2.labelKey) : t('cpuAI'))}: ${player2.health}%`, WIDTH - 50, 26);
@@ -88,7 +88,7 @@ function getHealthBarColor(health) {
     return '#22c55e';
 }
 
-function drawEnergyBar(x, y, energy, alignRight, accentColor = '#000') {
+function drawEnergyBar(x, y, energy, alignRight, accentColor = '#000', actionState = 'charging') {
     const width = 200;
     const height = 12;
     const fillWidth = Math.max(0, Math.min(width, energy * 2));
@@ -123,6 +123,18 @@ function drawEnergyBar(x, y, energy, alignRight, accentColor = '#000') {
         ctx.fillStyle = '#000';
         ctx.textAlign = 'center';
         ctx.fillText(t('specialReadyShort'), x + width / 2, y + 10);
+    }
+
+    if (actionState === 'cancel-ready') {
+        const segmentX = alignRight ? x + width - 50 : x;
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 2;
+        for (let offset = -8; offset < 50; offset += 9) {
+            ctx.beginPath();
+            ctx.moveTo(segmentX + Math.max(0, offset), y + Math.max(0, -offset));
+            ctx.lineTo(segmentX + Math.min(50, offset + 12), y + Math.min(height, 12));
+            ctx.stroke();
+        }
     }
 }
 

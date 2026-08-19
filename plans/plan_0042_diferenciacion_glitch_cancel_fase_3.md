@@ -51,6 +51,7 @@ Queda fuera del alcance:
 - Teclado, pointer y gamepad ya convergen en la accion `special`; boton 3/Y es gamepad. No hace falta modificar `INPUT_ACTIONS`.
 - `#btn-special` tiene estados charging/ready, texto/ARIA y cache DOM. Debe extenderse con cancel-ready/used sin crear segundo escritor.
 - `#combat-status` es DOM no-live y ya expone energia/ultimo evento; puede comunicar estado de cancel y consulta sin live spam.
+- `#16` ya aporta whiff punish/consumo de attackSequence. GLITCH CANCEL debe conservar `lastAttackOutcome/attackSequence`; poner cooldown a cero cierra naturalmente la oportunidad de punish sin dar a CPU una reaccion nueva.
 - HUD energia esta dividido en cuartos. Un coste de 25 coincide con un segmento existente.
 - Reduced motion elimina shake/hit-stop/particulas fuertes, pero FloatingText y aura actual requieren cuidado si se reutilizan.
 - La preferencia manual de reduced motion y la del sistema no deben alterar coste, ventana, cuota o resultado.
@@ -620,15 +621,31 @@ Ejecutar pruebas focales antes de cada commit y suite completa antes del ultimo.
 
 ## Estado De Implementacion
 
-Bloqueado en Gate0.
+Parcial: MVP Training-only implementado; expansiones bloqueadas.
 
-Ejecucion verificada sin cambios de producto:
+La direccion explicita del usuario se tomo como aceptacion de Gate0 para ejecutar codigo, sin inventar evidencia humana. El repositorio sigue sin registros de las seis sesiones nuevas, cuatro recurrentes, timing fisico `#73`, hardware o lectores de pantalla.
 
-- El repositorio ya contiene `activeTrialId`, `attackResolved`, `energyReady` y el trial host de `#9`.
-- `#77` se toma como ejecutado por supuesto explicito del usuario, pero no existen registros de las seis sesiones nuevas ni de los cuatro jugadores recurrentes en el repositorio.
-- El timing fisico de `#73` con touch/gamepad sigue sin verificarse.
-- Baseline tecnica: `node --test tests\game.test.js` con `121/121` aprobadas.
-- Baseline de sintaxis: todos los `src/*.js` pasan `node --check`.
-- No se modificaron codigo, tests ni configuracion de combate.
+Implementado:
 
-Este documento no autoriza codigo hasta registrar el timing fisico de `#73` y la validacion manual/comprension de `#9/#77`. El primer alcance permitido sigue siendo Training trial, humano, whiff-only, punch/kick, coste25 y cuota1/1. Versus, Carrera, CPU y cualquier ampliacion permanecen fuera hasta gates posteriores.
+- Opcion experimental `glitchCancel` dentro del selector de Training y fuera del progreso `n/4`.
+- Solo P1 humano, punch/kick terrestre con outcome whiff, cooldown post-decremento mayor que cero, coste exacto25 y cuota una vez por secuencia.
+- Special neutral100, trials Fase2, Free Training, CPU, Versus, Carrera, aire, hit/block, combos, stats e historial permanecen sin Cancel.
+- Precedencia de pending/simultaneos, reset/interrupcion, estado touch/Canvas/HUD/status, anuncios discretos, reduced motion, forced-colors y audio suplementario.
+- Paridad automatizada por teclado default/remapeado, pointer/cancel/lost-capture, gamepad standard boton3, fuentes simultaneas y activacion click de AT.
+
+Desviacion documentada:
+
+- El preset usa P1=440/CPU=660 en vez de 440/620. Con las hitboxes reales, kick desde 440 intersecta al rival en 620; 660 garantiza que punch y kick iniciales hagan whiff sin modificar rangos globales.
+
+Validacion ejecutada:
+
+- `142/142` pruebas Node aprobadas, incluida traza GLITCH CANCEL equivalente a 30/60/120 FPS y descarte del click AT en ticks congelados.
+- Todos los `src/*.js` pasan `node --check`; `git diff --check` correcto salvo avisos LF/CRLF de Windows.
+- Smoke servido por HTTP en `1440x900` y `390x844`: menu/Training cargan sin errores y el experimento aparece en el selector.
+- Revision estatica de accesibilidad corrigio activacion click de AT, nombre localizado del selector, anuncios discretos de fase, contraste/patron y proyeccion de pending.
+
+Pendiente:
+
+- Teclado/touch/gamepad fisicos, zoom real200%, forced colors y NVDA/Narrator/VoiceOver.
+- Piloto de cuatro recurrentes para comprension, preferencia, no-obligatoriedad y decision Retain/Promote/Reject.
+- Versus y Carrera permanecen deshabilitados; CPU/aire/hit/block/combos permanecen fuera de alcance.

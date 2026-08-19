@@ -32,9 +32,12 @@
 - Touch controls keep localized child labels; `renderTouchSpecialState()` is the only writer of special readiness state and updates DOM only when its cached signature changes.
 - Debug timing and audio lifecycle diagnostics are opt-in, bounded, in-memory, and never persisted or sent over the network. Web Audio tone graphs must disconnect idempotently after ending.
 - `#combat-status` is a non-live DOM summary; `Digit0`, a remapped status edge, gamepad button 8, or opening its details can query a localized snapshot without per-frame announcements. Binding storage v2 migrates v1 without stealing user keys.
-- Training trials are a substate of `gameMode === 'training'`: `free`, `combos`, `crouchPunish`, `blockCounter`, and `specialSpend`; progress is session-only, uses real `attackResolved`/`energyReady` events, and must not update stats/history.
+- Training trials are a substate of `gameMode === 'training'`: `free`, `combos`, `crouchPunish`, `blockCounter`, and `specialSpend`; `glitchCancel` is a separate experimental Training option outside `n/4`. Progress is session-only, uses real combat events, and must not update stats/history.
 - Trial cues and response windows advance only in fixed simulation ticks; reset, pause, hidden-page return, KO and trial changes clear temporary progress without persisting it.
+- GLITCH CANCEL is Training-experiment-only and P1-only: after post-decrement recovery remains on a grounded punch/kick whiff, a new Special edge spends exactly 25, clears recovery/pending combo, and consumes that offensive tick. It never applies to hit/block, combos, air, Special, CPU, Versus, or Arcade; neutral Special still costs 100.
+- `getSpecialActionState()` is authoritative for touch/Canvas/status feedback. Native touch-button click activation is held through one input snapshot for assistive technology, while pointer/keyboard/gamepad sources still aggregate without double spending.
 - Help/onboarding guidance keeps keyboard, touch, and standard gamepad visible; `recentInputMethod`, `guidanceInputMethod`, and `pendingStartMode` are session-only, and onboarding completion/skip starts the requested mode.
+- Contextual CPU tactics remain rule-based: one observed attack sequence can trigger one whiff opportunity, crouch only answers dominant punch patterns, bait reuses retreat away from walls, and air attacks use real hitboxes once per jump.
 - Canvas simulation uses fixed logical dimensions `1000x500`; `resizeCanvas()` maps that space to a responsive CSS size and DPR-aware backing store. Keep hitboxes in logical coordinates.
 
 ## Conventions

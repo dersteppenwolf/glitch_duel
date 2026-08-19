@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GLITCH DUEL - Arcade VS AI</title>
-    <link rel="stylesheet" href="styles.css?v=20260818-guidance">
+    <link rel="stylesheet" href="styles.css?v=20260818-glitch-cancel">
 </head>
 <body>
     <div id="game-container">
@@ -329,12 +329,13 @@
         <div id="training-panel" role="group" aria-label="Controles de entrenamiento" data-i18n-aria="trainingControlsLabel">
             <label class="training-trial-picker" for="training-trial-select">
                 <span data-i18n="trainingTrialLabel">Objetivo de entrenamiento</span>
-                <select id="training-trial-select" aria-label="Objetivo de entrenamiento">
+                <select id="training-trial-select">
                     <option value="free" data-i18n="trainingTrialFreeOption">PRACTICA LIBRE</option>
                     <option value="combos" data-i18n="trainingTrialCombos">TRIAL 1 · COMBOS</option>
                     <option value="crouchPunish" data-i18n="trainingTrialCrouchPunish">TRIAL 2 · CASTIGO AGACHADO</option>
                     <option value="blockCounter" data-i18n="trainingTrialBlockCounter">TRIAL 3 · BLOQUEO Y CONTRA</option>
                     <option value="specialSpend" data-i18n="trainingTrialSpecialSpend">TRIAL 4 · CARGAR Y GASTAR</option>
+                    <option value="glitchCancel" data-i18n="trainingGlitchCancelOption">EXPERIMENTO · GLITCH CANCEL</option>
                 </select>
             </label>
             <div id="training-trial-brief" class="training-trial-brief"></div>
@@ -372,16 +373,16 @@
         </div>
     </div>
 
-    <script src="i18n.js?v=20260818-guidance"></script>
-    <script src="config.js?v=20260818-guidance"></script>
-    <script src="input.js?v=20260818-guidance"></script>
-    <script src="audio.js?v=20260818-guidance"></script>
-    <script src="effects.js?v=20260818-guidance"></script>
-    <script src="ai.js?v=20260818-guidance"></script>
-    <script src="fighter_render.js?v=20260818-guidance"></script>
-    <script src="fighter.js?v=20260818-guidance"></script>
-    <script src="arena_render.js?v=20260818-guidance"></script>
-    <script src="hud_render.js?v=20260818-guidance"></script>
-    <script src="game.js?v=20260818-guidance"></script>
+    <script src="i18n.js?v=20260818-glitch-cancel"></script>
+    <script src="config.js?v=20260818-glitch-cancel"></script>
+    <script src="input.js?v=20260818-glitch-cancel"></script>
+    <script src="audio.js?v=20260818-glitch-cancel"></script>
+    <script src="effects.js?v=20260818-glitch-cancel"></script>
+    <script src="ai.js?v=20260818-glitch-cancel"></script>
+    <script src="fighter_render.js?v=20260818-glitch-cancel"></script>
+    <script src="fighter.js?v=20260818-glitch-cancel"></script>
+    <script src="arena_render.js?v=20260818-glitch-cancel"></script>
+    <script src="hud_render.js?v=20260818-glitch-cancel"></script>
+    <script src="game.js?v=20260818-glitch-cancel"></script>
 </body>
 </html>

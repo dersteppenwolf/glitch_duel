@@ -121,6 +121,11 @@ function playUISound(type) {
     playTone(profile);
 }
 
+function playGlitchCancelSound() {
+    playTone({ wave: 'square', start: 820, end: 260, gain: 0.10, duration: 55 });
+    setTimeout(() => playTone({ wave: 'triangle', start: 260, end: 620, gain: 0.10, duration: 70 }), 25);
+}
+
 function playHitSound() {
     playImpactSound('punch');
 }

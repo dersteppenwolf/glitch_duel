@@ -5,6 +5,7 @@ function drawFighter(fighter) {
     const accentColor = fighter.accentColor || (fighter.isPlayer1 ? '#1f6feb' : '#d22');
 
     drawFighterIdentityMarker(fighter, baseX, baseY, accentColor);
+    drawGlitchCancelFeedback(fighter, baseX, baseY);
 
     if (!fighter.facingRight) {
         ctx.scale(-1, 1);
@@ -236,7 +237,8 @@ function getFighterMarkerLayout(fighter, baseX, baseY, label) {
 }
 
 function drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor) {
-    if (fighter.energy < MAX_ENERGY || fighter.state === 'special') return;
+    const actionState = fighter.isPlayer1 ? getSpecialActionState(fighter) : (fighter.energy >= MAX_ENERGY ? 'special-ready' : 'charging');
+    if (actionState === 'charging' || fighter.state === 'special') return;
 
     const layout = getFighterMarkerLayout(
         fighter,
@@ -246,10 +248,12 @@ function drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor) {
     );
     const y = layout.specialTop + 18;
     const indicatorCenter = Math.max(78, Math.min(WIDTH - 78, baseX));
-    ctx.strokeStyle = accentColor;
+    const cancelState = actionState === 'cancel-ready' || actionState === 'cancel-used';
+    const indicatorColor = cancelState ? '#007f8b' : accentColor;
+    ctx.strokeStyle = indicatorColor;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(indicatorCenter, layout.specialCircleY, 34 + Math.sin(fighter.frame / 5) * 3, 0, Math.PI * 2);
+    ctx.arc(indicatorCenter, layout.specialCircleY, 34 + (reducedMotionEnabled ? 0 : Math.sin(fighter.frame / 5) * 3), 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.fillStyle = '#fffdf2';
@@ -259,8 +263,33 @@ function drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor) {
     ctx.strokeRect(indicatorCenter - 62, y - 18, 124, 24);
     ctx.font = `bold 12px ${GAME_FONT_FAMILY}`;
     ctx.textAlign = 'center';
-    ctx.fillStyle = accentColor;
-    ctx.fillText(t('specialReady'), indicatorCenter, y - 2);
+    ctx.fillStyle = indicatorColor;
+    const label = actionState === 'cancel-ready'
+        ? t('glitchCancelReadyShort')
+        : (actionState === 'cancel-used' ? t('glitchCancelUsedCanvas') : t('specialReady'));
+    ctx.fillText(label, indicatorCenter, y - 2);
+}
+
+function drawGlitchCancelFeedback(fighter, baseX, baseY) {
+    if (!fighter.isPlayer1 || fighter.glitchCancelFeedbackFrames <= 0) return;
+    const offset = reducedMotionEnabled ? 0 : (fighter.glitchCancelFeedbackFrames % 2 === 0 ? 5 : -5);
+    ctx.save();
+    ctx.lineWidth = 4;
+    [['#00a8b5', -42], ['#d1008f', -18], ['#00a8b5', 8]].forEach(([color, y], index) => {
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(baseX - 30 + offset * (index % 2 ? -1 : 1), baseY + y);
+        ctx.lineTo(baseX + 30 + offset * (index % 2 ? -1 : 1), baseY + y - 5);
+        ctx.stroke();
+    });
+    ctx.font = `bold 16px ${GAME_FONT_FAMILY}`;
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#fff';
+    ctx.strokeText(t('glitchCancelImpact', { cost: GLITCH_CANCEL_ENERGY_COST }), baseX, baseY - 188);
+    ctx.fillStyle = '#111';
+    ctx.fillText(t('glitchCancelImpact', { cost: GLITCH_CANCEL_ENERGY_COST }), baseX, baseY - 188);
+    ctx.restore();
 }
 
 function drawVictoryPose(fighter, baseX, baseY, accentColor) {

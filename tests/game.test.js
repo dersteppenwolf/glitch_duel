@@ -338,6 +338,7 @@ function loadGame(options = {}) {
             playAttackSound,
             playImpactSound,
             playUISound,
+            playGlitchCancelSound,
             getAudioDiagnostics,
             announceCombatStatus,
             renderCombatStatus,
@@ -402,6 +403,9 @@ function loadGame(options = {}) {
             renderInputBindingsDialog,
             renderModeContext,
             renderTouchSpecialState,
+            getSpecialActionState,
+            getSpecialActionStateText,
+            GLITCH_CANCEL_ENERGY_COST,
             getFighterMarkerLayout,
              getFocusableElements,
              trapDialogFocus,
@@ -582,6 +586,17 @@ function giveEnergy(fighter, amount = 100) {
 
 function advanceFrames(api, frames, deltaMs = 1000 / 60) {
     for (let i = 0; i < frames; i++) api.update(deltaMs);
+}
+
+function prepareGlitchCancelInputCase(api) {
+    api.startTraining();
+    api.setTrainingTrial('glitchCancel');
+    api.skipVsIntro();
+    const state = api.getState();
+    state.player2.x = 800;
+    state.player1.attack('punch', state.player2);
+    assert.equal(api.getState().trialState.phase, 'cancel');
+    return state;
 }
 
 function tapControl(fighter, keys, opponent) {
@@ -1501,8 +1516,11 @@ test('static HTML contract preserves local assets, script order, controls, and a
     const { api } = loadGame();
 
     requiredIds.forEach((id) => assert.match(html, new RegExp(`id="${id}"`)));
+    assert.match(html, /<label class="training-trial-picker" for="training-trial-select">/);
+    assert.match(html, /<select id="training-trial-select">/);
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260818-guidance">/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260818-glitch-cancel">/);
+    assert.match(html, /<option value="glitchCancel" data-i18n="trainingGlitchCancelOption">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
     ['arena-shell', 'game-toolbar', 'game-announcer', 'duel-settings', 'selection-summary', 'menu-footer', 'arcade-run-button'].forEach((id) => {
@@ -1646,7 +1664,7 @@ test('phase-one UI localizes mode context, bindings, and touch special state', (
 
     player.energy = 100;
     api.renderTouchSpecialState();
-    assert.equal(special.getAttribute('data-state'), 'ready');
+    assert.equal(special.getAttribute('data-state'), 'special-ready');
     assert.equal(special.getAttribute('aria-disabled'), 'false');
     assert.match(special.getAttribute('aria-label'), /100/);
 
@@ -1974,6 +1992,357 @@ test('training trial reducers consume real Fighter attack and energy events', ()
     state.player1.attack('special', state.player2);
     assert.equal(state.player1.lastAttackOutcome, 'hit');
     assert.equal(specialCase.api.getState().trialState.completed, true);
+});
+
+test('glitch cancel core enforces cost, whiff, attack, grounded, actor, and post-decrement boundaries', () => {
+    function run({ type = 'punch', outcome = 'whiff', cooldown = 2, energy = 25, grounded = true, player = true } = {}) {
+        const { api } = loadGame();
+        const fighter = new api.Fighter(100, player);
+        const opponent = new api.Fighter(500, !player);
+        fighter.glitchCancelEnabled = true;
+        fighter.lastAttackType = type;
+        fighter.lastAttackOutcome = outcome;
+        fighter.attackCooldown = cooldown;
+        fighter.energy = energy;
+        fighter.onGround = grounded;
+        fighter.state = type;
+        fighter.update({ special: true }, opponent);
+        return { fighter, opponent };
+    }
+
+    assert.equal(apiCost(), 25);
+    function apiCost() {
+        return loadGame().api.GLITCH_CANCEL_ENERGY_COST;
+    }
+
+    for (const type of ['punch', 'kick']) {
+        for (const energy of [25, 26, 99, 100]) {
+            const { fighter, opponent } = run({ type, energy });
+            assert.equal(fighter.energy, energy - 25, `${type}/${energy}`);
+            assert.equal(fighter.attackCooldown, 0, `${type}/${energy}`);
+            assert.equal(fighter.state, 'idle', `${type}/${energy}`);
+            assert.equal(fighter.glitchCancelUsed, true, `${type}/${energy}`);
+            assert.equal(fighter.glitchCancelFeedbackFrames, 10, `${type}/${energy}`);
+            assert.equal(opponent.health, 100, `${type}/${energy}`);
+        }
+    }
+
+    const insufficient = run({ energy: 24 }).fighter;
+    assert.equal(insufficient.energy, 24);
+    assert.equal(insufficient.attackCooldown, 1);
+    assert.equal(insufficient.glitchCancelUsed, false);
+
+    const finalTickLowEnergy = run({ cooldown: 1, energy: 25 }).fighter;
+    assert.equal(finalTickLowEnergy.energy, 25);
+    assert.equal(finalTickLowEnergy.attackCooldown, 0);
+    assert.equal(finalTickLowEnergy.lastAttackType, 'punch');
+
+    const finalTickFullEnergy = run({ cooldown: 1, energy: 100 }).fighter;
+    assert.equal(finalTickFullEnergy.energy, 0);
+    assert.equal(finalTickFullEnergy.lastAttackType, 'special');
+    assert.equal(finalTickFullEnergy.attackCooldown, 45);
+
+    for (const invalid of [
+        { outcome: 'hit' },
+        { outcome: 'blocked' },
+        { type: 'comboPunch' },
+        { type: 'comboKick' },
+        { type: 'backKick' },
+        { type: 'special' },
+        { type: 'airPunch', grounded: false },
+        { type: 'airKick', grounded: false },
+        { player: false }
+    ]) {
+        const fighter = run({ ...invalid, energy: 25 }).fighter;
+        assert.equal(fighter.energy, 25, JSON.stringify(invalid));
+        assert.equal(fighter.glitchCancelUsed, false, JSON.stringify(invalid));
+    }
+});
+
+test('glitch cancel has exact pending, simultaneous-input, posture, and one-use sequence precedence', () => {
+    const { api } = loadGame();
+    const player = new api.Fighter(100, true);
+    const opponent = new api.Fighter(500, false);
+    Object.assign(player, {
+        glitchCancelEnabled: true,
+        lastAttackType: 'punch',
+        lastAttackOutcome: 'whiff',
+        attackCooldown: 2,
+        energy: 50,
+        state: 'punch',
+        pendingComboInput: 'kick',
+        comboBuffer: ['punch'],
+        comboTimer: 10,
+        comboHintText: 'hint',
+        comboHintTimer: 10
+    });
+
+    player.update({ special: true, punch: true, kick: true, right: true }, opponent);
+    assert.equal(player.energy, 25);
+    assert.equal(player.attackCooldown, 0);
+    assert.equal(player.pendingComboInput, '');
+    assert.deepEqual(Array.from(player.comboBuffer), []);
+    assert.equal(player.comboHintText, '');
+    assert.equal(player.velX, 0);
+    assert.equal(player.attackSequence, 0);
+
+    player.attackCooldown = 2;
+    player.lastAttackType = 'punch';
+    player.lastAttackOutcome = 'whiff';
+    assert.equal(player.tryGlitchCancel(), false);
+    assert.equal(player.energy, 25);
+    assert.equal(player.glitchCancelUsed, true);
+
+    player.attackCooldown = 0;
+    player.update({}, opponent);
+    assert.equal(player.glitchCancelUsed, false);
+    player.update({ punch: true }, opponent);
+    assert.equal(player.lastAttackType, 'punch');
+    assert.equal(player.attackSequence, 1);
+
+    for (const action of ['block', 'jump']) {
+        const sample = new api.Fighter(100, true);
+        Object.assign(sample, { glitchCancelEnabled: true, lastAttackType: 'kick', lastAttackOutcome: 'whiff', attackCooldown: 2, energy: 25, state: 'kick' });
+        sample.update({ [action]: true, special: true }, opponent);
+        assert.equal(sample.energy, 25, action);
+        assert.equal(sample.glitchCancelUsed, false, action);
+    }
+
+    const crouch = new api.Fighter(100, true);
+    Object.assign(crouch, { glitchCancelEnabled: true, lastAttackType: 'kick', lastAttackOutcome: 'whiff', attackCooldown: 1, energy: 25, state: 'kick' });
+    crouch.update({ crouch: true, special: true }, opponent);
+    assert.equal(crouch.state, 'crouch');
+    assert.equal(crouch.energy, 25);
+
+    const pending = new api.Fighter(100, true);
+    Object.assign(pending, { glitchCancelEnabled: true, lastAttackType: 'punch', lastAttackOutcome: 'whiff', attackCooldown: 1, energy: 100, state: 'punch', pendingComboInput: 'kick', comboBuffer: ['punch'], comboTimer: 10 });
+    pending.update({ special: true }, opponent);
+    assert.equal(pending.lastAttackType, 'comboKick');
+    assert.equal(pending.energy, 100);
+});
+
+test('glitch cancel is enabled only by the experimental training trial and resets without entering n/4', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining();
+    api.setTrainingTrial('glitchCancel');
+    api.skipVsIntro();
+    let state = api.getState();
+    assert.equal(state.activeTrialId, 'glitchCancel');
+    assert.equal(state.player1.x, 440);
+    assert.equal(state.player2.x, 660);
+    assert.equal(state.player1.energy, 100);
+    assert.equal(state.player1.glitchCancelEnabled, true);
+    assert.equal(state.player2.glitchCancelEnabled, false);
+
+    state.player2.x = 800;
+    state.player1.attack('punch', state.player2);
+    assert.equal(api.getState().trialState.phase, 'cancel');
+    assert.equal(state.player1.tryGlitchCancel(), true);
+    assert.equal(api.getState().trialState.phase, 'followup');
+    state.player2.x = 530;
+    state.player1.energy = 100;
+    state.player1.attack('special', state.player2);
+    assert.equal(api.getState().trialState.completed, false);
+    state.player1.attackCooldown = 0;
+    state.player1.attack('punch', state.player2);
+    assert.equal(api.getState().trialState.completed, true);
+    assert.match(api.getState().trialState.id, /glitchCancel/);
+
+    api.resetTraining();
+    state = api.getState();
+    assert.equal(state.trialState.completed, false);
+    assert.equal(state.trialState.phase, 'active');
+    assert.equal(state.player1.glitchCancelUsed, false);
+    assert.equal(state.player1.glitchCancelFeedbackFrames, 0);
+    assert.equal(state.player1.lastAttackOutcome, '');
+
+    api.setTrainingTrial('specialSpend');
+    assert.equal(api.getState().player1.glitchCancelEnabled, false);
+    api.setTrainingTrial('free');
+    assert.equal(api.getState().player1.glitchCancelEnabled, false);
+    api.initGame();
+    assert.equal(api.getState().player1.glitchCancelEnabled, false);
+    api.startArcadeRun();
+    assert.equal(api.getState().player1.glitchCancelEnabled, false);
+});
+
+test('glitch cancel touch, canvas, status, i18n, reduced-motion, and audio feedback remain accessible', () => {
+    const normal = loadGame({ touchPoints: 1, storage: { glitchDuelOnboardingSeen: '1' } });
+    normal.api.startTraining();
+    normal.api.setTrainingTrial('glitchCancel');
+    normal.api.skipVsIntro();
+    normal.api.setupMobileControls();
+    normal.api.update();
+    const player = normal.api.getState().player1;
+    Object.assign(player, { lastAttackType: 'punch', lastAttackOutcome: 'whiff', attackCooldown: 2, energy: 25, state: 'punch' });
+    normal.api.renderTouchSpecialState();
+    const button = normal.elements.get('btn-special');
+    assert.equal(normal.api.getSpecialActionState(player), 'cancel-ready');
+    assert.equal(button.getAttribute('data-state'), 'cancel-ready');
+    assert.equal(button.getAttribute('aria-disabled'), 'false');
+    assert.match(button.getAttribute('aria-label'), /CANCEL 25/);
+    normal.api.renderCombatStatus();
+    assert.match(normal.elements.get('combat-status-details').children[7].textContent, /GLITCH CANCEL/);
+
+    normal.api.draw();
+    assert(normal.api.getState().textCalls.includes('CANCEL 25'));
+    button.listeners.click({ preventDefault() {} });
+    normal.api.update();
+    assert.equal(player.energy, 0);
+    normal.api.renderTouchSpecialState();
+    assert.equal(button.getAttribute('data-state'), 'charging');
+    assert.match(normal.api.getState().announcerText, /GLITCH CANCEL/);
+    normal.api.renderCombatStatus();
+    assert.match(normal.elements.get('combat-status-details').children[7].textContent, /no disponible/);
+    assert(normal.audioEvents.some((event) => event.event === 'start' && event.type === 'square' && event.frequency === 820));
+
+    const reduced = loadGame({ reducedMotionSystem: true });
+    const reducedPlayer = new reduced.api.Fighter(100, true);
+    const reducedOpponent = new reduced.api.Fighter(500, false);
+    Object.assign(reducedPlayer, { glitchCancelEnabled: true, lastAttackType: 'punch', lastAttackOutcome: 'whiff', attackCooldown: 2, energy: 25, state: 'punch' });
+    reducedPlayer.update({ special: true }, reducedOpponent);
+    assert.deepEqual(
+        [reducedPlayer.energy, reducedPlayer.attackCooldown, reducedPlayer.glitchCancelUsed, reducedPlayer.lastAttackOutcome, reducedOpponent.health],
+        [0, 0, true, 'whiff', 100]
+    );
+    normal.api.setLanguage('en');
+    assert.equal(normal.api.t('glitchCancelReadyShort'), 'CANCEL 25');
+
+    const pending = new normal.api.Fighter(100, true);
+    Object.assign(pending, { energy: 100, attackCooldown: 1, pendingComboInput: 'kick', comboBuffer: ['punch'], comboTimer: 1 });
+    assert.equal(normal.api.getSpecialActionState(pending), 'special-ready');
+    pending.comboTimer = 2;
+    assert.equal(normal.api.getSpecialActionState(pending), 'charging');
+});
+
+test('default and remapped keyboard Special events perform the training glitch cancel', () => {
+    for (const { code, key, remap } of [
+        { code: 'KeyL', key: 'l', remap: false },
+        { code: 'KeyQ', key: 'q', remap: true }
+    ]) {
+        const { api, canvas, windowListeners } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+        if (remap) assert.equal(api.setInputBinding('special', 0, code).ok, true);
+        api.setupKeyboardControls();
+        const state = prepareGlitchCancelInputCase(api);
+
+        const event = dispatchKey(windowListeners, { code, key, target: canvas });
+        assert.equal(event.prevented, true, code);
+        assert.equal(api.getInputSnapshot().special, true, code);
+        api.update();
+
+        assert.equal(state.player1.energy, 75, code);
+        assert.equal(state.player1.glitchCancelUsed, true, code);
+        assert.equal(api.getState().trialState.phase, 'followup', code);
+        windowListeners.keyup({ code, key, target: canvas });
+        assert.equal(api.getInputSnapshot().special, false, code);
+    }
+});
+
+test('touch Special performs the training glitch cancel and releases on cancellation or capture loss', () => {
+    for (const releaseType of ['pointercancel', 'lostpointercapture']) {
+        const { api, elements } = loadGame({ touchPoints: 1, storage: { glitchDuelOnboardingSeen: '1' } });
+        const state = prepareGlitchCancelInputCase(api);
+        api.setupMobileControls();
+        const special = elements.get('btn-special');
+        const pointer = { pointerId: 7, pointerType: 'touch', button: 0, target: special, preventDefault() {} };
+
+        special.listeners.pointerdown(pointer);
+        assert.equal(api.getInputSnapshot().special, true, releaseType);
+        assert.equal(api.getState().activePointerCount, 1, releaseType);
+        api.update();
+        assert.equal(state.player1.energy, 75, releaseType);
+        assert.equal(api.getState().trialState.phase, 'followup', releaseType);
+
+        special.listeners[releaseType](pointer);
+        assert.equal(api.getInputSnapshot().special, false, releaseType);
+        assert.equal(api.getState().activePointerCount, 0, releaseType);
+        api.update();
+        assert.equal(state.player1.energy, 75, releaseType);
+    }
+});
+
+test('standard gamepad button 3 performs the training glitch cancel after a neutral sample', () => {
+    const buttons = Array.from({ length: 16 }, () => ({ pressed: false, value: 0 }));
+    const pad = { mapping: 'standard', buttons, axes: [0, 0] };
+    const { api } = loadGame({ getGamepads: () => [pad], storage: { glitchDuelOnboardingSeen: '1' } });
+    const state = prepareGlitchCancelInputCase(api);
+
+    api.pollInputGamepads();
+    assert.equal(api.getInputSnapshot().special, false);
+    buttons[3].pressed = true;
+    api.pollInputGamepads();
+    assert.equal(api.getInputSnapshot().special, true);
+    api.update();
+
+    assert.equal(state.player1.energy, 75);
+    assert.equal(state.player1.glitchCancelUsed, true);
+    assert.equal(api.getState().trialState.phase, 'followup');
+    api.pollInputGamepads();
+    api.update();
+    assert.equal(state.player1.energy, 75);
+});
+
+test('simultaneous keyboard and touch Special sources spend glitch cancel energy once', () => {
+    const { api, canvas, elements, windowListeners } = loadGame({ touchPoints: 1, storage: { glitchDuelOnboardingSeen: '1' } });
+    api.setupKeyboardControls();
+    const state = prepareGlitchCancelInputCase(api);
+    api.setupMobileControls();
+    const special = elements.get('btn-special');
+    const pointer = { pointerId: 9, pointerType: 'touch', button: 0, target: special, preventDefault() {} };
+
+    dispatchKey(windowListeners, { code: 'KeyL', key: 'l', target: canvas });
+    special.listeners.pointerdown(pointer);
+    api.update();
+    assert.equal(state.player1.energy, 75);
+    assert.equal(api.getState().trialState.phase, 'followup');
+
+    special.listeners.pointerup(pointer);
+    assert.equal(api.getInputSnapshot().special, true);
+    api.update();
+    assert.equal(state.player1.energy, 75);
+    windowListeners.keyup({ code: 'KeyL', key: 'l', target: canvas });
+    api.update();
+    assert.equal(state.player1.energy, 75);
+});
+
+test('click-only Special fallback following pointer activation does not double-spend', () => {
+    const { api, elements } = loadGame({ touchPoints: 1, storage: { glitchDuelOnboardingSeen: '1' } });
+    const state = prepareGlitchCancelInputCase(api);
+    api.setupMobileControls();
+    const special = elements.get('btn-special');
+    const pointer = { pointerId: 11, pointerType: 'touch', button: 0, target: special, preventDefault() {} };
+
+    special.listeners.pointerdown(pointer);
+    api.update();
+    assert.equal(state.player1.energy, 75);
+    special.listeners.pointerup(pointer);
+    special.listeners.click({ preventDefault() {} });
+    assert.equal(api.getInputSnapshot().special, false);
+
+    api.update();
+    assert.equal(state.player1.energy, 75);
+    api.update();
+    assert.equal(api.getInputSnapshot().special, false);
+    assert.equal(state.player1.energy, 75);
+});
+
+test('click-only Special fallback is discarded while the simulation is frozen', () => {
+    const { api, elements } = loadGame({ touchPoints: 1, storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining();
+    api.setTrainingTrial('glitchCancel');
+    api.setupMobileControls();
+    const state = api.getState();
+    const special = elements.get('btn-special');
+
+    special.listeners.click({ preventDefault() {} });
+    assert.equal(api.getInputSnapshot().special, true);
+    api.update();
+    assert.equal(api.getInputSnapshot().special, false);
+
+    api.skipVsIntro();
+    api.update();
+    assert.equal(state.player1.energy, 100);
+    assert.equal(state.player1.lastAttackType, '');
 });
 
 test('input-aware onboarding preserves the requested mode through complete and skip', () => {
@@ -2413,6 +2782,229 @@ test('post-match phrases include air attacks and fighter style wins', () => {
 
     api.recordPlayerSpecial();
     assert.equal(api.getPostMatchPhrase(true), 'Energia bien gastada. La CPU todavia esta renderizando excusas.');
+});
+
+test('contextual AI tunables are exact finite probabilities ordered by difficulty', () => {
+    const { api } = loadGame();
+    const expected = {
+        baitChance: [0.06, 0.14, 0.24],
+        crouchDefenseChance: [0.08, 0.18, 0.30],
+        whiffPunishChance: [0.18, 0.42, 0.68],
+        airAttackChance: [0.20, 0.40, 0.60]
+    };
+
+    Object.entries(expected).forEach(([field, values]) => {
+        const actual = ['easy', 'normal', 'hard'].map((level) => api.DIFFICULTIES[level][field]);
+        assert.deepEqual(actual, values, field);
+        actual.forEach((value) => assert(Number.isFinite(value) && value >= 0 && value <= 1, `${field}: ${value}`));
+        assert(actual[0] < actual[1] && actual[1] < actual[2], field);
+    });
+});
+
+test('contextual AI decisions respect chance, range, pattern, and safety boundaries', () => {
+    const { api } = loadGame();
+    const base = {
+        dist: 150,
+        health: 100,
+        energy: 0,
+        onGround: true,
+        opponentAttacking: false,
+        canPunch: false,
+        canKick: false,
+        canSpecial: false,
+        attackCooldown: 0,
+        opponentHealth: 100,
+        x: 400,
+        opponentX: 600,
+        difficulty: api.DIFFICULTIES.normal
+    };
+    const cases = [
+        ['whiff below chance', { dist: 80, canPunch: true, opponentWhiffed: true, opponentRecovery: 10, rand: 0.4199 }, 'punch'],
+        ['whiff at chance', { dist: 80, canPunch: true, opponentWhiffed: true, opponentRecovery: 10, rand: 0.42 }, 'block'],
+        ['whiff prefers punch at punch range', { dist: 95, canPunch: true, canKick: true, opponentWhiffed: true, opponentRecovery: 10, rand: 0.1 }, 'punch'],
+        ['whiff prefers kick past punch range', { dist: 95.01, canPunch: true, canKick: true, opponentWhiffed: true, opponentRecovery: 10, rand: 0.1 }, 'kick'],
+        ['whiff approaches from mid without a hitbox', { opponentWhiffed: true, opponentRecovery: 10, rand: 0.1 }, 'approach'],
+        ['whiff ignores finished recovery', { dist: 125, canKick: true, opponentWhiffed: true, opponentRecovery: 0, rand: 0.41 }, 'approach'],
+        ['non-whiff keeps normal rules', { dist: 125, canKick: true, opponentWhiffed: false, opponentRecovery: 10, rand: 0.41 }, 'approach'],
+        ['crouch below chance for dominant punch', { opponentPunchBias: 0.46, opponentKickBias: 0.45, opponentSpecialBias: 0.2, rand: 0.1799 }, 'crouch'],
+        ['crouch at chance', { opponentPunchBias: 0.46, opponentKickBias: 0.45, opponentSpecialBias: 0.2, rand: 0.18 }, 'approach'],
+        ['crouch requires bias above threshold', { opponentPunchBias: 0.45, opponentKickBias: 0.2, opponentSpecialBias: 0.2, rand: 0.1 }, 'approach'],
+        ['crouch rejects tied kick pattern', { opponentPunchBias: 0.46, opponentKickBias: 0.46, opponentSpecialBias: 0.2, rand: 0.1 }, 'approach'],
+        ['crouch rejects dominant special pattern', { opponentPunchBias: 0.46, opponentKickBias: 0.2, opponentSpecialBias: 0.47, rand: 0.1 }, 'approach'],
+        ['crouch does not replace live block reaction', { opponentAttacking: true, opponentPunchBias: 0.8, rand: 0.1 }, 'block'],
+        ['bait below chance for attack bias', { opponentAttackBias: 0.51, rand: 0.1399 }, 'retreat'],
+        ['bait at chance', { opponentAttackBias: 0.51, rand: 0.14 }, 'block'],
+        ['bait requires bias above threshold', { opponentAttackBias: 0.5, rand: 0.1 }, 'approach'],
+        ['bait accepts repeated bias', { repeatedAttackBias: 0.51, rand: 0.1 }, 'retreat'],
+        ['bait rejects retreat into wall', { x: 60, opponentX: 180, nearLeftWall: true, opponentAttackBias: 0.51, rand: 0.1 }, 'block'],
+        ['bait rejects active attack', { opponentAttacking: true, opponentAttackBias: 0.51, rand: 0.1 }, 'block'],
+        ['bait excludes close boundary', { dist: 110, opponentAttackBias: 0.51, rand: 0.1 }, 'block'],
+        ['bait includes far mid boundary', { dist: 250, opponentAttackBias: 0.51, rand: 0.1 }, 'retreat'],
+        ['bait excludes beyond mid boundary', { dist: 250.01, opponentAttackBias: 0.51, rand: 0.1 }, 'approach'],
+        ['air below chance prefers punch in its range', { dist: 90, onGround: false, canAirPunch: true, canAirKick: true, rand: 0.3999 }, 'airPunch'],
+        ['air at chance idles', { dist: 90, onGround: false, canAirPunch: true, canAirKick: true, rand: 0.4 }, 'idle'],
+        ['air uses legal kick hitbox', { dist: 120, onGround: false, canAirPunch: false, canAirKick: true, rand: 0.1 }, 'airKick'],
+        ['air idles after its attack', { onGround: false, canAirPunch: true, canAirKick: true, airAttackUsed: true, rand: 0.1 }, 'idle'],
+        ['air idles during cooldown', { onGround: false, canAirPunch: true, canAirKick: true, attackCooldown: 1, rand: 0.1 }, 'idle'],
+        ['air never falls through to ground defense or special', { onGround: false, opponentAttacking: true, canPunch: true, canSpecial: true, energy: 100, rand: 0 }, 'idle']
+    ];
+
+    cases.forEach(([name, overrides, expected]) => {
+        assert.equal(api.chooseAIAction({ ...base, ...overrides }), expected, name);
+    });
+});
+
+test('CPU consumes each whiff opportunity once and ignores hit, block, and finished recovery', () => {
+    const punish = loadGame();
+    punish.api.setDifficulty('hard');
+    punish.api.setMatchRandomSeed(0);
+    const cpu = new punish.api.Fighter(180, false);
+    const opponent = new punish.api.Fighter(100, true);
+    opponent.attackSequence = 1;
+    opponent.lastAttackOutcome = 'whiff';
+    opponent.attackCooldown = 10;
+    opponent.state = 'punch';
+    cpu.aiDecisionTimer = 40;
+
+    cpu.updateAI(opponent);
+
+    assert.equal(cpu.aiAction, 'punch');
+    assert.equal(opponent.health, 92);
+    assert.equal(cpu.aiMemory.lastObservedAttackSequence, 1);
+
+    cpu.attackCooldown = 0;
+    cpu.aiAction = 'idle';
+    cpu.aiDecisionTimer = 40;
+    cpu.updateAI(opponent);
+
+    assert.equal(cpu.aiDecisionTimer, 39);
+    assert.equal(cpu.aiAction, 'idle');
+    assert.equal(opponent.health, 92);
+
+    const missedChance = loadGame();
+    missedChance.api.setDifficulty('easy');
+    missedChance.api.setMatchRandomSeed(2);
+    const cautiousCpu = new missedChance.api.Fighter(180, false);
+    const whiffingOpponent = new missedChance.api.Fighter(100, true);
+    whiffingOpponent.attackSequence = 1;
+    whiffingOpponent.lastAttackOutcome = 'whiff';
+    whiffingOpponent.attackCooldown = 10;
+    whiffingOpponent.state = 'punch';
+    cautiousCpu.aiDecisionTimer = 40;
+
+    cautiousCpu.updateAI(whiffingOpponent);
+
+    assert.equal(cautiousCpu.aiAction, 'block');
+    assert.equal(whiffingOpponent.health, 100);
+    assert.equal(cautiousCpu.aiMemory.lastObservedAttackSequence, 1);
+    cautiousCpu.aiAction = 'idle';
+    cautiousCpu.aiDecisionTimer = 40;
+    cautiousCpu.updateAI(whiffingOpponent);
+    assert.equal(cautiousCpu.aiDecisionTimer, 39);
+
+    for (const [outcome, cooldown] of [['hit', 10], ['blocked', 10], ['whiff', 0]]) {
+        const sample = loadGame();
+        const observer = new sample.api.Fighter(180, false);
+        const attacker = new sample.api.Fighter(100, true);
+        attacker.attackSequence = 1;
+        attacker.lastAttackOutcome = outcome;
+        attacker.attackCooldown = cooldown;
+        attacker.state = 'punch';
+        observer.aiDecisionTimer = 40;
+
+        observer.updateAI(attacker);
+
+        assert.equal(observer.aiDecisionTimer, 39, `${outcome}/${cooldown}`);
+        assert.equal(observer.aiAction, 'idle', `${outcome}/${cooldown}`);
+        assert.equal(observer.aiMemory.lastObservedAttackSequence, 1, `${outcome}/${cooldown}`);
+    }
+
+    const range = loadGame();
+    range.api.setDifficulty('hard');
+    range.api.setMatchRandomSeed(0);
+    const distantCpu = new range.api.Fighter(180, false);
+    const distantOpponent = new range.api.Fighter(400, true);
+    distantCpu.facingRight = true;
+    distantOpponent.attackSequence = 1;
+    distantOpponent.lastAttackOutcome = 'whiff';
+    distantOpponent.attackCooldown = 10;
+    distantOpponent.state = 'punch';
+
+    distantCpu.updateAI(distantOpponent);
+
+    assert.equal(distantCpu.aiAction, 'approach');
+    assert.equal(distantOpponent.health, 100);
+    assert.equal(new range.api.Fighter(180, false).aiMemory.lastObservedAttackSequence, 0);
+});
+
+test('CPU crouch defense stops movement but remains vulnerable to kicks', () => {
+    const { api } = loadGame();
+    api.setDifficulty('normal');
+    api.setMatchRandomSeed(0);
+    const cpu = new api.Fighter(180, false);
+    const opponent = new api.Fighter(100, true);
+    cpu.aiMemory.attacks.punch = 80;
+
+    cpu.updateAI(opponent);
+
+    assert.equal(cpu.aiAction, 'crouch');
+    assert.equal(cpu.state, 'crouch');
+    assert.equal(cpu.velX, 0);
+
+    opponent.attack('kick', cpu);
+
+    assert.equal(cpu.health, 86);
+    assert.equal(cpu.state, 'hit');
+});
+
+test('CPU air decisions use real hitboxes once per jump and never execute stale ground attacks', () => {
+    const { api } = loadGame();
+    api.setDifficulty('hard');
+    api.setMatchRandomSeed(0);
+    const cpu = new api.Fighter(100, false);
+    const opponent = new api.Fighter(190, true);
+    cpu.onGround = false;
+    cpu.y = 320;
+
+    cpu.update({}, opponent);
+
+    assert.equal(cpu.lastAttackType, 'airPunch');
+    assert.equal(cpu.airAttackUsed, true);
+    assert.equal(cpu.attackSequence, 1);
+    assert.equal(opponent.health, 91);
+
+    cpu.attackCooldown = 0;
+    cpu.aiDecisionTimer = 0;
+    cpu.update({}, opponent);
+
+    assert.equal(cpu.attackSequence, 1);
+    assert.equal(opponent.health, 91);
+
+    cpu.y = 381;
+    cpu.applyPhysics();
+    assert.equal(cpu.onGround, true);
+    assert.equal(cpu.airAttackUsed, false);
+
+    api.setMatchRandomSeed(0);
+    const kickCpu = new api.Fighter(100, false);
+    const kickTarget = new api.Fighter(235, true);
+    kickCpu.onGround = false;
+    kickCpu.y = 320;
+    kickCpu.update({}, kickTarget);
+
+    assert.equal(kickCpu.lastAttackType, 'airKick');
+    assert.equal(kickTarget.health, 87);
+
+    const staleCpu = new api.Fighter(100, false);
+    const staleTarget = new api.Fighter(190, true);
+    staleCpu.onGround = false;
+    staleCpu.y = 320;
+    staleCpu.aiAction = 'punch';
+    staleCpu.aiDecisionTimer = 40;
+    staleCpu.updateAI(staleTarget);
+
+    assert.equal(staleCpu.attackSequence, 0);
+    assert.equal(staleTarget.health, 100);
 });
 
 test('CPU decision helper chooses deterministic defensive and offensive actions', () => {
@@ -3146,6 +3738,108 @@ test('fixed-step simulation keeps combat state equivalent at 30, 60, and 120 FPS
     const at60 = runAtFrameRate(1000 / 60, 60);
     const at120 = runAtFrameRate(1000 / 120, 120);
 
+    assert.deepEqual(at30, at60);
+    assert.deepEqual(at60, at120);
+});
+
+test('contextual AI trace is equivalent at 30, 60, and 120 FPS', () => {
+    function runAtFrameRate(frameMs, framesPerSample) {
+        const { api } = loadGame({ search: '?seed=0' });
+        api.setDifficulty('hard');
+        api.initGame();
+        api.skipVsIntro();
+        api.setMatchRandomSeed(0);
+        const initial = api.getState();
+        initial.player1.x = 650;
+        initial.player2.x = 750;
+        initial.player1.attackSequence = 1;
+        initial.player1.lastAttackOutcome = 'whiff';
+        initial.player1.attackCooldown = 12;
+        initial.player1.state = 'punch';
+        initial.player2.aiDecisionTimer = 40;
+        const trace = [];
+
+        for (let sample = 0; sample < 10; sample++) {
+            for (let frame = 0; frame < framesPerSample; frame++) api.advanceSimulation(frameMs);
+            const state = api.getState();
+            trace.push({
+                player1: {
+                    x: state.player1.x,
+                    y: state.player1.y,
+                    health: state.player1.health,
+                    energy: state.player1.energy,
+                    state: state.player1.state,
+                    attackCooldown: state.player1.attackCooldown,
+                    hitStun: state.player1.hitStun
+                },
+                player2: {
+                    x: state.player2.x,
+                    y: state.player2.y,
+                    health: state.player2.health,
+                    energy: state.player2.energy,
+                    state: state.player2.state,
+                    attackCooldown: state.player2.attackCooldown,
+                    hitStun: state.player2.hitStun,
+                    aiAction: state.player2.aiAction,
+                    aiDecisionTimer: state.player2.aiDecisionTimer,
+                    lastObservedAttackSequence: state.player2.aiMemory.lastObservedAttackSequence,
+                    airAttackUsed: state.player2.airAttackUsed
+                },
+                matchElapsedFrames: state.matchElapsedFrames,
+                roundTimerFrames: state.roundTimerFrames,
+                gameState: state.gameState
+            });
+        }
+
+        return trace;
+    }
+
+    const at30 = runAtFrameRate(1000 / 30, 3);
+    const at60 = runAtFrameRate(1000 / 60, 6);
+    const at120 = runAtFrameRate(1000 / 120, 12);
+
+    assert.equal(at30[0].player2.lastObservedAttackSequence, 1);
+    assert(at30.some((sample) => sample.player1.health < 100));
+    assert.deepEqual(at30, at60);
+    assert.deepEqual(at60, at120);
+});
+
+test('glitch cancel training trace is equivalent at 30, 60, and 120 FPS', () => {
+    function runAtFrameRate(frameMs, frames) {
+        const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+        api.startTraining();
+        api.setTrainingTrial('glitchCancel');
+        api.skipVsIntro();
+        const state = api.getState();
+        state.player1.attack('punch', state.player2);
+        assert.equal(api.getState().trialState.phase, 'cancel');
+        api.setInputSource('test:special', 'special', true);
+        for (let frame = 0; frame < frames; frame++) api.advanceSimulation(frameMs);
+
+        const result = api.getState();
+        return {
+            energy: result.player1.energy,
+            health: result.player1.health,
+            opponentHealth: result.player2.health,
+            attackCooldown: result.player1.attackCooldown,
+            lastAttackType: result.player1.lastAttackType,
+            lastAttackOutcome: result.player1.lastAttackOutcome,
+            attackSequence: result.player1.attackSequence,
+            glitchCancelUsed: result.player1.glitchCancelUsed,
+            feedbackFrames: result.player1.glitchCancelFeedbackFrames,
+            trialPhase: result.trialState.phase,
+            trialSequence: result.trialState.glitchSequence,
+            matchElapsedFrames: result.matchElapsedFrames,
+            gameState: result.gameState
+        };
+    }
+
+    const at30 = runAtFrameRate(1000 / 30, 3);
+    const at60 = runAtFrameRate(1000 / 60, 6);
+    const at120 = runAtFrameRate(1000 / 120, 12);
+
+    assert.equal(at30.energy, 75);
+    assert.equal(at30.trialPhase, 'followup');
     assert.deepEqual(at30, at60);
     assert.deepEqual(at60, at120);
 });
