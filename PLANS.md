@@ -1,311 +1,219 @@
-# Exec Plans
+# Planes de Ejecución (ExecPlans)
 
-Este archivo define el estandar para planear cambios no triviales en `GLITCH DUEL`.
+Este documento define cómo redactar y mantener un ExecPlan: una especificación ejecutable que permite a otra persona o agente completar un cambio sin depender de memoria conversacional ni contexto oculto. Un buen plan explica el propósito, el estado actual, las decisiones, los pasos, la validación y el resultado esperado con suficiente precisión para reanudar el trabajo desde el árbol del repositorio y el propio plan.
 
-Un exec plan debe ser suficientemente concreto para que otra sesion pueda ejecutarlo sin redescubrir contexto, pero no debe convertirse en una especificacion larga o teorica.
+Estas reglas se aplican a los ExecPlans nuevos. Un plan histórico no necesita migrarse de forma retroactiva; si se reanuda, debe actualizarse solo en lo necesario para cumplir este estándar y continuar con seguridad.
 
-## Cuando Usar Un Exec Plan
+## Cuándo usar un ExecPlan
 
-Usar exec plan para cambios que cumplan al menos una condicion:
+Usa un ExecPlan cuando se cumpla al menos una de estas condiciones:
 
-- Tocan mas de un archivo principal.
-- Cambian reglas de combate, estados del juego, controles, rondas, temporizador, IA o persistencia.
-- Requieren nuevas pruebas unitarias.
-- Cambian el flujo documentado en `Readme.md` o instrucciones en `AGENTS.md`.
-- Se implementaran en varios commits o pasos secuenciales.
+- El cambio coordina varios componentes, capas o contratos cuyo comportamiento debe mantenerse coherente.
+- Modifica una interfaz pública, un formato de datos, persistencia, seguridad, concurrencia, rendimiento, disponibilidad o compatibilidad.
+- Requiere migración, despliegue gradual, recuperación, varios hitos o trabajo distribuido entre sesiones.
+- Existe una incógnita técnica importante que debe resolverse mediante investigación o prototipado verificable.
+- Un fallo tendría impacto relevante y exige una estrategia explícita de pruebas, mitigación o reversión.
 
-No usar exec plan para cambios pequenos como corregir texto, ajustar un valor visual aislado o actualizar una linea de documentacion.
+No uses un ExecPlan para una corrección aislada de texto o formato, una consulta de solo lectura, ni un cambio pequeño cuya ubicación, solución y validación sean evidentes. La complejidad no se determina únicamente por el número de archivos.
 
-## Principios
+## Autoridad y seguridad
 
-- Mantener el proyecto sin dependencias externas salvo decision explicita de arquitectura.
-- Usar APIs nativas de navegador y Node.js.
-- Mantener coordenadas de simulacion en el espacio logico `1000x500`.
-- Mantener textos de UI en español.
-- Preferir cambios pequenos, verificables y faciles de revertir.
-- Actualizar `Readme.md` cuando cambien comandos, controles, estados, pruebas o funcionalidades.
-- Actualizar `AGENTS.md` cuando cambien instrucciones que futuras sesiones puedan olvidar.
+Un ExecPlan organiza trabajo autorizado; no amplía su alcance. Durante la ejecución:
 
-## Ubicacion Y Nombre De Archivos
+- Avanza de forma autónoma en pasos rutinarios, reversibles y claramente incluidos en el objetivo.
+- Expón los supuestos importantes y registra las decisiones que cambien el diseño.
+- Solicita dirección cuando falte una elección que altere materialmente el resultado, el alcance o el riesgo.
+- No ejecutes acciones destructivas, irreversibles o externas sin la autorización correspondiente.
+- No crees confirmaciones (`commits`), etiquetas (`tags`) o publicaciones (`releases`), ni hagas envíos remotos (`push`), salvo solicitud explícita del usuario o una instrucción gobernante igualmente explícita.
+- Conserva cambios preexistentes que no pertenezcan al plan y evita refactorizaciones incidentales.
 
-- Todo archivo de plan o ExecPlan debe generarse y mantenerse dentro de `plans/`.
-- Todo nuevo archivo de plan o ExecPlan debe seguir el formato `plans/plan_<nnnn>_<objetivo>.md`.
-- `<nnnn>` debe ser un identificador incremental con ceros a la izquierda.
-- El primer plan debe usar `0001`, el segundo `0002`, y asi sucesivamente.
-- `<objetivo>` debe ser corto, en minusculas y separado por guiones bajos.
-- Antes de crear un plan nuevo, revisar los archivos existentes en `plans/` para elegir el siguiente numero disponible.
+## Ubicación y nombre
 
-Ejemplo:
+- Guarda cada ExecPlan en `plans/` salvo que el repositorio establezca otra ubicación.
+- Usa `plan_<nnnn>_<objetivo>.md`, con un identificador incremental de cuatro dígitos y un objetivo corto en minúsculas separado por guiones bajos.
+- Antes de crear un archivo, revisa los nombres existentes para elegir el siguiente identificador disponible.
 
-```text
-plans/plan_0001_catalogo_busqueda_mvp.md
-```
+Ejemplo: `plans/plan_0001_catalogo_busqueda_mvp.md`.
 
-## Formato Requerido
+## Requisitos esenciales
 
-Cada exec plan debe incluir estas secciones:
+Todo ExecPlan debe ser:
 
-### 1. Objetivo
+- **Autocontenido:** incluye el conocimiento necesario para ejecutar el cambio. Puede citar archivos o planes versionados como evidencia complementaria, pero no delega en ellos una explicación imprescindible.
+- **Vivo:** refleja el progreso, las decisiones, los descubrimientos y el resultado real durante toda la ejecución.
+- **Comprensible:** define términos no obvios y orienta a una persona que desconoce esa zona del repositorio.
+- **Mínimo:** propone la solución más pequeña que satisface el objetivo y declara explícitamente lo que queda fuera de alcance.
+- **Ejecutable:** identifica rutas, ubicaciones, comandos, dependencias entre pasos y resultados esperados.
+- **Verificable:** formula la aceptación mediante comportamiento observable, pruebas o evidencia concreta.
+- **Seguro:** explica supuestos, riesgos relevantes, idempotencia y recuperación cuando correspondan.
 
-Descripcion breve del resultado esperado.
+No inventes rutas, APIs, comandos ni resultados. Investiga primero el estado actual y distingue hechos confirmados de supuestos pendientes.
 
-Debe responder:
+## Ciclo de vida
 
-- Que mejora se implementa.
-- Que experiencia del jugador cambia.
-- Que queda explicitamente fuera del alcance.
+### Al redactar
 
-### 2. Contexto Actual
+Lee el código, las pruebas, la documentación y las instrucciones aplicables antes de decidir el diseño. Empieza por el propósito y el alcance; después completa el contexto, los pasos y la validación. Si hay alternativas razonables, registra la elegida y su justificación.
 
-Resumen de los archivos y comportamientos existentes que importan para el cambio.
+### Al ejecutar
 
-Incluir referencias como:
+No preguntes de manera rutinaria por el “siguiente paso”: continúa con el próximo paso seguro del plan. Actualiza `Progress` en puntos de pausa significativos y mantén sincronizadas las secciones afectadas cuando cambie el enfoque. Si surge una decisión material no autorizada, detén esa rama del trabajo y solicita dirección.
 
-- `src/config.js` para constantes, ataques, dificultad, arenas y configuracion de entrenamiento.
-- `src/input.js` para acciones canonicas y entrada de teclado, puntero y gamepad.
-- `src/ai.js` para decisiones de CPU.
-- `src/fighter.js` y `src/fighter_render.js` para simulacion y render del luchador.
-- `src/arena_render.js` y `src/hud_render.js` para render de arena y HUD.
-- `src/game.js` para estados globales, rondas, temporizador, menus, entrenamiento y eventos.
-- `src/index.html` para estructura de UI.
-- `src/styles.css` para layout, overlays y controles tactiles.
-- `tests/game.test.js` para pruebas con mocks.
+### Al completar
 
-### 3. Diseño Propuesto
+Ejecuta la validación acordada, registra el resultado real, actualiza `Outcomes & Retrospective` y deja claros los pendientes. No marques el plan como completado si queda trabajo requerido o la validación necesaria no se ejecutó.
 
-Explicar la solucion concreta.
+## Formato
 
-Debe incluir:
+Un archivo `.md` cuyo contenido sea el ExecPlan no lleva una cerca externa de tres comillas invertidas. Si el plan se presenta dentro de otro documento o conversación, puede envolverse en un único bloque `md`; en ese caso, representa comandos y ejemplos mediante sangría para evitar cercas anidadas.
 
-- Nuevos estados, constantes o campos si aplica.
-- Cambios de controles si aplica.
-- Cambios visuales si aplica.
-- Cambios de persistencia si aplica.
-- Como interactua con `gameState`.
-- Como se mantiene compatible con coordenadas logicas `1000x500`.
+Usa Markdown legible. Prefiere prosa para explicar contexto y razonamiento, y utiliza listas, tablas o listas de verificación cuando hagan la información más clara. Mantén rutas relativas a la raíz del repositorio y muestra el directorio de trabajo para los comandos cuando no sea evidente.
 
-### 4. Archivos A Modificar
+## Secciones obligatorias
 
-Lista corta de archivos con intencion por archivo.
+### Propósito y alcance
 
-Ejemplo:
+Explica qué resultado obtiene el usuario o el sistema, cómo se observará y qué queda fuera de alcance.
 
-```text
-src/config.js      - agregar configuracion del nuevo ataque
-src/fighter.js     - ejecutar el ataque y dibujar estado visual
-src/game.js        - actualizar estado global o HUD
-tests/game.test.js - cubrir regla nueva
-Readme.md          - documentar controles y comportamiento
-AGENTS.md          - actualizar smoke test si cambia flujo manual
-```
+### Progress
 
-### 5. Plan De Implementacion
+Usa una checklist breve que represente el estado real. Añade marcas de tiempo a hitos o pausas significativas, no a cada acción mecánica. Divide una entrada parcialmente completada en una parte terminada y otra pendiente.
 
-Pasos ordenados y concretos.
+### Contexto actual
 
-Cada paso debe ser ejecutable y verificable.
+Describe la arquitectura relevante, las rutas, los símbolos y el comportamiento existente. Define los términos especializados y documenta los supuestos confirmados.
 
-Ejemplo:
+### Diseño y plan de trabajo
 
-```text
-1. Agregar constantes del ataque en `src/config.js`.
-2. Registrar la entrada en `src/fighter.js`.
-3. Agregar prueba de daño/cooldown en `tests/game.test.js`.
-4. Actualizar README y smoke test.
-5. Ejecutar validacion completa.
-```
+Explica la solución elegida, las alternativas descartadas cuando importen y la secuencia mínima de cambios. Cada paso debe indicar qué modifica y cómo se verificará.
 
-### 6. Pruebas Y Validacion
+### Pasos concretos
 
-Debe indicar comandos exactos.
+Indica los comandos exactos y el directorio desde el cual se ejecutan. Describe brevemente la salida o señal que distingue éxito de fallo. No fijes un número de pruebas que pueda quedar obsoleto; exige salida exitosa y registra después el conteo observado cuando aporte valor.
 
-Validacion minima para cambios de codigo:
+### Validación y aceptación
 
-```powershell
-Get-ChildItem -LiteralPath "src" -Filter "*.js" | ForEach-Object {
-    node --check $_.FullName
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-}
-node --test tests\game.test.js
-```
+Relaciona cada requisito con una comprobación observable. Incluye pruebas automatizadas, escenarios manuales o verificaciones operativas en proporción al riesgo. Para cambios internos, demuestra el efecto mediante una prueba que falle antes y pase después, una comparación reproducible o una evidencia equivalente.
 
-Si el cambio es visual o de jugabilidad, agregar checklist manual especifico.
+### Riesgos, idempotencia y recuperación
 
-### 7. Documentacion
+Enumera riesgos reales y sus mitigaciones. Indica qué pasos pueden repetirse de forma segura y cómo reintentar o revertir los que puedan dejar estado parcial. Si no existen riesgos adicionales a los controles rutinarios, dilo brevemente.
 
-Indicar que se actualizara.
+### Decision Log
 
-Usar esta guia:
+Registra únicamente decisiones materiales con este formato:
 
-- `Readme.md`: cambios de controles, comandos, estados, pruebas, funcionalidades, backlog o flujo.
-- `AGENTS.md`: cambios que futuras sesiones podrian olvidar, especialmente smoke test, arquitectura, comandos o restricciones.
-- `PLANS.md`: solo si cambia el estandar de planificacion.
+- Decisión: qué se eligió.
+- Justificación: por qué se eligió.
+- Fecha/autor: cuándo y quién la tomó.
 
-### 8. Riesgos Y Mitigaciones
+### Outcomes & Retrospective
 
-Listar riesgos reales del cambio.
+Al finalizar, compara el resultado con el propósito, resume la validación ejecutada y declara pendientes o desviaciones. Mientras el plan esté activo, esta sección puede indicar “Pendiente”.
 
-Ejemplos:
+### Revision Notes
 
-- Puede romper controles moviles.
-- Puede desbalancear cooldowns.
-- Puede interferir con `paused` o `roundOver`.
-- Puede requerir actualizar mocks de pruebas.
+Registra cambios significativos al propio plan y su motivo. No anotes correcciones ortográficas o ajustes mecánicos sin impacto.
 
-Cada riesgo debe tener mitigacion concreta.
+## Secciones condicionales
 
-### 9. Validacion Del Plan Con Skill
+Incluye estas secciones solo cuando aporten información útil:
 
-Antes de finalizar cualquier ExecPlan, cargar y aplicar la skill `karpathy-guidelines` para revisar el cambio propuesto.
+- **Hitos:** para trabajo multietapa. Cada hito debe producir un resultado verificable y dejar el sistema en un estado coherente.
+- **Surprises & Discoveries:** para comportamientos inesperados que cambien el enfoque; adjunta evidencia breve.
+- **Interfaces y dependencias:** cuando deban crearse o modificarse contratos, tipos, interfaces de programación (APIs), bibliotecas o servicios.
+- **Migración, despliegue gradual y reversión:** cuando exista transición de datos, compatibilidad temporal o publicación por fases.
+- **Artefactos y evidencia:** para extractos concisos de registros, diferencias, métricas o transcripciones que demuestren un resultado.
 
-La revision debe confirmar:
+## Investigación y prototipos
 
-- Que el plan no sobrecomplica la solucion.
-- Que los cambios son quirurgicos y verificables.
-- Que las suposiciones importantes estan explicitas.
-- Que los criterios de aceptacion son comprobables.
-- Que no se introducen dependencias externas sin decision de arquitectura.
+Usa un prototipo solo para resolver una incógnita nombrada que bloquee el diseño. Antes de implementarlo, define:
 
-Si la revision detecta sobrealcance, reducir el plan antes de ejecutarlo.
+- La pregunta que debe responder.
+- La forma de ejecutarlo y observarlo.
+- El criterio para promoverlo, revisarlo o descartarlo.
+- Qué código o artefactos temporales se eliminarán si no se adopta.
 
-### 10. Criterios De Aceptacion
+Un prototipo no autoriza dependencias, infraestructura ni cambios externos fuera del alcance acordado. Prefiere experimentos pequeños, aislados y reversibles.
 
-Checklist final observable.
+## Validación y evidencia
 
-Ejemplo:
+La validación no es opcional. Cada plan debe descubrir y usar las herramientas reales del repositorio, no comandos genéricos inventados. Incluye:
 
-```text
-- La nueva accion funciona en teclado.
-- Si aplica, la accion funciona en tactil.
-- Las pruebas unitarias cubren la regla principal.
-- README refleja el comportamiento.
-- Validacion automatica pasa completa.
-```
+- Pruebas o verificaciones apropiadas al cambio.
+- Resultado esperado y criterio de fallo.
+- Validación del comportamiento útil, no solo compilación o sintaxis.
+- Limitaciones de la evidencia; las simulaciones y mocks no sustituyen validaciones humanas, visuales, físicas u operativas cuando estas sean necesarias.
 
-### 11. Commit Y Push
+Mantén la evidencia concisa. Registra resultados representativos y evita copiar salidas extensas que no mejoren la verificabilidad.
 
-Si el usuario pidio commits por paso, el plan debe indicar el limite de cada commit.
+## Revisión antes de finalizar
 
-Regla recomendada:
+Comprueba que:
 
-- Un commit por mejora funcional completa.
-- No mezclar refactors grandes con cambios de gameplay salvo que el usuario lo pida o sea necesario.
-- Ejecutar validacion antes de cada commit.
-- Hacer push despues de cada commit si el usuario lo pidio.
+- El objetivo y los límites están claros.
+- La solución es la mínima suficiente y no introduce trabajo especulativo.
+- Los supuestos importantes son explícitos.
+- Cada paso conduce a una verificación concreta.
+- Las rutas, símbolos y comandos fueron comprobados.
+- Los riesgos y las decisiones materiales están registrados.
+- El plan no amplía la autoridad concedida.
+- `Progress`, `Decision Log`, `Outcomes & Retrospective` y `Revision Notes` reflejan el estado real.
 
 ## Plantilla
 
-```markdown
-# Exec Plan: <nombre corto>
+    # plan_xxxx - <descripción corta orientada a la acción>
 
-## Objetivo
+    **Fecha:** <AAAA-MM-DD>
+    **Ámbito:** <componentes o capacidades afectadas>
+    **Estado:** borrador | activo | bloqueado | completado
 
-<resultado esperado y fuera de alcance>
+    Este ExecPlan se mantiene conforme a `PLANS.md`.
 
-## Contexto Actual
+    ## Propósito y alcance
 
-<archivos y comportamiento relevante>
+    <Resultado observable, motivación y exclusiones explícitas.>
 
-## Diseño Propuesto
+    ## Progress
 
-<solucion concreta>
+    - [ ] <Paso verificable pendiente.>
 
-## Archivos A Modificar
+    ## Contexto actual
 
-- `<archivo>`: <intencion>
+    <Estado relevante, rutas, símbolos, términos y supuestos.>
 
-## Plan De Implementacion
+    ## Diseño y plan de trabajo
 
-1. <paso>
-2. <paso>
-3. <paso>
+    <Solución mínima, decisiones y secuencia de cambios.>
 
-## Pruebas Y Validacion
+    ## Pasos concretos
 
-```powershell
-Get-ChildItem -LiteralPath "src" -Filter "*.js" | ForEach-Object {
-    node --check $_.FullName
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-}
-node --test tests\game.test.js
-```
+    Desde `<directorio de trabajo>`:
 
-Smoke test manual:
+        <comando exacto>
 
-- <item>
+    <Resultado esperado y señal de fallo.>
 
-## Documentacion
+    ## Validación y aceptación
 
-- `Readme.md`: <cambios>
-- `AGENTS.md`: <cambios si aplica>
+    <Comprobaciones observables vinculadas a los requisitos.>
 
-## Riesgos Y Mitigaciones
+    ## Riesgos, idempotencia y recuperación
 
-- Riesgo: <riesgo>. Mitigacion: <mitigacion>.
+    <Riesgos, mitigaciones, repetición segura y reversión.>
 
-## Validacion Del Plan Con Skill
+    ## Decision Log
 
-- Cargar `karpathy-guidelines`.
-- Revisar alcance, suposiciones, simplicidad y verificabilidad.
-- Ajustar el plan si la revision detecta sobrecomplicacion.
+    - Decisión: <decisión material o “Ninguna todavía”.>
+      Justificación: <motivo.>
+      Fecha/autor: <AAAA-MM-DD, identidad o rol.>
 
-## Criterios De Aceptacion
+    ## Outcomes & Retrospective
 
-- <criterio>
+    <Pendiente mientras esté activo; resultados y validación al completar.>
 
-## Commit Y Push
+    ## Revision Notes
 
-- Commit: `<mensaje sugerido>`
-- Push: <si/no, segun pedido del usuario>
-```
+    - <AAAA-MM-DD>: <cambio significativo y motivo.>
 
-## Ejemplo Resumido
-
-```markdown
-# Exec Plan: Back Kick
-
-## Objetivo
-
-Agregar combo `K, K` como back kick. No se agregan nuevas teclas ni se rediseña el sistema de combos.
-
-## Contexto Actual
-
-Los combos actuales viven en `src/fighter.js` con `comboBuffer`. Los ataques estan configurados en `src/config.js` dentro de `ATTACKS`.
-
-## Diseño Propuesto
-
-Agregar `backKick` en `ATTACKS`, detectar `kick,kick` en `handleAttackCommand()`, reutilizar animacion de patada inicialmente y agregar prueba unitaria.
-
-## Archivos A Modificar
-
-- `src/config.js`: agregar valores de `backKick`.
-- `src/fighter.js`: detectar combo `K, K`.
-- `tests/game.test.js`: probar daño y cooldown.
-- `Readme.md`: documentar combo.
-- `AGENTS.md`: actualizar smoke test si aplica.
-
-## Plan De Implementacion
-
-1. Agregar `backKick` en `ATTACKS`.
-2. Agregar deteccion `kick,kick`.
-3. Agregar prueba unitaria.
-4. Documentar combo.
-5. Ejecutar validacion completa.
-
-## Pruebas Y Validacion
-
-```powershell
-Get-ChildItem -LiteralPath "src" -Filter "*.js" | ForEach-Object {
-    node --check $_.FullName
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-}
-node --test tests\game.test.js
-```
-
-## Criterios De Aceptacion
-
-- `K, K` ejecuta back kick.
-- El ataque aplica daño esperado.
-- No rompe `J, J`, `J, K`, `K` ni especial.
-- README documenta el nuevo combo.
-```
+Añade las secciones condicionales únicamente cuando correspondan. Un ExecPlan terminado debe permitir reconstruir qué se intentó, qué se decidió, qué se cambió y cómo se comprobó, sin obligar a adivinar información esencial.
