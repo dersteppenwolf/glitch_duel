@@ -117,7 +117,6 @@ Update `Readme.md` when run instructions, controls, game states, or implemented 
 
 ## ExecPlans
 
-- Follow `PLANS.md` whenever any of its substantial-change conditions apply.
-- Store new plans as `plans/plan_<nnnn>_<objetivo>.md`, using the next zero-padded number.
-- Before finalizing an ExecPlan, load and apply the `karpathy-guidelines` skill; reduce scope if it identifies overcomplication.
+- When any ExecPlan condition may apply, read `PLANS.md` completely before drafting or executing the plan, then follow it.
+- Before finalizing an ExecPlan, load and apply the `karpathy-guidelines` skill when available. If it is unavailable, apply the `PLANS.md` final-review checklist manually. In either case, reduce scope if the review identifies overcomplication.
 - Keep the plan current when scope, validation, or implementation details change.

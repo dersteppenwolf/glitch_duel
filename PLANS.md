@@ -4,6 +4,8 @@ Este documento define cómo redactar y mantener un ExecPlan: una especificación
 
 Estas reglas se aplican a los ExecPlans nuevos. Un plan histórico no necesita migrarse de forma retroactiva; si se reanuda, debe actualizarse solo en lo necesario para cumplir este estándar y continuar con seguridad.
 
+Las instrucciones específicas que gobiernan el repositorio o la tarea complementan este estándar y prevalecen cuando son más concretas o restrictivas. Si existe un conflicto que no puede resolverse sin cambiar materialmente el alcance o el resultado, solicita dirección antes de continuar.
+
 ## Cuándo usar un ExecPlan
 
 Usa un ExecPlan cuando se cumpla al menos una de estas condiciones:
