@@ -34,7 +34,7 @@ The accepted human-validation closure record is `plans/plan_0043_validacion_huma
 | 7 | 3 | PWA offline install | Independent distribution work. |
 | 8 | 20 | HUD theme selector | Independent cosmetic presentation work. |
 
-The historical AI roadmap and its final decisions are closed in `plans/plan_0044_hoja_ruta_ia_cpu_priorizada.md`. Plan `0045` is a proposed neutral-variation experiment and has no execution position until its evidence/authorization gate passes.
+The historical AI roadmap and its final decisions are closed in `plans/plan_0044_hoja_ruta_ia_cpu_priorizada.md`. The user explicitly authorized plan `0045`; its neutral selector was delivered with plan `0050`.
 
 ## Active Backlog
 
@@ -49,7 +49,6 @@ Only Ready, concrete Partial and dependency-Blocked work belongs here. `Depends 
 | 21 | Player | Ready | S | - | Persist difficulty and arena | Validate saved values against current configuration and preserve safe fallbacks. |
 | 22 | Player | Ready | S | - | Visible local-data reset | Reset stats and future local progression without clearing unrelated preferences. |
 | 28 | Player | Partial | S | - | Perfect and comeback conditions | Add only perfect, comeback and no-special result conditions to the existing medal/phrase system. |
-| 39 | Player | Ready | S | - | Share match results | Share text-only score, medal, streak or phrase through Web Share with clipboard fallback. |
 | 41 | Player | Partial | S | - | New impact phrases and medals | Impact phrases expanded in plan `0049`; additional medals remain, without new progression rules. |
 | 47 | Combat | Ready | M | - | Additional combos | Training and collision regressions are complete; every new combo still requires focused timing, damage and interruption tests. |
 | 60 | Player | Blocked | M | 22 | Export/import local data | Export a versioned schema and validate imports without overwriting unrelated settings. |
@@ -75,7 +74,6 @@ These items do not have an execution position until their stated decision or evi
 | 23 | AI | Gated | L | Demonstrated player demand | Selectable AI personalities | Require players to distinguish and request profiles at equal difficulty; completed `#16/#17` are not the missing gate. |
 | 48 | Combat | Gated | M | `#31` plus observed imbalance | Advanced balance | Telemetry completion alone does not authorize attack, style or difficulty tuning. |
 | 49 | AI | Gated | M | `#31` plus reproducible cross-round exploit | Round-to-round AI adaptation | Carry no memory between rounds until telemetry and a surviving exploit justify it. |
-| 78 | AI | Gated | M | Characterization or explicit authorization | Weighted neutral CPU variation | Follow plan `0045`; creating the plan did not authorize implementation. |
 
 ## Deferred Experiments
 
@@ -125,6 +123,7 @@ This is the canonical history. Implemented means code shipped; Merged means anot
 | 35 | Implemented | Layered arena depth | Eight arenas render peripheral foreground after fighters and before combat feedback. |
 | 36 | Implemented | Reactive arena effects | Bounded contact reactions on all arenas; fixed-step decay and stationary reduced-motion presentation in plan `0049`. |
 | 37 | Implemented | Arena readability pass | Eight arenas retain readable fighters, HUD, corners, foreground and reduced-motion behavior. |
+| 39 | Implemented | Share match results | Local PNG card, native Web Share with file capability detection, manual copy fallback and versioned seed/configuration challenges in plan `0050`. Compatibility evidence and pending checks live in plan `0043`. |
 | 42 | Implemented | More visual arenas | Terminal and Rooftop add two cosmetic arenas with localized selection and previews in plan `0049`. |
 | 44 | Merged | Richer foreground silhouettes | The delivered `#35` foreground and completed `#37` review left no named residual; reopen only for a concrete arena opportunity. |
 | 56 | Implemented | Difficulty personality visuals | CPU appearance varies by difficulty without changing behavior. |
@@ -144,3 +143,4 @@ This is the canonical history. Implemented means code shipped; Merged means anot
 | 75 | Implemented | Active mode and touch Special state | Delivered mode/progress context and non-color Special readiness; plan `0043` closed physical/hybrid review by explicit assumption. |
 | 76 | Implemented | GLITCH CANCEL MVP | Delivered a Training-only experiment; the pilot outcome was accepted by explicit assumption and the rule remains disabled in Versus/Arcade. |
 | 77 | Closed | First-session comprehension and recurring depth | Six new and four recurrent sessions were accepted as complete by explicit user assumption in plan `0043`; no primary study record is claimed. |
+| 78 | Implemented | Weighted neutral CPU variation | Explicitly authorized selector from plan `0045`: legal pools, half weight for one previous decision, protected tactical priorities and deterministic two-draw cadence; plan `0050`. |

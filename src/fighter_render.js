@@ -6,18 +6,20 @@ function drawFighter(fighter) {
 
     drawFighterIdentityMarker(fighter, baseX, baseY, accentColor);
     drawGlitchCancelFeedback(fighter, baseX, baseY);
-    if (fighter.state !== 'victory' && fighter.state !== 'defeat') drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor);
+    if (!fighter.finishSnapshot && fighter.state !== 'victory' && fighter.state !== 'defeat') drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor);
 
     if (!fighter.facingRight) {
         ctx.scale(-1, 1);
         ctx.translate(-baseX * 2, 0);
     }
 
-    const legAngle = fighter.state === 'walk' && fighter.onGround ? Math.sin(fighter.frame / 3) * 20 : 0;
+    const legAngle = fighter.state === 'walk' && fighter.onGround && !reducedMotionEnabled ? Math.sin(fighter.frame / 3) * 20 : 0;
     const headBob = fighter.state === 'hit' && !reducedMotionEnabled ? Math.sin(fighter.frame / 2) * 5 : 0;
     const isCrouching = fighter.state === 'crouch';
     const hipY = isCrouching ? baseY + 4 : baseY - 20;
     const torsoTopY = isCrouching ? baseY - 34 : baseY - 55;
+    const lean = fighter.state === 'hit' ? -12 : (fighter.state === 'block' ? -5 :
+        (!fighter.isPlayer1 && fighter.state === 'walk' && fighter.aiAction === 'retreat' ? -7 : 0));
     const shoulderY = isCrouching ? baseY - 28 : baseY - 48;
     const headY = isCrouching ? baseY - 54 : baseY - 75 + headBob;
 
@@ -56,21 +58,24 @@ function drawFighter(fighter) {
     }
 
     ctx.beginPath();
-    ctx.moveTo(baseX, torsoTopY);
+    ctx.moveTo(baseX + lean, torsoTopY);
     ctx.lineTo(baseX, hipY);
     ctx.stroke();
 
     ctx.lineWidth = 4.5;
     ctx.beginPath();
-    ctx.moveTo(baseX, shoulderY);
-    ctx.quadraticCurveTo(baseX - 18, shoulderY + 13, baseX - 12, hipY + 5);
+    ctx.moveTo(baseX + lean, shoulderY);
+    if (fighter.state === 'block') {
+        ctx.lineTo(baseX + 8, shoulderY - 16);
+        ctx.lineTo(baseX + 26, shoulderY - 8);
+    } else ctx.quadraticCurveTo(baseX - 18 + lean, shoulderY + 13, baseX - 12, hipY + 5);
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.moveTo(baseX, shoulderY);
+    ctx.moveTo(baseX + lean, shoulderY);
 
     if (fighter.state === 'punch' || fighter.state === 'special' || fighter.state === 'airPunch') {
-        ctx.lineTo(baseX + 52, baseY - 48);
+        ctx.lineTo(baseX + 66, baseY - 48);
     } else if (fighter.state === 'kick' || fighter.state === 'airKick') {
         ctx.quadraticCurveTo(baseX + 15, baseY - 35, baseX + 22, baseY - 20);
     } else if (fighter.state === 'block') {
@@ -85,7 +90,7 @@ function drawFighter(fighter) {
     ctx.stroke();
 
     if (fighter.state === 'punch' || fighter.state === 'special' || fighter.state === 'airPunch') {
-        const fistX = baseX + 62;
+        const fistX = baseX + 76;
         const fistY = baseY - 48;
 
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
@@ -130,8 +135,8 @@ function drawFighter(fighter) {
     }
 
     if (fighter.state === 'kick' || fighter.state === 'airKick') {
-        const footX = baseX + 54;
-        const footY = baseY - 3;
+        const footX = baseX + 76;
+        const footY = baseY - 12;
 
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
         ctx.lineWidth = 3;
@@ -143,7 +148,7 @@ function drawFighter(fighter) {
         ctx.lineWidth = 5.5;
         ctx.beginPath();
         ctx.moveTo(baseX, baseY - 20);
-        ctx.lineTo(baseX + 32, baseY - 10);
+        ctx.lineTo(baseX + 38, baseY - 25);
         ctx.lineTo(footX, footY);
         ctx.stroke();
 
@@ -178,11 +183,11 @@ function drawFighter(fighter) {
     ctx.strokeStyle = '#111';
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.arc(baseX, headY, 20, 0, Math.PI * 2);
+    ctx.arc(baseX + lean, headY, 20, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    drawFighterFaceAndDetail(fighter, baseX, baseY, headY, accentColor);
+    drawFighterFaceAndDetail(fighter, baseX + lean, baseY, headY, accentColor);
 
     if (fighter.state === 'block') {
         ctx.fillStyle = 'rgba(100, 150, 255, 0.25)';
@@ -292,6 +297,7 @@ function drawGlitchCancelFeedback(fighter, baseX, baseY) {
 }
 
 function drawVictoryPose(fighter, baseX, baseY, accentColor) {
+    const raisedX = fighter.rivalDetail === 'boss' ? 36 : (fighter.rivalDetail === 'merge' ? -24 : 22);
     ctx.strokeStyle = accentColor;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -310,7 +316,7 @@ function drawVictoryPose(fighter, baseX, baseY, accentColor) {
     ctx.moveTo(baseX - 2, baseY - 48);
     ctx.lineTo(baseX - 32, baseY - 18);
     ctx.moveTo(baseX + 2, baseY - 48);
-    ctx.lineTo(baseX + 22, baseY - 92);
+    ctx.lineTo(baseX + raisedX, baseY - 92);
     ctx.stroke();
 
     ctx.fillStyle = '#fff';
@@ -326,7 +332,7 @@ function drawVictoryPose(fighter, baseX, baseY, accentColor) {
     ctx.strokeStyle = '#111';
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(baseX + 23, baseY - 96, 7, 0, Math.PI * 2);
+    ctx.arc(baseX + raisedX, baseY - 96, 7, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 

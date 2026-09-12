@@ -98,6 +98,8 @@ No `npm install`, `package.json`, bundler, or backend server is required.
 4. Win rounds by reducing the CPU health to `0%` or having more health when time runs out.
 5. Win 2 rounds to finish the match.
 
+At the result screen, expand the card preview, download a PNG, share through the browser's native share sheet, or copy a challenge link. Sharing requires your action; no result is sent automatically. When native sharing or clipboard access is unavailable, the link can be selected and copied manually. Challenge links require an HTTP(S) page and include a validated rules version, seed, mode and configuration. They open the menu without starting a match. Arcade challenges restart the whole run, not an intermediate fight. A challenge is not an input replay: player actions and reduced-motion preferences can change the resulting timing and outcome, and old rules versions are rejected.
+
 `CARRERA ARCADE / ARCADE RUN` plays five fixed matches, each best-of-three. The route escalates through `FACIL`, `NORMAL`, `NORMAL`, `DIFICIL`, and `DIFICIL`, ending with `BOSS 500`. Losing any match ends the run; winning all five shows a `5/5` summary. Runs are not saved or resumable, and each completed match contributes one local result.
 
 ## Controls
@@ -215,6 +217,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - AI with difficulty-based reactions, range-aware attacks, tactical specials, counter windows, attack-type/zone memory, wall-aware defense, one-shot whiff punish opportunities, mid-range bait, punch-pattern crouch defense, legal air attacks, timed late-round pressure while behind, and bounded anti-turtle pressure from accumulated block memory.
 - Grounded anti-air responses forecast a short window from observed motion and strike only when the actual hitbox connects. Whiff pursuit checks travel time, CPU recovery, and a difficulty-tuned safety margin; an expired opportunity is abandoned without another roll. Corner escapes jump toward the center, corner pressure stays probabilistic, and a brief post-hit pause preserves live defense. All timing stays in the fixed simulation and all adaptation uses the existing round-local pattern memory.
 - Visual CPU rivals: `NULL POINTER`, `LAG SPIKE`, `MERGE CONFLICT`, and `BOSS 500`. Rival selection changes presentation only; difficulty remains responsible for CPU behavior.
+- Neutral CPU decisions use legal weighted options and halve the previous decision's weight without forbidding repetition. Protected tactics and close-wall priorities remain first-match. One previous decision lives with the Fighter, with no cross-round memory and exactly two simulation RNG samples per new decision. Bait retreat has a configured distance limit; approach stops at reachable kick spacing until the next decision.
 
 ### UI/UX
 
@@ -267,6 +270,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - HUD and impact feedback tied to character color so attacks are easier to read.
 - Victory and defeat poses when rounds or matches end.
 - Post-match medals such as `Bug Exterminator`, `Firewall Humano`, `Combo Goblin`, and `404 Survivor`.
+- KO rounds freeze the final contact pose inside a static comic panel; time results use finish poses and a distinct stamp. `NO FLY ZONE` and `CACHE MISS` accompany qualifying unblocked contacts with a fixed-step caption cooldown. Low-health wins get an `ULTIMO BIT` stamp. Extended punches/kicks and clearer guard/retreat silhouettes change drawing only, preserving hitboxes. Result cards reuse the rendered scene and include score, medal, rival, configuration and seed.
 - `ROUND`, `FIGHT!`, `TIME!`, `K.O.`, and block messages in arcade panels.
 - Flash, trail, and `SPECIAL!` text when spending the energy bar.
 - Combo feedback with text, halo/trail, and combo-window hint.

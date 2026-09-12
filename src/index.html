@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GLITCH DUEL - Arcade VS AI</title>
-    <link rel="stylesheet" href="styles.css?v=20260912-juice3">
+    <link rel="stylesheet" href="styles.css?v=20260912-duels3">
 </head>
 <body>
     <div id="game-container">
@@ -48,6 +48,7 @@
 
                 <div id="match-configuration-summary" class="match-configuration-summary">Dificultad: NORMAL · Arena: CUADERNO · Estilo: BALANCEADO · Rival: NULL POINTER</div>
 
+                <p id="challenge-notice" class="challenge-notice" hidden></p>
                 <div class="menu-actions menu-actions--primary">
                     <button id="start-button" class="primary-action" type="button" aria-describedby="match-configuration-summary" data-i18n="start">JUGAR AHORA</button>
                 </div>
@@ -400,21 +401,33 @@
         <div id="game-over" role="dialog" aria-modal="true" aria-labelledby="game-over-title" tabindex="-1">
             <h1 id="game-over-title" class="dialog-focus-target" tabindex="-1" data-i18n="gameOverTitle">RESULTADO</h1>
             <div id="winner-text"></div>
+            <details id="result-card-details">
+                <summary data-i18n="resultCardPreview">VER TARJETA</summary>
+                <canvas id="result-card" width="1200" height="900" role="img" data-i18n-aria="resultCardLabel" aria-label="Tarjeta del resultado de GLITCH DUEL"></canvas>
+            </details>
+            <div class="result-share-actions">
+                <button id="share-result-button" type="button" data-i18n="shareResult">COMPARTIR</button>
+                <button id="download-card-button" type="button" data-i18n="downloadCard">DESCARGAR PNG</button>
+                <button id="copy-challenge-button" type="button" data-i18n="copyChallenge">COPIAR RETO</button>
+            </div>
+            <p class="result-share-hint" data-i18n="challengeHint">El reto conserva seed y ajustes; no es una repetición. En Arcade empieza la carrera completa.</p>
+            <p id="share-status" role="status"></p>
+            <textarea id="challenge-link" readonly hidden data-i18n-aria="challengeLinkLabel" aria-label="Enlace del reto para copiar"></textarea>
             <button id="restart-button" type="button" data-i18n="restart">REINICIAR</button>
             <button id="menu-button" type="button" data-i18n="menu">MENU</button>
         </div>
     </div>
 
-    <script src="i18n.js?v=20260912-juice3"></script>
-    <script src="config.js?v=20260912-juice3"></script>
+    <script src="i18n.js?v=20260912-duels3"></script>
+    <script src="config.js?v=20260912-duels3"></script>
     <script src="input.js?v=20260818-glitch-cancel"></script>
     <script src="audio.js?v=20260912-juice3"></script>
     <script src="effects.js?v=20260912-juice3"></script>
-    <script src="ai.js?v=20260911-ai-impact"></script>
-    <script src="fighter_render.js?v=20260911-ai-impact"></script>
-    <script src="fighter.js?v=20260912-juice3"></script>
+    <script src="ai.js?v=20260912-duels3"></script>
+    <script src="fighter_render.js?v=20260912-duels3"></script>
+    <script src="fighter.js?v=20260912-duels3"></script>
     <script src="arena_render.js?v=20260912-juice3"></script>
-    <script src="hud_render.js?v=20260912-juice3"></script>
-    <script src="game.js?v=20260912-juice3"></script>
+    <script src="hud_render.js?v=20260912-duels3"></script>
+    <script src="game.js?v=20260912-duels3"></script>
 </body>
 </html>

@@ -40,6 +40,11 @@ let matchStats = createMatchStats();
 let vsIntroTimer = 0;
 let specialFlash = null;
 let arenaReaction = null;
+let combatCaptionFrames = 0;
+let roundHighlight = null;
+let resultCardFile = null;
+let resultCardGeneration = 0;
+let loadedChallenge = null;
 let gameMode = 'versus';
 let arcadeRun = null;
 let trainingConfig = { position: 'mid', cpu: 'idle', timer: false };
@@ -209,6 +214,7 @@ function getDebugQueryEnabled() {
 
 function getSeedFromLocation() {
     const search = window.location && typeof window.location.search === 'string' ? window.location.search : '';
+    if (new URLSearchParams(search).has('duel') && !getChallengeFromLocation()) return null;
     const match = /(?:^|[?&])seed=([^&]+)/.exec(search);
     if (!match || !/^\d+$/.test(match[1])) return null;
     const value = Number(match[1]);
@@ -896,6 +902,7 @@ function recordGlitchCancelAttempt(fighter) {
 }
 
 function resetTrainingFighters() {
+    combatCaptionFrames = 0;
     arenaReaction = null;
     if (!player1 || !player2) return;
     const [playerPosition, cpuPosition] = getTrialPosition();
@@ -1700,6 +1707,7 @@ function renderLanguage() {
 
     renderGameOverActions();
     if (gameState === 'gameOver') renderGameOverText();
+    renderChallengeNotice();
 }
 
 function getDifficultyLabelFor(key) {
@@ -1790,6 +1798,7 @@ function renderGameOverText() {
 
     if (gameMode === 'arcade' && arcadeRun) {
         renderArcadeRunSummary(winText);
+        renderResultCard();
         return;
     }
 
@@ -1822,6 +1831,7 @@ function renderGameOverText() {
     phraseElement.textContent = phrase;
     summary.append(score, difficulty, arena, rival, streak, phraseElement);
     winText.replaceChildren(result, medalElement, summary);
+    renderResultCard();
 }
 
 function renderPauseSummary() {
@@ -1930,6 +1940,7 @@ function updateOrientationWarning() {
 }
 
 function startRound() {
+    clearResultPresentation();
     arenaReaction = null;
     closeAllModalDialogs();
     player1 = new Fighter(250, true);
@@ -2135,6 +2146,7 @@ function refillTraining(type) {
 }
 
 function showMainMenu() {
+    clearResultPresentation();
     arenaReaction = null;
     restoreArcadeMenuSelection();
     pendingStartMode = null;
@@ -2316,6 +2328,7 @@ function update() {
 
 function finishRound(playerWon) {
     if (gameState !== 'playing') return;
+    captureRoundHighlight(playerWon);
 
     clearActiveInput();
     if (player1) player1.clearComboSequence();
@@ -2394,6 +2407,7 @@ function updateStatusMessage() {
 }
 
 function updateEffects() {
+    if (combatCaptionFrames > 0) combatCaptionFrames--;
     updateStatusMessage();
     updateHealthAnimations();
     screenShake = reducedMotionEnabled ? 0 : screenShake * COMBAT_FEEDBACK.shakeDecay;
@@ -2504,21 +2518,25 @@ function draw() {
     }
 
     drawBackground();
-    if (player1 && player2) {
+    if (roundHighlight) {
+        drawRoundHighlight();
+    } else if (player1 && player2) {
         player1.draw();
         player2.draw();
     }
     drawArenaForeground();
-    impactParticles.forEach((p) => p.draw());
-    drawSpecialFlash();
-    drawImpactFlash();
-    floatingTexts.forEach((t) => t.draw());
+    if (!roundHighlight) {
+        impactParticles.forEach((p) => p.draw());
+        drawSpecialFlash();
+        drawImpactFlash();
+        floatingTexts.forEach((t) => t.draw());
+    }
     ctx.restore();
     ctx.save();
     drawHealthBars();
     drawVsIntro();
-    drawStatusMessage();
-    if (debugOverlayEnabled) drawDebugOverlay();
+    if (!roundHighlight) drawStatusMessage();
+    if (debugOverlayEnabled && !roundHighlight) drawDebugOverlay();
 
     ctx.restore();
 }
@@ -2568,6 +2586,7 @@ function updateControlsVisibility() {
 
 function finishMatch(playerWon) {
     if (gameState !== 'playing') return;
+    if (!roundHighlight) captureRoundHighlight(playerWon);
 
     if (player1) player1.clearComboSequence();
     if (player2) player2.clearComboSequence();
@@ -3072,7 +3091,163 @@ function renderInputBindingsDialog(result = null) {
     } else if (result && status && typeof status.focus === 'function') status.focus({ preventScroll: true });
 }
 
+function clearResultPresentation() {
+    roundHighlight = null;
+    combatCaptionFrames = 0;
+    resultCardFile = null;
+    resultCardGeneration++;
+    const preview = document.getElementById('result-card-details');
+    if (preview) preview.open = false;
+    const link = document.getElementById('challenge-link');
+    if (link) link.hidden = true;
+    const status = document.getElementById('share-status');
+    if (status) status.textContent = '';
+}
+
+function captureRoundHighlight(playerWon) {
+    if (playerWon === null || !player1 || !player2 || gameMode === 'training') return;
+    const winner = playerWon ? player1 : player2;
+    const loser = playerWon ? player2 : player1;
+    const ko = loser.health <= 0;
+    const key = !ko ? 'comicTime' : winner.health > 0 && winner.health <= COMIC_FEEDBACK.lowHealth ? 'comicLastBit'
+        : lastCombatEvent.outcome === 'blocked' ? 'comicChipKO'
+        : lastCombatEvent.attackType === 'special' ? 'comicSpecialKO' : 'comicKO';
+    roundHighlight = {
+        key, ko, color: winner.accentColor,
+        // Rendering needs primitive properties only, never AI memory or a second simulation.
+        fighters: [player1, player2].map((fighter) => ({
+            ...Object.fromEntries(Object.entries(fighter).filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value))),
+            state: ko ? fighter.state : (fighter === winner ? 'victory' : 'defeat'),
+            finishSnapshot: true
+        }))
+    };
+}
+
+function getChallengeFromLocation() {
+    const params = new URLSearchParams(window.location ? window.location.search : '');
+    if (params.get('duel') !== DUEL_RULES_VERSION) return null;
+    const seed = params.get('seed');
+    if (!seed || !/^\d+$/.test(seed) || Number(seed) > 4294967295) return null;
+    const values = { seed: Number(seed), mode: params.get('mode'), difficulty: params.get('difficulty'),
+        arena: params.get('arena'), style: params.get('style'), rival: params.get('rival') };
+    if (!['versus', 'arcade'].includes(values.mode) || !Object.hasOwn(DIFFICULTIES, values.difficulty) ||
+        !Object.hasOwn(ARENAS, values.arena) || !Object.hasOwn(FIGHTER_STYLES, values.style) || !Object.hasOwn(CPU_RIVALS, values.rival)) return null;
+    return values;
+}
+
+function applyChallengeFromLocation() {
+    loadedChallenge = getChallengeFromLocation();
+    renderChallengeNotice();
+    if (!loadedChallenge) return;
+    setDifficulty(loadedChallenge.difficulty); setArena(loadedChallenge.arena);
+    setFighterStyle(loadedChallenge.style); setRival(loadedChallenge.rival);
+    document.getElementById('difficulty-select').value = selectedDifficulty;
+    document.getElementById('arena-select').value = selectedArena;
+}
+
+function renderChallengeNotice() {
+    const notice = document.getElementById('challenge-notice');
+    const requested = new URLSearchParams(window.location ? window.location.search : '').has('duel');
+    if (notice) {
+        notice.hidden = !requested;
+        notice.textContent = loadedChallenge ? t(loadedChallenge.mode === 'arcade' ? 'challengeLoadedArcade' : 'challengeLoaded', { seed: loadedChallenge.seed }) : t('challengeInvalid');
+    }
+}
+
+function buildChallengeUrl() {
+    const url = new URL(window.location.href);
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
+    url.search = ''; url.hash = '';
+    for (const [key, value] of Object.entries({ duel: DUEL_RULES_VERSION, seed: matchSeed,
+        mode: gameMode === 'arcade' ? 'arcade' : 'versus', difficulty: selectedDifficulty,
+        arena: selectedArena, style: selectedFighterStyle, rival: selectedRival })) url.searchParams.set(key, String(value));
+    return url.href;
+}
+
+function getResultCardData() {
+    const playerWon = playerRounds >= ROUNDS_TO_WIN;
+    return { title: playerWon ? t('playerWins') : t('cpuWins'), score: `${playerRounds}-${cpuRounds}`,
+        rival: getRivalLabel(), arena: getArenaLabel(), difficulty: getDifficultyLabel(),
+        medal: getPostMatchMedal(playerWon).title, seed: matchSeed,
+        mode: gameMode === 'arcade' ? t('arcadeRun') : t('modeVersus'),
+        stamp: roundHighlight ? t(roundHighlight.key) : t('gameOverTitle') };
+}
+
+function renderResultCard() {
+    if (gameState !== 'gameOver') return;
+    const card = document.getElementById('result-card');
+    if (!card || typeof card.getContext !== 'function') return;
+    const generation = ++resultCardGeneration;
+    resultCardFile = null;
+    draw();
+    card.width = 1200; card.height = 900;
+    drawResultCard(card.getContext('2d'), canvas, getResultCardData());
+    card.setAttribute('aria-label', t('resultCardLabel'));
+    if (typeof card.toBlob === 'function' && typeof File === 'function') {
+        card.toBlob((blob) => {
+            if (blob && generation === resultCardGeneration) resultCardFile = new File([blob], `glitch-duel-${matchSeed}.png`, { type: 'image/png' });
+        }, 'image/png');
+    }
+}
+
+function showShareStatus(key) {
+    document.getElementById('share-status').textContent = t(key);
+}
+
+function revealChallengeLink(url) {
+    const field = document.getElementById('challenge-link');
+    field.value = url; field.hidden = false; field.focus(); field.select();
+    showShareStatus('challengeCopyManual');
+}
+
+async function copyChallengeLink() {
+    if (gameState !== 'gameOver') return;
+    const generation = resultCardGeneration;
+    const url = buildChallengeUrl();
+    if (!url) { showShareStatus('challengeUnavailable'); return; }
+    try {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('clipboard unavailable');
+        await navigator.clipboard.writeText(url);
+        if (generation === resultCardGeneration) showShareStatus('challengeCopied');
+    } catch (_) { if (generation === resultCardGeneration) revealChallengeLink(url); }
+}
+
+async function shareResult() {
+    if (gameState !== 'gameOver') return;
+    const generation = resultCardGeneration;
+    const data = getResultCardData(), url = buildChallengeUrl();
+    const payload = { title: 'GLITCH DUEL', text: `${data.title} ${data.score} · ${data.rival} · ${data.medal}` };
+    if (url) payload.url = url;
+    try {
+        if (resultCardFile && navigator.canShare && navigator.canShare({ files: [resultCardFile] })) payload.files = [resultCardFile];
+    } catch (_) { /* Text sharing remains available if file detection fails. */ }
+    if (!navigator.share) { if (url) revealChallengeLink(url); else showShareStatus('shareUnavailable'); return; }
+    try {
+        await navigator.share(payload);
+        if (generation === resultCardGeneration) showShareStatus('shareDone');
+    } catch (error) {
+        if (generation !== resultCardGeneration) return;
+        showShareStatus(error.name === 'AbortError' ? 'shareCancelled' : 'shareFailed');
+    }
+}
+
+function downloadResultCard() {
+    if (gameState !== 'gameOver') return;
+    try {
+        const link = document.createElement('a');
+        link.href = document.getElementById('result-card').toDataURL('image/png');
+        link.download = `glitch-duel-${matchSeed}.png`;
+        link.hidden = true;
+        document.getElementById('game-over').append(link);
+        try { link.click(); } finally { link.remove(); }
+        showShareStatus('cardDownloaded');
+    } catch (_) { showShareStatus('shareFailed'); }
+}
+
 function setupRestartButton() {
+    document.getElementById('share-result-button').addEventListener('click', shareResult);
+    document.getElementById('download-card-button').addEventListener('click', downloadResultCard);
+    document.getElementById('copy-challenge-button').addEventListener('click', copyChallengeLink);
     document.getElementById('restart-button').addEventListener('click', () => {
         playUISound('start');
         if (gameMode === 'arcade') {
@@ -3125,7 +3300,7 @@ function setupMainMenu() {
     setupTouchInputTracking();
     document.getElementById('start-button').addEventListener('click', () => {
         playUISound('start');
-        requestStartMode('versus');
+        requestStartMode(loadedChallenge ? loadedChallenge.mode : 'versus');
     });
     document.getElementById('help-button').addEventListener('click', () => {
         playUISound('select');
@@ -3234,6 +3409,7 @@ window.addEventListener('load', () => {
     renderStats();
     renderMotionPreference();
     showMainMenu();
+    applyChallengeFromLocation();
     setupMobileControls();
     setupKeyboardControls();
     setupMainMenu();

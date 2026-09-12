@@ -34,6 +34,7 @@ function chooseAIAction({
     timedRound = false,
     lateRound = false,
     cpuBehind = false,
+    previousDecision = '',
     difficulty,
     rand
 }) {
@@ -134,17 +135,10 @@ function chooseAIAction({
 
     if (repeatedAttackBias > 0.5 && dist < 180 && onGround && rand < blockReaction) return 'block';
 
-    if (dist > 250) {
-        return rand < difficulty.approachLong ? 'approach' : 'idle';
-    }
-
-    if (dist > 110) {
-        if (kickReady && rand < (difficulty.kickMid ?? 0)) return 'kick';
-        if (rand < difficulty.approachMid) return 'approach';
-        if (!retreatBlocked && rand < difficulty.retreatMid) return 'retreat';
-        if (rand < difficulty.jumpMid && onGround) return 'jump';
-        return 'block';
-    }
+    // Keep close-wall defense first-match; variation only chooses neutral options.
+    if (dist > 110 || !retreatBlocked) return chooseAINeutralAction({
+        dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty, rand, previousDecision
+    });
 
     if (kickReady && dist > ATTACKS.punch.range && rand < difficulty.kickClose) return 'kick';
     if (punchReady && rand < difficulty.punchClose) return 'punch';
@@ -153,6 +147,38 @@ function chooseAIAction({
     if (rand < difficulty.blockClose) return 'block';
     if (retreatBlocked) return onGround && rand < (difficulty.cornerJump ?? 0.45) ? 'jump' : 'block';
     return punchReady || kickReady ? 'retreat' : 'approach';
+}
+
+function chooseWeightedAIAction(candidates, rand, previousDecision, repeatWeight) {
+    const weights = candidates.map(([action, weight]) => weight * (action === previousDecision ? repeatWeight : 1));
+    let cursor = rand * weights.reduce((sum, weight) => sum + weight, 0);
+    for (let i = 0; i < candidates.length; i++) {
+        cursor -= weights[i];
+        if (cursor < 0) return candidates[i][0];
+    }
+    return candidates[candidates.length - 1][0];
+}
+
+function chooseAINeutralAction({ dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty: d, rand, previousDecision }) {
+    const candidates = [];
+    const add = (action, weight, legal = true) => { if (legal && weight > 0) candidates.push([action, weight]); };
+    if (dist > 250) {
+        add('approach', d.approachLong);
+        add('idle', 1 - d.approachLong);
+    } else if (dist > 110) {
+        add('kick', d.kickMid, kickReady);
+        add('approach', d.approachMid - d.kickMid);
+        add('retreat', d.retreatMid - d.approachMid, !retreatBlocked);
+        add('jump', d.jumpMid - d.retreatMid);
+        add('block', 1 - d.jumpMid);
+    } else {
+        const outer = dist > ATTACKS.punch.range;
+        add('punch', d.punchClose, punchReady && !(outer && kickReady));
+        add('kick', outer ? d.kickClose : d.kickClose - d.punchClose, kickReady);
+        add('block', d.blockClose - (outer && !kickReady ? d.punchClose : d.kickClose));
+        add(punchReady || kickReady || opponentBlockBias > 0.5 ? 'retreat' : 'approach', 1 - d.blockClose);
+    }
+    return chooseWeightedAIAction(candidates, rand, previousDecision, d.neutralRepeatWeight);
 }
 
 function chooseAIPressureAction(dist, punchReady, kickReady) {

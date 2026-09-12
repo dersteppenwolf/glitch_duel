@@ -94,6 +94,8 @@ Browser, hardware, assistive-technology, performance, and player-validation evid
 - Help and onboarding keep keyboard, touch, and standard gamepad guidance visible. `recentInputMethod`, `guidanceInputMethod`, and `pendingStartMode` are session-only; completing or skipping onboarding starts the requested mode.
 - The main menu uses native `#duel-settings` and `#menu-utilities` disclosures, closed by default. Derive `#match-configuration-summary` only from the four `selected*` values and refresh it after selection, language changes, and Arcade restoration. Help/Controls restore focus inside `#menu-utilities` without collapsing it.
 - CPU tactics remain rule-based. Preserve one opportunity per observed sequence, pattern-specific crouch/whiff responses, wall-aware bait retreat, one real-hitbox air attack per jump, accumulated blocking memory rather than held-input reads, and late-round pressure only when the CPU is behind.
+- Only the final neutral far/mid/close branch outside close-wall uses weighted selection. Preserve first-match tactical priorities and exactly two simulation RNG samples per new decision. `aiPreviousDecisionAction` stores one selected action before execution rewrites; it follows the Fighter lifecycle, persists through pause/Training reset, and clears with a new Fighter.
+- Challenge URLs validate `DUEL_RULES_VERSION`, a uint32 seed and configuration enums before applying them. Bump the rules version when simulation changes invalidate seeded challenges. They are configuration links, never input replays. Result snapshots and asynchronous sharing callbacks must not revive a cleared result or advance combat.
 
 ## Documentation Sources Of Truth
 

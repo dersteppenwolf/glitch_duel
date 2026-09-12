@@ -13,7 +13,9 @@ const FIXED_STEP_MS = 1000 / 60;
 const MAX_FRAME_DELTA_MS = 100;
 const MAX_SIMULATION_STEPS = 6;
 const FIGHTER_GRAVITY = 0.9;
-const AI_TACTICS = { wallMargin: 70, cornerPressureRange: 210, interceptHorizon: 24 };
+const AI_TACTICS = { wallMargin: 70, cornerPressureRange: 210, interceptHorizon: 24, baitMaxDistance: 220 };
+const DUEL_RULES_VERSION = 'gd-50';
+const COMIC_FEEDBACK = { cooldownFrames: 150, lowHealth: 5 };
 const COMBAT_FEEDBACK = {
     hit: { shake: 8, stop: 5, particles: 14, flashFrames: 10, arenaFrames: 16 },
     combo: { shake: 11, stop: 7, particles: 20, flashFrames: 14, arenaFrames: 24 },
@@ -36,7 +38,7 @@ const COMBAT_SIGNATURES = {
     boss500: { pattern: 'pixels', bands: 8 }
 };
 const IMPACT_PHRASES = {
-    hit: ['404', 'NaN', 'Segmentation Fault', '¡ZAP!', '¡SPLAT!', '¡BOOM!', '¡OW!', 'Python 2.7', 'Compiling...', 'Buffer Overflow', 'Stack Overflow', 'Syntax Error', 'NullReference', 'Cache MISS', 'ERR_CONNECTION_RESET'],
+    hit: ['404', 'NaN', 'Segmentation Fault', '¡ZAP!', '¡SPLAT!', '¡BOOM!', '¡OW!', 'Python 2.7', 'Compiling...', 'Buffer Overflow', 'Stack Overflow', 'Syntax Error', 'NullReference', 'ERR_CONNECTION_RESET'],
     combo: ['STACK x2', 'DOUBLE FAULT', 'RECURSION!', 'MERGE FAILED', 'OVERLOAD'],
     special: ['KERNEL PANIC', 'FATAL EXCEPTION', 'SYSTEM BREAK', 'CORE DUMP'],
     block: ['¡BLOCK!', '*ping*', 'CHIP', '403 FORBIDDEN', 'FIREWALL', 'ACCESS DENIED']
@@ -100,6 +102,7 @@ const ARCADE_RUN_FIGHTS = [
 ];
 const DIFFICULTIES = {
     easy: {
+        neutralRepeatWeight: 0.5,
         decisionMin: 22,
         decisionSpread: 14,
         moveSpeed: 3.5,
@@ -144,6 +147,7 @@ const DIFFICULTIES = {
         airAttackChance: 0.20
     },
     normal: {
+        neutralRepeatWeight: 0.5,
         decisionMin: 12,
         decisionSpread: 10,
         moveSpeed: 4.5,
@@ -188,6 +192,7 @@ const DIFFICULTIES = {
         airAttackChance: 0.40
     },
     hard: {
+        neutralRepeatWeight: 0.5,
         decisionMin: 7,
         decisionSpread: 6,
         moveSpeed: 5.2,

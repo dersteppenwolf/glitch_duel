@@ -24,6 +24,7 @@ class Fighter {
         this.onGround = true;
         this.aiDecisionTimer = 0;
         this.aiAction = 'idle';
+        this.aiPreviousDecisionAction = '';
         this.comboBuffer = [];
         this.pendingComboInput = '';
         this.comboTimer = 0;
@@ -461,9 +462,11 @@ class Fighter {
                 timedRound,
                 lateRound,
                 cpuBehind,
+                previousDecision: this.aiPreviousDecisionAction,
                 difficulty,
                 rand
             });
+            this.aiPreviousDecisionAction = this.aiAction;
             if (opponentSequenceChanged) this.aiMemory.lastObservedAttackSequence = opponent.attackSequence;
         } else if (opponentSequenceChanged && !opponentWhiffed) {
             this.aiMemory.lastObservedAttackSequence = opponent.attackSequence;
@@ -506,8 +509,10 @@ class Fighter {
                 if (this.attackCooldown === 0) this.state = 'walk';
             }
         } else if (this.aiAction === 'approach') {
-            this.velX = this.x < opponent.x ? difficulty.moveSpeed : -difficulty.moveSpeed;
-            if (this.onGround && this.attackCooldown === 0) this.state = 'walk';
+            // Hold reachable spacing until the next scheduled decision; no extra attack or RNG roll.
+            const inRange = this.onGround && canKick && !opponentAttacking;
+            this.velX = inRange ? 0 : (this.x < opponent.x ? difficulty.moveSpeed : -difficulty.moveSpeed);
+            if (this.onGround && this.attackCooldown === 0) this.state = inRange ? 'idle' : 'walk';
         } else if (this.aiAction === 'retreat') {
             const retreatBlocked = (this.x < opponent.x && nearLeftWall) || (this.x > opponent.x && nearRightWall);
             if (retreatBlocked) {
@@ -515,8 +520,10 @@ class Fighter {
                 if (this.onGround && this.attackCooldown === 0) this.state = 'block';
                 this.aiAction = 'block';
             } else {
-                this.velX = this.x < opponent.x ? -difficulty.moveSpeed : difficulty.moveSpeed;
-                if (this.onGround && this.attackCooldown === 0) this.state = 'walk';
+                const baitComplete = dist >= AI_TACTICS.baitMaxDistance && this.health > 30 &&
+                    (this.aiMemory.attack > 50 || this.aiMemory.repeatedCount > 3);
+                this.velX = baitComplete ? 0 : (this.x < opponent.x ? -difficulty.moveSpeed : difficulty.moveSpeed);
+                if (this.onGround && this.attackCooldown === 0) this.state = baitComplete ? 'idle' : 'walk';
             }
         } else if ((this.aiAction === 'jump' || this.aiAction === 'escape') && this.onGround) {
             if (this.aiAction === 'escape') this.aiEscapeDirection = this.x < WIDTH / 2 ? 1 : -1;
@@ -789,10 +796,12 @@ class Fighter {
         const evadedByCrouch = !intersectsOpponent && defenderState === 'crouch' && !!attackBox && this.intersects(attackBox, standingBox);
         let outcome = 'whiff';
         let damageApplied = 0;
+        const contactHighlight = opponent.hitStun > 0 ? '' : this.onGround && !opponent.onGround ? 'comicAntiAir'
+            : (opponent.lastAttackOutcome === 'whiff' && opponent.attackCooldown > 0 ? 'comicPunish' : '');
 
         if (intersectsOpponent) {
             const healthBefore = opponent.health;
-            const result = opponent.takeHit(Math.round(attack.damage * this.damageModifier), this);
+            const result = opponent.takeHit(Math.round(attack.damage * this.damageModifier), this, contactHighlight);
             damageApplied = result && Number.isFinite(result.damageApplied)
                 ? result.damageApplied
                 : Math.max(0, healthBefore - opponent.health);
@@ -819,7 +828,7 @@ class Fighter {
         });
     }
 
-    takeHit(damage, attacker) {
+    takeHit(damage, attacker, contactHighlight = '') {
         const impactDirection = attacker.facingRight ? 1 : -1;
 
         this.clearComboSequence();
@@ -861,7 +870,10 @@ class Fighter {
             this.aiPostHitTimer = getDifficultyConfig().postHitPauseFrames;
         }
 
-        addCombatText(this.x, this.y - 85, getImpactPhrase(attacker.lastAttackType), attacker.accentColor, getCombatFeedbackKind(attacker.lastAttackType));
+        const contextual = contactHighlight && combatCaptionFrames === 0;
+        if (contextual) combatCaptionFrames = COMIC_FEEDBACK.cooldownFrames;
+        addCombatText(this.x, this.y - 85, contextual ? t(contactHighlight) : getImpactPhrase(attacker.lastAttackType),
+            attacker.accentColor, getCombatFeedbackKind(attacker.lastAttackType));
         return { blocked: false, damageApplied: healthBefore - this.health };
     }
 

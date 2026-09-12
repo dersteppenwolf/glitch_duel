@@ -23,6 +23,7 @@ function createMockContext() {
         strokeRect() { this.calls.push('strokeRect'); },
         closePath() { this.calls.push('closePath'); },
         clearRect() { this.calls.push('clearRect'); },
+        drawImage() { this.calls.push('drawImage'); },
         translate() { this.calls.push('translate'); },
         scale() { this.calls.push('scale'); },
         strokeText(text) { this.calls.push('strokeText'); this.textCalls.push(text); },
@@ -84,6 +85,7 @@ function createMockAudioContext(audioEvents = [], options = {}) {
 function loadGame(options = {}) {
     const ctx = createMockContext();
     const audioEvents = [];
+    const downloads = [];
     const elements = new Map();
     let activeElement = null;
     const staticTags = {
@@ -137,6 +139,12 @@ function loadGame(options = {}) {
         'onboarding-screen': 'div',
         'pause-screen': 'div',
         'game-over': 'div',
+        'result-card': 'canvas',
+        'result-card-details': 'details',
+        'share-result-button': 'button',
+        'download-card-button': 'button',
+        'copy-challenge-button': 'button',
+        'challenge-link': 'textarea',
         'bindings-list': 'div',
         'binding-status': 'div',
         'game-toolbar': 'div',
@@ -209,6 +217,12 @@ function loadGame(options = {}) {
             textContent: '',
             value: '',
             checked: false,
+            ...(tagName === 'canvas' ? { getContext: () => ctx,
+                toDataURL: () => 'data:image/png;base64,dGVzdA==',
+                toBlob: (callback) => callback(new Blob(['test'], { type: 'image/png' })) } : {}),
+            click() { if (this.download) downloads.push({ href: this.href, download: this.download }); },
+            remove() { if (this.parentElement) this.parentElement.children = this.parentElement.children.filter((child) => child !== this); },
+            select() { this.selected = true; },
             className: '',
             children: [],
             parentElement: null,
@@ -306,6 +320,8 @@ function loadGame(options = {}) {
     };
     const context = {
         console,
+        URL, URLSearchParams, Blob, File,
+        downloads,
         Math,
         setTimeout(fn) {
             fn();
@@ -329,7 +345,7 @@ function loadGame(options = {}) {
             innerWidth: 800,
             innerHeight: 600,
             devicePixelRatio: 2,
-            location: { search: options.search || '' },
+            location: { search: options.search || '', href: options.href || `https://example.test/glitch_duel/${options.search || ''}` },
             AudioContext: MockAudioContext,
             webkitAudioContext: MockAudioContext,
             localStorage: {
@@ -392,6 +408,23 @@ function loadGame(options = {}) {
             setLanguage,
             getLanguage,
             chooseAIAction,
+            chooseAINeutralAction,
+            chooseWeightedAIAction,
+            nextSimulationRandomForTest: () => randomSimulation(),
+            getChallengeFromLocation,
+            applyChallengeFromLocation,
+            buildChallengeUrl,
+            getSeedFromLocation,
+            getResultCardData,
+            renderResultCard,
+            shareResult,
+            copyChallengeLink,
+            downloadResultCard,
+            captureRoundHighlight,
+            finishRound,
+            setupRestartButton,
+            DUEL_RULES_VERSION,
+            COMIC_FEEDBACK,
             getCPUAIContext,
             drawFighter,
             draw,
@@ -498,6 +531,7 @@ function loadGame(options = {}) {
             drawEnergyBar,
             COMBAT_FEEDBACK,
             getState: () => ({
+                roundHighlight, combatCaptionFrames, resultCardFile, loadedChallenge,
                 player1,
                 player2,
                 keys: { ...keys },
@@ -1098,6 +1132,249 @@ test('new arenas integrate localized selection and previews without changing see
         api.triggerImpactFeedback(500, 300, 1);
         api.drawBackground(); api.drawArenaForeground();
     }
+});
+
+test('weighted neutral pools preserve baseline cutoffs, legal options and nonzero repeat probability', () => {
+    const { api } = loadGame();
+    const pool = [['approach', 2], ['retreat', 1], ['block', 1]];
+    for (const [rand, expected] of [[0, 'approach'], [0.499999, 'approach'], [0.5, 'retreat'], [0.75, 'block']]) {
+        assert.equal(api.chooseWeightedAIAction(pool, rand, '', 0.5), expected);
+    }
+    assert.equal(api.chooseWeightedAIAction(pool, 0.4, 'approach', 0.5), 'retreat');
+    assert.equal(api.chooseWeightedAIAction(pool, 0.1, 'approach', 0.5), 'approach');
+    for (const d of Object.values(api.DIFFICULTIES)) {
+        assert.equal(d.neutralRepeatWeight, 0.5);
+        for (const cutoffs of [[0, d.kickMid, d.approachMid, d.retreatMid, d.jumpMid, 1], [0, d.punchClose, d.kickClose, d.blockClose, 1]]) {
+            assert(cutoffs.every(Number.isFinite));
+            assert(cutoffs.every((v, i) => i === 0 || v >= cutoffs[i - 1]));
+        }
+        const base = { dist: 150, punchReady: true, kickReady: true, retreatBlocked: false, opponentBlockBias: 0, difficulty: d };
+        const baseline = {}, repeated = {};
+        for (let i = 0; i < 10000; i++) {
+            const rand = (i + 0.5) / 10000;
+            const action = api.chooseAINeutralAction({ ...base, rand });
+            baseline[action] = (baseline[action] || 0) + 1;
+            const previous = api.chooseAINeutralAction({ ...base, rand, previousDecision: 'approach' });
+            repeated[previous] = (repeated[previous] || 0) + 1;
+            const filtered = api.chooseAINeutralAction({ ...base, rand, kickReady: false, retreatBlocked: true });
+            assert(!['kick', 'retreat'].includes(filtered));
+        }
+        assert.equal(baseline.kick, Math.round(d.kickMid * 10000));
+        assert.equal(baseline.approach, Math.round((d.approachMid - d.kickMid) * 10000));
+        assert(repeated.approach > 0 && repeated.approach < baseline.approach);
+        assert.equal(Object.keys(repeated).length, 5);
+        assert.equal(api.chooseAINeutralAction({ ...base, dist: 95, rand: 0 }), 'punch');
+        assert.equal(api.chooseAINeutralAction({ ...base, dist: 95.001, rand: 0 }), 'kick');
+        assert.equal(api.chooseAINeutralAction({ ...base, dist: 110, rand: 0 }), 'kick');
+        assert.equal(api.chooseAINeutralAction({ ...base, dist: 250.001, rand: 0 }), 'approach');
+    }
+});
+
+test('neutral repetition never suppresses protected tactical choices', () => {
+    const { api } = loadGame();
+    const base = { dist: 90, health: 100, energy: 0, onGround: true, canPunch: true, canKick: true,
+        x: 400, opponentX: 490, difficulty: api.DIFFICULTIES.normal, rand: 0.05 };
+    for (const [overrides, expected] of [
+        [{ opponentWhiffed: true, opponentRecovery: 12 }, 'punch'],
+        [{ antiAirIntercept: { type: 'kick', frames: 2 } }, 'antiAir'],
+        [{ opponentAttacking: true }, 'block'],
+        [{ energy: 100, canSpecial: true, opponentHealth: 10 }, 'special'],
+        [{ counterTimer: 10 }, 'punch'],
+        [{ opponentPunchBias: 0.8 }, 'crouch'],
+        [{ dist: 200, opponentAttackBias: 0.8 }, 'retreat'],
+        [{ timedRound: true, lateRound: true, cpuBehind: true }, 'punch'],
+        [{ opponentBlockBias: 1 }, 'punch'],
+        [{ health: 20 }, 'retreat'],
+        [{ onGround: false, canAirPunch: true }, 'airPunch']
+    ]) assert.equal(api.chooseAIAction({ ...base, ...overrides, previousDecision: expected }), expected);
+});
+
+test('CPU remembers one decision, consumes two RNG samples and keeps existing lifecycle', () => {
+    const { api } = loadGame();
+    api.setMatchRandomSeed(17);
+    const oracle = Array.from({ length: 3 }, () => api.nextSimulationRandomForTest());
+    api.setMatchRandomSeed(17);
+    const cpu = new api.Fighter(750, false), opponent = new api.Fighter(150, true);
+    assert.equal(cpu.aiPreviousDecisionAction, '');
+    cpu.updateAI(opponent);
+    const previous = cpu.aiPreviousDecisionAction;
+    assert(previous);
+    assert.equal(api.nextSimulationRandomForTest(), oracle[2]);
+    api.setMatchRandomSeed(17);
+    cpu.updateAI(opponent);
+    assert.equal(cpu.aiPreviousDecisionAction, previous);
+    assert.equal(api.nextSimulationRandomForTest(), oracle[0]);
+    api.startTraining();
+    const trainingCpu = api.getState().player2;
+    trainingCpu.aiPreviousDecisionAction = 'jump';
+    api.pauseGame(); api.resumeGame(); api.resetTraining();
+    assert.equal(api.getState().player2.aiPreviousDecisionAction, 'jump');
+    api.startRound();
+    assert.equal(api.getState().player2.aiPreviousDecisionAction, '');
+    api.showMainMenu();
+    assert.equal(api.getState().player2.aiPreviousDecisionAction, '');
+});
+
+test('bounded bait and approach hold reachable spacing without extra decisions or attacks', () => {
+    const { api } = loadGame();
+    const cpu = new api.Fighter(500, false), opponent = new api.Fighter(380, true);
+    cpu.aiAction = 'approach'; cpu.aiDecisionTimer = 20;
+    cpu.updateAI(opponent);
+    assert.equal(cpu.velX, 0); assert.equal(cpu.attackSequence, 0);
+    assert.equal(cpu.aiDecisionTimer, 19);
+    cpu.aiAction = 'retreat'; cpu.aiMemory.attack = 100; opponent.x = 270;
+    cpu.updateAI(opponent);
+    assert.equal(cpu.velX, 0);
+    opponent.x = 340; cpu.updateAI(opponent);
+    assert(cpu.velX > 0, 'bait still retreats before its spacing boundary');
+    cpu.x = 950; opponent.x = 790; cpu.updateAI(opponent);
+    assert.equal(cpu.velX, 0); assert.equal(cpu.aiAction, 'block');
+});
+
+test('neutral CPU trace and last decision remain identical at 30, 60 and 120 FPS', () => {
+    function run(fps) {
+        const { api } = loadGame({ search: '?seed=17' });
+        startPlayingGame(api);
+        api.getState().player1.health = 1000;
+        const trace = [];
+        for (let frame = 0; frame < fps * 3; frame++) {
+            api.advanceSimulation(1000 / fps); api.draw();
+            if ((frame + 1) % (fps / 10) === 0) {
+                const s = api.getState(), cpu = s.player2;
+                trace.push([s.matchElapsedFrames, cpu.x, cpu.state, cpu.aiAction, cpu.aiPreviousDecisionAction, cpu.aiDecisionTimer,
+                    cpu.attackCooldown, cpu.attackSequence, s.player1.health, s.roundTimerFrames]);
+            }
+        }
+        assert.equal(api.getState().matchElapsedFrames, 180);
+        assert.equal(api.getState().currentRound, 1);
+        return trace;
+    }
+    const trace = run(60);
+    assert.deepEqual(run(30), trace); assert.deepEqual(run(120), trace); assert.deepEqual(run(60), trace);
+    assert.equal(trace[0][4], 'approach');
+    assert(trace.some((sample) => sample[4] !== 'approach'));
+});
+
+test('semantic captions require real unblocked contact and their cooldown freezes with simulation', () => {
+    const { api } = loadGame();
+    api.startTraining(); api.skipVsIntro();
+    const { player1: player, player2: opponent } = api.getState();
+    player.x = 400; opponent.x = 480;
+    opponent.onGround = false; opponent.y -= 20;
+    player.attack('punch', opponent);
+    assert.equal(player.lastAttackOutcome, 'hit');
+    assert.equal(api.getState().floatingTexts.at(-1).text, 'NO FLY ZONE');
+    const cooldown = api.getState().combatCaptionFrames;
+    api.draw(); api.pauseGame(); api.advanceSimulation(100);
+    assert.equal(api.getState().combatCaptionFrames, cooldown);
+    api.resumeGame(); api.update();
+    assert.equal(api.getState().combatCaptionFrames, cooldown - 1);
+    api.resetTraining();
+    player.x = 400; opponent.x = 480; opponent.lastAttackOutcome = 'whiff'; opponent.attackCooldown = 10;
+    player.attack('kick', opponent);
+    assert.equal(api.getState().floatingTexts.at(-1).text, 'CACHE MISS');
+    player.attackCooldown = 0; player.attack('kick', opponent);
+    assert.notEqual(api.getState().floatingTexts.at(-1).text, 'CACHE MISS');
+    api.resetTraining();
+    player.x = 400; opponent.x = 480; opponent.state = 'block';
+    opponent.lastAttackOutcome = 'whiff'; opponent.attackCooldown = 10;
+    player.attack('kick', opponent);
+    assert.equal(api.getState().combatCaptionFrames, 0);
+    assert.notEqual(api.getState().floatingTexts.at(-1).text, 'CACHE MISS');
+    api.resetTraining();
+    player.x = 400; opponent.x = 480; opponent.onGround = false; opponent.y -= 20; opponent.hitStun = 10;
+    player.attack('punch', opponent);
+    assert.equal(api.getState().combatCaptionFrames, 0, 'a juggle is not a new anti-air interception');
+    assert.notEqual(api.getState().floatingTexts.at(-1).text, 'NO FLY ZONE');
+});
+
+test('KO captures a frozen render snapshot, time results stay distinct and resets release it', () => {
+    const { api } = loadGame();
+    startPlayingGame(api);
+    const { player1, player2 } = api.getState();
+    player1.x = 400; player2.x = 480; player1.health = 1; player2.health = 1;
+    player1.attack('kick', player2);
+    api.captureRoundHighlight(true);
+    const snapshot = api.getState().roundHighlight;
+    assert.equal(snapshot.key, 'comicLastBit'); assert(snapshot.ko);
+    assert.equal(snapshot.fighters[0].state, 'kick');
+    assert(!('aiMemory' in snapshot.fighters[1]));
+    const frozenX = snapshot.fighters[0].x;
+    player1.x = 300; api.draw();
+    assert.equal(snapshot.fighters[0].x, frozenX);
+    api.startRound(); assert.equal(api.getState().roundHighlight, null);
+    api.captureRoundHighlight(true);
+    assert.equal(api.getState().roundHighlight.key, 'comicTime');
+    assert.equal(api.getState().roundHighlight.ko, false);
+    api.startTraining(); api.captureRoundHighlight(true);
+    assert.equal(api.getState().roundHighlight, null);
+});
+
+test('challenge links round-trip validated configuration and never auto-start or change accessibility', () => {
+    const { api } = loadGame({ search: '?seed=4294967295&debug=1' });
+    api.setDifficulty('hard'); api.setArena('rooftop'); api.setFighterStyle('technical'); api.setRival('boss500'); api.initGame();
+    const url = new URL(api.buildChallengeUrl());
+    assert.equal(url.searchParams.get('duel'), api.DUEL_RULES_VERSION);
+    assert.equal(url.searchParams.has('debug'), false);
+    const loaded = loadGame({ search: url.search, reducedMotionSystem: true });
+    loaded.api.applyChallengeFromLocation();
+    const s = loaded.api.getState();
+    assert.equal(s.gameState, 'menu'); assert.equal(s.selectedArena, 'rooftop'); assert.equal(s.selectedDifficulty, 'hard');
+    assert.equal(s.selectedFighterStyle, 'technical'); assert.equal(s.selectedRival, 'boss500'); assert(s.reducedMotionEnabled);
+    loaded.api.initGame(); assert.equal(loaded.api.getState().matchSeed, 4294967295);
+    for (const [key, value] of [['duel', 'future'], ['seed', '4294967296'], ['seed', '-1'], ['seed', 'NaN'], ['arena', '__proto__'], ['rival', '<script>'], ['mode', 'training']]) {
+        const invalid = new URL(url); invalid.searchParams.set(key, value);
+        const game = loadGame({ search: invalid.search }); game.api.applyChallengeFromLocation();
+        assert.equal(game.api.getChallengeFromLocation(), null, key);
+        assert.equal(game.api.getSeedFromLocation(), null, key);
+        assert.equal(game.api.getState().selectedArena, 'notebook');
+        assert.equal(game.api.getState().gameState, 'menu');
+    }
+    api.startArcadeRun();
+    assert.equal(new URL(api.buildChallengeUrl()).searchParams.get('mode'), 'arcade');
+});
+
+test('result card exports locally, shares on demand, preserves cancel and offers manual copy fallback', async () => {
+    const { api, context, elements } = loadGame({ search: '?seed=50' });
+    startPlayingGame(api); api.finishRound(true); api.finishRound(true);
+    assert.equal(api.getState().gameState, 'gameOver');
+    assert.equal(api.getState().resultCardFile.type, 'image/png');
+    const before = [api.getState().matchElapsedFrames, api.getState().player1.health, api.getState().player2.health];
+    api.renderResultCard(); api.downloadResultCard();
+    assert.equal(context.downloads[0].download, 'glitch-duel-50.png');
+    assert.equal(context.downloads[0].href.startsWith('data:image/png;'), true);
+    await api.copyChallengeLink();
+    assert.equal(elements.get('challenge-link').hidden, false);
+    assert.equal(elements.get('challenge-link').selected, true);
+    const calls = [];
+    context.navigator.canShare = () => true;
+    context.navigator.share = async (payload) => calls.push(payload);
+    await api.shareResult();
+    assert.equal(calls.length, 1); assert.equal(calls[0].files.length, 1);
+    assert.equal(new URL(calls[0].url).searchParams.get('seed'), '50');
+    context.navigator.share = async () => { throw Object.assign(new Error(), { name: 'AbortError' }); };
+    await api.shareResult(); assert.equal(elements.get('share-status').textContent, api.t('shareCancelled'));
+    context.navigator.canShare = () => { throw new Error('unsupported files'); };
+    context.navigator.share = async (payload) => calls.push(payload);
+    await api.shareResult(); assert.equal(calls.at(-1).files, undefined);
+    assert.deepEqual([api.getState().matchElapsedFrames, api.getState().player1.health, api.getState().player2.health], before);
+    api.showMainMenu(); assert.equal(api.getState().resultCardFile, null);
+    await api.shareResult(); assert.equal(calls.length, 2);
+});
+
+test('late result callbacks cannot revive a cleared card or sharing status', async () => {
+    const { api, context, elements } = loadGame();
+    startPlayingGame(api); api.finishRound(true); api.finishRound(true);
+    let completeBlob, completeShare;
+    elements.get('result-card').toBlob = (callback) => { completeBlob = callback; };
+    api.renderResultCard();
+    context.navigator.share = () => new Promise((resolve) => { completeShare = resolve; });
+    const pending = api.shareResult();
+    api.showMainMenu();
+    completeBlob(new Blob(['png'], { type: 'image/png' }));
+    completeShare(); await pending;
+    assert.equal(api.getState().resultCardFile, null);
+    assert.equal(elements.get('share-status').textContent, '');
 });
 
 test('simple combos increase damage and cooldown', () => {
@@ -1939,9 +2216,9 @@ test('static HTML contract preserves local assets, script order, controls, and a
     assert.match(html, /<label class="training-trial-picker" for="training-trial-select">/);
     assert.match(html, /<select id="training-trial-select">/);
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260912-juice3">/);
-    assert.match(html, /<script src="i18n\.js\?v=20260912-juice3"><\/script>/);
-    assert.match(html, /<script src="game\.js\?v=20260912-juice3"><\/script>/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260912-duels3">/);
+    assert.match(html, /<script src="i18n\.js\?v=20260912-duels3"><\/script>/);
+    assert.match(html, /<script src="game\.js\?v=20260912-duels3"><\/script>/);
     assert.match(html, /<option value="glitchCancel" data-i18n="trainingGlitchCancelOption">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
@@ -3576,7 +3853,7 @@ test('contextual AI decisions respect chance, range, pattern, and safety boundar
     };
     const cases = [
         ['whiff below chance', { dist: 80, canPunch: true, opponentWhiffed: true, opponentRecovery: 10, rand: 0.4199 }, 'punch'],
-        ['whiff at chance', { dist: 80, canPunch: true, opponentWhiffed: true, opponentRecovery: 10, rand: 0.42 }, 'block'],
+        ['whiff at chance falls through to normalized neutral pool', { dist: 80, canPunch: true, opponentWhiffed: true, opponentRecovery: 10, rand: 0.42 }, 'punch'],
         ['whiff prefers punch at punch range', { dist: 95, canPunch: true, canKick: true, opponentWhiffed: true, opponentRecovery: 10, rand: 0.1 }, 'punch'],
         ['whiff prefers kick past punch range', { dist: 95.01, canPunch: true, canKick: true, opponentWhiffed: true, opponentRecovery: 10, rand: 0.1 }, 'kick'],
         ['whiff approaches from mid without a hitbox', { opponentWhiffed: true, opponentRecovery: 10, rand: 0.1 }, 'approach'],
@@ -3999,6 +4276,7 @@ test('CPU air decisions use real hitboxes once per jump and never execute stale 
 test('CPU decision helper chooses deterministic defensive and offensive actions', () => {
     const { api } = loadGame();
     const difficulty = {
+        ...api.DIFFICULTIES.normal,
         blockReaction: 0.60,
         approachLong: 0.85,
         approachMid: 0.60,
@@ -4027,6 +4305,7 @@ test('CPU decision helper chooses deterministic defensive and offensive actions'
 test('CPU decision helper uses reaction chance, range, cooldown, and wall context', () => {
     const { api } = loadGame();
     const difficulty = {
+        ...api.DIFFICULTIES.normal,
         blockReaction: 0.60,
         approachLong: 0.85,
         approachMid: 0.60,
@@ -4055,6 +4334,7 @@ test('CPU decision helper uses reaction chance, range, cooldown, and wall contex
 test('CPU decision helper supports counter windows and tactical specials', () => {
     const { api } = loadGame();
     const difficulty = {
+        ...api.DIFFICULTIES.normal,
         blockReaction: 0.60,
         approachLong: 0.85,
         approachMid: 0.60,
@@ -4081,6 +4361,7 @@ test('CPU decision helper supports counter windows and tactical specials', () =>
 test('CPU short memory biases defense against repeated attacks', () => {
     const { api } = loadGame();
     const difficulty = {
+        ...api.DIFFICULTIES.normal,
         blockReaction: 0.60,
         approachLong: 0.85,
         approachMid: 0.60,
@@ -4118,6 +4399,7 @@ test('CPU short memory biases defense against repeated attacks', () => {
 test('CPU memory tracks attack type spam separately from aggregate attack bias', () => {
     const { api } = loadGame();
     const difficulty = {
+        ...api.DIFFICULTIES.normal,
         patternMemoryGain: 12,
         patternMemoryDecay: 2,
         patternBlockBonus: 0.16,
@@ -4152,6 +4434,7 @@ test('CPU memory tracks attack type spam separately from aggregate attack bias',
 test('CPU memory tracks attack patterns by distance zone and air state', () => {
     const { api } = loadGame();
     const difficulty = {
+        ...api.DIFFICULTIES.normal,
         patternMemoryGain: 14,
         patternMemoryDecay: 2,
         blockReaction: 0.82,
@@ -4274,6 +4557,7 @@ test('CPU AI cancels stored retreat only when late, timed, and behind', () => {
 test('anti-turtle pressure uses accumulated block memory threshold and the single decision rand', () => {
     const { api } = loadGame();
     const difficulty = {
+        ...api.DIFFICULTIES.normal,
         ...api.DIFFICULTIES.normal,
         specialChance: 0,
         punchClose: 0,

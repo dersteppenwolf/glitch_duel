@@ -260,6 +260,47 @@ function drawVsIntro() {
     ctx.restore();
 }
 
+function drawRoundHighlight() {
+    const top = HUD_SAFE_BOTTOM + 12;
+    ctx.save();
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 4;
+    ctx.strokeRect(14, top, WIDTH - 28, HEIGHT - top - 14);
+    const centerX = (roundHighlight.fighters[0].x + roundHighlight.fighters[1].x) / 2;
+    const centerY = 310;
+    for (let i = 0; i < 12; i++) {
+        const x = 32 + i * (WIDTH - 64) / 11;
+        ctx.beginPath();
+        ctx.moveTo(x, HEIGHT - 26);
+        ctx.lineTo(x + (centerX - x) * 0.12, HEIGHT - 26 + (centerY - HEIGHT + 26) * 0.12);
+        ctx.stroke();
+    }
+    roundHighlight.fighters.forEach(drawFighter);
+    const title = t(roundHighlight.key);
+    ctx.font = `bold 32px ${GAME_FONT_FAMILY}`;
+    ctx.textAlign = 'center';
+    const width = Math.min(WIDTH - 70, ctx.measureText(title).width + 32);
+    ctx.fillStyle = '#fff7c2'; ctx.fillRect((WIDTH - width) / 2, top + 12, width, 46);
+    ctx.strokeRect((WIDTH - width) / 2, top + 12, width, 46);
+    ctx.fillStyle = '#111'; ctx.fillText(title, WIDTH / 2, top + 45, width - 20);
+    ctx.restore();
+}
+
+function drawResultCard(target, scene, data) {
+    target.fillStyle = '#fffdf5'; target.fillRect(0, 0, 1200, 900);
+    target.strokeStyle = '#111'; target.lineWidth = 8; target.strokeRect(16, 16, 1168, 868);
+    target.textAlign = 'left'; target.fillStyle = '#111';
+    target.font = `bold 44px ${GAME_FONT_FAMILY}`; target.fillText('GLITCH DUEL', 50, 76);
+    target.font = `bold 25px ${GAME_FONT_FAMILY}`; target.textAlign = 'right'; target.fillText(data.score, 1140, 76);
+    target.drawImage(scene, 50, 110, 1100, 550);
+    target.textAlign = 'left'; target.font = `bold 30px ${GAME_FONT_FAMILY}`;
+    target.fillText(`${data.title} · ${data.medal}`, 50, 716, 1100);
+    target.font = `bold 23px ${GAME_FONT_FAMILY}`;
+    target.fillText(`${data.rival} · ${data.difficulty} · ${data.arena}`, 50, 764, 1100);
+    target.font = `20px ${GAME_FONT_FAMILY}`;
+    target.fillText(`${data.mode} · SEED ${data.seed}`, 50, 806, 1100);
+    target.fillText(t('challengeCardFooter'), 50, 852, 1100);
+}
+
 function drawImpactFlash() {
     if (!impactFlash) return;
 

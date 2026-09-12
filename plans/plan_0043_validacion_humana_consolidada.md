@@ -236,3 +236,17 @@ Checklist ejecutado:
 - [x] Fixtures y controles auxiliares retirados después de la revisión; no se incluyen en producción.
 
 Pendiente: escucha de SFX y mezcla en altavoces/auriculares, juego sostenido, comodidad bajo movimiento reducido, pruebas físicas touch/gamepad/AT, rendimiento y revisión visual de todas las firmas y arenas anteriores. Esta entrada no certifica dichas validaciones ni modifica el cierre histórico por supuesto explícito.
+
+## Comprobación acotada de navegador — plan 0050, 2026-09-12
+
+Windows, navegador integrado de Codex (Chromium), viewport 1280×720, `localhost:8000`, seed 50. Comprobaciones de herramienta con DOM y Canvas reales, sin participantes humanos. No se modifica el cierre histórico.
+
+- [x] Menú de producción con reto versionado: Dificil, Azotea, Técnico, BOSS 500 y seed 50 se aplicaron sin iniciar automáticamente. Al jugar, la CPU ganó 0-2 frente a un jugador pasivo. Reiniciar y pulsar P abrió PAUSA con foco en su título y resumen de round 1, 0-0 y 60 s.
+- [x] Fixture temporal con scripts de producción y rAF del juego detenido: captura del KO con salud P1 3%, pose final de ataque, sello ULTIMO BIT y marco estático. Movimiento reducido conservó esa composición. El caso controlado de tiempo mostró TIME LIMIT y poses de cierre; no fue una partida real agotando el reloj.
+- [x] Antiaéreo real en el fixture: punch contra rival en aire, salud 100→92 y cartela NO FLY ZONE. Inspección de silueta y cartela sobre el Canvas real; no se evaluó comodidad ni balance humano.
+- [x] Resultado 2-0 con medalla 404 Survivor: preview de tarjeta 1200×900 con GLITCH DUEL, escena, marcador y pie de configuración. El diálogo permitió desplazarse hasta las tres acciones, reinicio y menú. Copiar reto mostró confirmación de copia.
+- [x] Determinismo: dos ejecuciones de 180 ticks por dificultad, seed 50, seis muestras de posición, acción actual/anterior, salud y timer por ejecución; las parejas Fácil/Normal/Dificil fueron idénticas. Se observaron approach, idle, kick, retreat y block según dificultad. No se compararon píxeles ni rendimiento.
+- [x] Descargar PNG mostró «Descarga PNG solicitada». Se comprobó generación y preview de Canvas, pero el navegador integrado no entregó evento de descarga en dos intentos. El segundo usó un enlace temporal adjunto al DOM. No se afirma que un archivo se haya guardado en disco.
+- [ ] Confirmar descarga física y apertura del PNG en un navegador convencional y diálogo nativo de Web Share con archivo/texto. No se invocó envío a contactos. Cancelación, fallbacks y callbacks tardíos tienen cobertura automática, que no sustituye esta comprobación.
+
+Los fixtures se retiran antes del commit. Quedan pendientes también juego sostenido, valoración de variedad/justicia, viralidad, dispositivos físicos, AT y comodidad bajo movimiento reducido. La revisión breve no certifica esas propiedades.

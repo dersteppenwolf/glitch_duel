@@ -355,4 +355,4 @@ Se cargo y aplico `karpathy-guidelines` antes de finalizar este ExecPlan.
 
 ## Estado De Implementacion
 
-Propuesto. No ejecutado ni autorizado para codigo. El siguiente paso es registrar el gate de evidencia o una autorizacion explicita.
+Implementado el 2026-09-12 dentro de plan `0050`, tras la instruccion explicita del usuario «ejecute lo sugerido». Ese mensaje satisface el gate de autorizacion; crear este plan no lo satisfacia por si solo. El selector conserva prioridades tacticas y rama cercana de pared, filtra opciones ilegales, aplica peso de repeticion 0.5 y mantiene una decision previa con dos muestras RNG. Tests cubren distribuciones, fronteras, lifecycle, prioridades y equivalencia 30/60/120 FPS. Los ajustes adicionales de distancia/señuelo pertenecen al alcance autorizado separado de plan `0050`. La evidencia tecnica de navegador y sus limites se registran exclusivamente en plan `0043`; no se afirma mejora perceptiva validada por jugadores.
