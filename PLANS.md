@@ -57,11 +57,11 @@ Lee el código, las pruebas, la documentación y las instrucciones aplicables an
 
 ### Al ejecutar
 
-No preguntes de manera rutinaria por el “siguiente paso”: continúa con el próximo paso seguro del plan. Actualiza `Progress` en puntos de pausa significativos y mantén sincronizadas las secciones afectadas cuando cambie el enfoque. Si surge una decisión material no autorizada, detén esa rama del trabajo y solicita dirección.
+No preguntes de manera rutinaria por el “siguiente paso”: continúa con el próximo paso seguro del plan. Actualiza `Progreso` en puntos de pausa significativos y mantén sincronizadas las secciones afectadas cuando cambie el enfoque. Si surge una decisión material no autorizada, detén esa rama del trabajo y solicita dirección.
 
 ### Al completar
 
-Ejecuta la validación acordada, registra el resultado real, actualiza `Outcomes & Retrospective` y deja claros los pendientes. No marques el plan como completado si queda trabajo requerido o la validación necesaria no se ejecutó.
+Ejecuta la validación acordada, registra el resultado real, actualiza `Resultados y retrospectiva` y deja claros los pendientes. No marques el plan como completado si queda trabajo requerido o la validación necesaria no se ejecutó.
 
 ## Formato
 
@@ -75,9 +75,9 @@ Usa Markdown legible. Prefiere prosa para explicar contexto y razonamiento, y ut
 
 Explica qué resultado obtiene el usuario o el sistema, cómo se observará y qué queda fuera de alcance.
 
-### Progress
+### Progreso
 
-Usa una checklist breve que represente el estado real. Añade marcas de tiempo a hitos o pausas significativas, no a cada acción mecánica. Divide una entrada parcialmente completada en una parte terminada y otra pendiente.
+Usa una lista de verificación breve que represente el estado real. Añade marcas de tiempo a hitos o pausas significativas, no a cada acción mecánica. Divide una entrada parcialmente completada en una parte terminada y otra pendiente.
 
 ### Contexto actual
 
@@ -91,15 +91,17 @@ Explica la solución elegida, las alternativas descartadas cuando importen y la 
 
 Indica los comandos exactos y el directorio desde el cual se ejecutan. Describe brevemente la salida o señal que distingue éxito de fallo. No fijes un número de pruebas que pueda quedar obsoleto; exige salida exitosa y registra después el conteo observado cuando aporte valor.
 
-### Validación y aceptación
+### Validación, aceptación y evidencia
 
 Relaciona cada requisito con una comprobación observable. Incluye pruebas automatizadas, escenarios manuales o verificaciones operativas en proporción al riesgo. Para cambios internos, demuestra el efecto mediante una prueba que falle antes y pase después, una comparación reproducible o una evidencia equivalente.
+
+Descubre y usa las herramientas reales del repositorio; no inventes comandos genéricos. Indica el resultado esperado y el criterio de fallo, valida comportamiento útil además de compilación o sintaxis, y declara las limitaciones de la evidencia. Las simulaciones y mocks no sustituyen validaciones humanas, visuales, físicas u operativas cuando estas sean necesarias. Conserva únicamente resultados representativos que mejoren la verificabilidad.
 
 ### Riesgos, idempotencia y recuperación
 
 Enumera riesgos reales y sus mitigaciones. Indica qué pasos pueden repetirse de forma segura y cómo reintentar o revertir los que puedan dejar estado parcial. Si no existen riesgos adicionales a los controles rutinarios, dilo brevemente.
 
-### Decision Log
+### Registro de decisiones
 
 Registra únicamente decisiones materiales con este formato:
 
@@ -107,11 +109,11 @@ Registra únicamente decisiones materiales con este formato:
 - Justificación: por qué se eligió.
 - Fecha/autor: cuándo y quién la tomó.
 
-### Outcomes & Retrospective
+### Resultados y retrospectiva
 
 Al finalizar, compara el resultado con el propósito, resume la validación ejecutada y declara pendientes o desviaciones. Mientras el plan esté activo, esta sección puede indicar “Pendiente”.
 
-### Revision Notes
+### Notas de revisión
 
 Registra cambios significativos al propio plan y su motivo. No anotes correcciones ortográficas o ajustes mecánicos sin impacto.
 
@@ -120,7 +122,7 @@ Registra cambios significativos al propio plan y su motivo. No anotes correccion
 Incluye estas secciones solo cuando aporten información útil:
 
 - **Hitos:** para trabajo multietapa. Cada hito debe producir un resultado verificable y dejar el sistema en un estado coherente.
-- **Surprises & Discoveries:** para comportamientos inesperados que cambien el enfoque; adjunta evidencia breve.
+- **Sorpresas y descubrimientos:** para comportamientos inesperados que cambien el enfoque; adjunta evidencia breve.
 - **Interfaces y dependencias:** cuando deban crearse o modificarse contratos, tipos, interfaces de programación (APIs), bibliotecas o servicios.
 - **Migración, despliegue gradual y reversión:** cuando exista transición de datos, compatibilidad temporal o publicación por fases.
 - **Artefactos y evidencia:** para extractos concisos de registros, diferencias, métricas o transcripciones que demuestren un resultado.
@@ -136,17 +138,6 @@ Usa un prototipo solo para resolver una incógnita nombrada que bloquee el dise�
 
 Un prototipo no autoriza dependencias, infraestructura ni cambios externos fuera del alcance acordado. Prefiere experimentos pequeños, aislados y reversibles.
 
-## Validación y evidencia
-
-La validación no es opcional. Cada plan debe descubrir y usar las herramientas reales del repositorio, no comandos genéricos inventados. Incluye:
-
-- Pruebas o verificaciones apropiadas al cambio.
-- Resultado esperado y criterio de fallo.
-- Validación del comportamiento útil, no solo compilación o sintaxis.
-- Limitaciones de la evidencia; las simulaciones y mocks no sustituyen validaciones humanas, visuales, físicas u operativas cuando estas sean necesarias.
-
-Mantén la evidencia concisa. Registra resultados representativos y evita copiar salidas extensas que no mejoren la verificabilidad.
-
 ## Revisión antes de finalizar
 
 Comprueba que:
@@ -158,11 +149,11 @@ Comprueba que:
 - Las rutas, símbolos y comandos fueron comprobados.
 - Los riesgos y las decisiones materiales están registrados.
 - El plan no amplía la autoridad concedida.
-- `Progress`, `Decision Log`, `Outcomes & Retrospective` y `Revision Notes` reflejan el estado real.
+- `Progreso`, `Registro de decisiones`, `Resultados y retrospectiva` y `Notas de revisión` reflejan el estado real.
 
 ## Plantilla
 
-    # plan_xxxx - <descripción corta orientada a la acción>
+    # plan_<nnnn>_<objetivo> - <descripción corta orientada a la acción>
 
     **Fecha:** <AAAA-MM-DD>
     **Ámbito:** <componentes o capacidades afectadas>
@@ -174,7 +165,7 @@ Comprueba que:
 
     <Resultado observable, motivación y exclusiones explícitas.>
 
-    ## Progress
+    ## Progreso
 
     - [ ] <Paso verificable pendiente.>
 
@@ -194,7 +185,7 @@ Comprueba que:
 
     <Resultado esperado y señal de fallo.>
 
-    ## Validación y aceptación
+    ## Validación, aceptación y evidencia
 
     <Comprobaciones observables vinculadas a los requisitos.>
 
@@ -202,17 +193,17 @@ Comprueba que:
 
     <Riesgos, mitigaciones, repetición segura y reversión.>
 
-    ## Decision Log
+    ## Registro de decisiones
 
     - Decisión: <decisión material o “Ninguna todavía”.>
       Justificación: <motivo.>
       Fecha/autor: <AAAA-MM-DD, identidad o rol.>
 
-    ## Outcomes & Retrospective
+    ## Resultados y retrospectiva
 
     <Pendiente mientras esté activo; resultados y validación al completar.>
 
-    ## Revision Notes
+    ## Notas de revisión
 
     - <AAAA-MM-DD>: <cambio significativo y motivo.>
 
