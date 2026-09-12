@@ -61,9 +61,12 @@ Resumen de los archivos y comportamientos existentes que importan para el cambio
 
 Incluir referencias como:
 
-- `src/config.js` para constantes, ataques, dificultad y arenas.
-- `src/fighter.js` para fisica, IA, ataques, hitboxes y dibujo de luchadores.
-- `src/game.js` para estados globales, rondas, temporizador, pausa, render y eventos.
+- `src/config.js` para constantes, ataques, dificultad, arenas y configuracion de entrenamiento.
+- `src/input.js` para acciones canonicas y entrada de teclado, puntero y gamepad.
+- `src/ai.js` para decisiones de CPU.
+- `src/fighter.js` y `src/fighter_render.js` para simulacion y render del luchador.
+- `src/arena_render.js` y `src/hud_render.js` para render de arena y HUD.
+- `src/game.js` para estados globales, rondas, temporizador, menus, entrenamiento y eventos.
 - `src/index.html` para estructura de UI.
 - `src/styles.css` para layout, overlays y controles tactiles.
 - `tests/game.test.js` para pruebas con mocks.
@@ -119,11 +122,10 @@ Debe indicar comandos exactos.
 Validacion minima para cambios de codigo:
 
 ```powershell
-node --check src\config.js
-node --check src\audio.js
-node --check src\effects.js
-node --check src\fighter.js
-node --check src\game.js
+Get-ChildItem -LiteralPath "src" -Filter "*.js" | ForEach-Object {
+    node --check $_.FullName
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 node --test tests\game.test.js
 ```
 
@@ -221,11 +223,10 @@ Regla recomendada:
 ## Pruebas Y Validacion
 
 ```powershell
-node --check src\config.js
-node --check src\audio.js
-node --check src\effects.js
-node --check src\fighter.js
-node --check src\game.js
+Get-ChildItem -LiteralPath "src" -Filter "*.js" | ForEach-Object {
+    node --check $_.FullName
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 node --test tests\game.test.js
 ```
 
@@ -294,11 +295,10 @@ Agregar `backKick` en `ATTACKS`, detectar `kick,kick` en `handleAttackCommand()`
 ## Pruebas Y Validacion
 
 ```powershell
-node --check src\config.js
-node --check src\audio.js
-node --check src\effects.js
-node --check src\fighter.js
-node --check src\game.js
+Get-ChildItem -LiteralPath "src" -Filter "*.js" | ForEach-Object {
+    node --check $_.FullName
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 node --test tests\game.test.js
 ```
 
