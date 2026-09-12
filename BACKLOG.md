@@ -50,20 +50,17 @@ Only Ready, concrete Partial and dependency-Blocked work belongs here. `Depends 
 | 22 | Player | Ready | S | - | Visible local-data reset | Reset stats and future local progression without clearing unrelated preferences. |
 | 28 | Player | Partial | S | - | Perfect and comeback conditions | Add only perfect, comeback and no-special result conditions to the existing medal/phrase system. |
 | 39 | Player | Ready | S | - | Share match results | Share text-only score, medal, streak or phrase through Web Share with clipboard fallback. |
-| 41 | Player | Ready | S | - | New impact phrases and medals | Add content to the existing phrase/medal system without new progression rules. |
+| 41 | Player | Partial | S | - | New impact phrases and medals | Impact phrases expanded in plan `0049`; additional medals remain, without new progression rules. |
 | 47 | Combat | Ready | M | - | Additional combos | Training and collision regressions are complete; every new combo still requires focused timing, damage and interruption tests. |
 | 60 | Player | Blocked | M | 22 | Export/import local data | Export a versioned schema and validate imports without overwriting unrelated settings. |
 | 12 | UX | Ready | S | - | Fullscreen and wake lock | Use capability detection, release wake lock outside play and preserve the current layout fallback. |
 | 26 | Accessibility | Ready | M | - | Colorblind-safe combat feedback | Differentiate hit, block, special, danger, posture and energy through contrast plus shape, text, pattern and motion. |
 | 29 | UX | Ready | S | - | Haptic feedback | Add optional capability-detected vibration for hits, blocks, Special and match events. |
-| 30 | Audio | Ready | M | - | Separate audio controls | Add persisted combat/UI volume controls without inventing channels for sounds that do not exist. |
 | 3 | Distribution | Ready | M | - | PWA offline install | Add install/offline support with cache-version tests and safe update behavior. |
 | 20 | Visual | Ready | M | - | HUD theme selector | Add arcade, console and notebook presentation without changing gameplay information. |
 | 27 | Visual | Partial | S | - | Remaining HUD animations | Add only missing low-health and round-win emphasis; health and energy already animate. |
-| 36 | Visual | Ready | M | - | Reactive arena effects | Respond to combat events while preserving readability and reduced-motion behavior. |
 | 38 | Visual | Ready | M | - | Animated arena previews | Add lightweight loops that respect reduced motion and do not duplicate the full Canvas renderer. |
 | 40 | Audio | Ready | M | - | Spatial audio polish | Position combat sounds by fighter location while preserving mono-safe output. |
-| 42 | Visual | Ready | M | - | More visual arenas | Add cosmetic arenas on the completed readability foundation. |
 | 43 | Visual | Ready | M | - | Cosmetic arena variants | Add day/night/alert/rain/neon variants without gameplay effects. |
 | 45 | Visual | Ready | S | - | Arena-specific intro transitions | Add small title-card differences without delaying control or changing round state. |
 | 59 | Visual | Ready | S | - | Smooth screen transitions | Use View Transitions when available with current overlays as fallback. |
@@ -122,10 +119,13 @@ This is the canonical history. Implemented means code shipped; Merged means anot
 | 18 | Merged | Style-aware AI adaptation | Closed into `#16`; observed behavior remains authoritative and CPU does not read `styleKey`. |
 | 19 | Closed | Positional AI Special usage | Existing hitbox safety, lethal and comeback use were accepted; no reproducible residual justified expansion. |
 | 24 | Implemented | Input-aware help and onboarding | Delivered session-only keyboard/touch/gamepad guidance; plan `0043` closed human/AT review by explicit assumption. |
+| 30 | Implemented | Separate audio controls | Persisted combat/UI volume, mute and native preview controls, with layered SFX and bounded voices in plan `0049`. |
 | 32 | Implemented | Lightweight performance telemetry | Delivered bounded debug timing, DPR and Web Audio lifecycle diagnostics; plan `0043` closed hardware/long-session review by explicit assumption. |
 | 34 | Merged | AI decision tuning hooks | Consolidated into contextual AI items with difficulty-config tunables and focused tests. |
 | 35 | Implemented | Layered arena depth | Eight arenas render peripheral foreground after fighters and before combat feedback. |
+| 36 | Implemented | Reactive arena effects | Bounded contact reactions on all arenas; fixed-step decay and stationary reduced-motion presentation in plan `0049`. |
 | 37 | Implemented | Arena readability pass | Eight arenas retain readable fighters, HUD, corners, foreground and reduced-motion behavior. |
+| 42 | Implemented | More visual arenas | Terminal and Rooftop add two cosmetic arenas with localized selection and previews in plan `0049`. |
 | 44 | Merged | Richer foreground silhouettes | The delivered `#35` foreground and completed `#37` review left no named residual; reopen only for a concrete arena opportunity. |
 | 56 | Implemented | Difficulty personality visuals | CPU appearance varies by difficulty without changing behavior. |
 | 62 | Implemented | Frame-rate-independent combat simulation | Bounded fixed 60 Hz steps keep movement, combat timers, AI and round time equivalent at 30/60/120 FPS. |

@@ -1,4 +1,6 @@
 let audioCtx;
+const AUDIO_STORAGE_KEY = 'glitchDuelAudioVolumes';
+const audioVolumes = loadAudioVolumes();
 const audioDiagnostics = {
     createdGraphs: 0,
     endedGraphs: 0,
@@ -6,7 +8,8 @@ const audioDiagnostics = {
     oscillatorsCreated: 0,
     oscillatorsDisconnected: 0,
     gainsCreated: 0,
-    gainsDisconnected: 0
+    gainsDisconnected: 0,
+    droppedVoices: 0
 };
 
 const ATTACK_SOUND_PROFILES = {
@@ -50,6 +53,36 @@ function initAudio() {
             audioCtx = null;
         }
     }
+    if (audioCtx && audioCtx.state === 'suspended' && typeof audioCtx.resume === 'function') {
+        const resumed = audioCtx.resume();
+        if (resumed && typeof resumed.catch === 'function') resumed.catch(() => {});
+    }
+}
+
+function loadAudioVolumes() {
+    const values = { combat: AUDIO_CONFIG.combat, ui: AUDIO_CONFIG.ui };
+    try {
+        const saved = JSON.parse(window.localStorage.getItem(AUDIO_STORAGE_KEY));
+        if (saved && saved.version === 1) {
+            for (const channel of ['combat', 'ui']) {
+                if (typeof saved[channel] === 'number' && Number.isFinite(saved[channel]) && saved[channel] >= 0 && saved[channel] <= 1) values[channel] = saved[channel];
+            }
+        }
+    } catch (_) { /* Unavailable or invalid storage keeps safe defaults. */ }
+    return values;
+}
+
+function getAudioVolumes() {
+    return { ...audioVolumes };
+}
+
+function setAudioVolume(channel, value) {
+    if (!['combat', 'ui'].includes(channel) || !Number.isFinite(value)) return false;
+    audioVolumes[channel] = Math.max(0, Math.min(1, value));
+    try {
+        window.localStorage.setItem(AUDIO_STORAGE_KEY, JSON.stringify({ version: 1, ...audioVolumes }));
+    } catch (_) { /* The session preference still works without storage. */ }
+    return true;
 }
 
 function getAudioDiagnostics() {
@@ -60,16 +93,29 @@ function getAudioDiagnostics() {
     };
 }
 
-function playTone(profile) {
+function playTone(profile, channel = 'combat', delaySeconds = 0) {
+    const volume = audioVolumes[channel];
+    if (!(volume > 0)) return;
     initAudio();
     if (!audioCtx) return;
+    if (audioDiagnostics.activeGraphs >= AUDIO_CONFIG.maxVoices) {
+        audioDiagnostics.droppedVoices++;
+        return;
+    }
 
     const o = audioCtx.createOscillator();
     o.type = profile.wave;
     o.frequency.value = profile.start;
 
     const g = audioCtx.createGain();
-    g.gain.value = profile.gain;
+    const start = audioCtx.currentTime + delaySeconds;
+    const end = start + profile.duration / 1000;
+    const peak = profile.gain * volume * AUDIO_CONFIG.mixGain;
+    g.gain.setValueAtTime(AUDIO_CONFIG.floorGain, start);
+    g.gain.linearRampToValueAtTime(peak, start + AUDIO_CONFIG.attackSeconds);
+    g.gain.exponentialRampToValueAtTime(AUDIO_CONFIG.floorGain, end);
+    o.frequency.setValueAtTime(profile.start, start);
+    o.frequency.exponentialRampToValueAtTime(Math.max(1, profile.end), end);
 
     o.connect(g).connect(audioCtx.destination);
     audioDiagnostics.createdGraphs++;
@@ -94,36 +140,40 @@ function playTone(profile) {
         audioDiagnostics.activeGraphs = Math.max(0, audioDiagnostics.activeGraphs - 1);
     };
     o.onended = cleanup;
-    o.start();
-    setTimeout(() => { o.frequency.value = profile.end; }, Math.floor(profile.duration * 0.35));
-    setTimeout(() => {
-        o.stop();
-        cleanup();
-    }, profile.duration);
+    o.start(start);
+    o.stop(end + 0.01);
 }
 
 function playAttackSound(type) {
     const profile = ATTACK_SOUND_PROFILES[type] || ATTACK_SOUND_PROFILES.punch;
     playTone(profile);
-
-    if (type === 'special') {
-        setTimeout(() => playTone({ wave: 'triangle', start: 120, end: 55, gain: 0.14, duration: 220 }), 35);
-    }
+    // A soft sweep gives the attack air without raising the core tone's gain.
+    playTone({ wave: 'triangle', start: type === 'special' ? 1500 : 950, end: 110, gain: 0.055, duration: profile.duration });
+    if (type === 'special') playTone({ wave: 'triangle', start: 120, end: 55, gain: 0.14, duration: 220 }, 'combat', 0.035);
 }
 
 function playImpactSound(type, blocked = false) {
     const profile = blocked ? IMPACT_SOUND_PROFILES.block : (IMPACT_SOUND_PROFILES[type] || IMPACT_SOUND_PROFILES.punch);
     playTone(profile);
+    if (blocked) {
+        playTone({ wave: 'sine', start: 1250, end: 720, gain: 0.045, duration: 85 });
+    } else {
+        playTone({ wave: 'sine', start: 85, end: 32, gain: 0.13, duration: profile.duration + 30 });
+        playTone({ wave: 'square', start: 1800, end: 420, gain: 0.035, duration: 28 }, 'combat', 0.012);
+        if (['comboPunch', 'comboKick', 'backKick', 'special'].includes(type)) {
+            playTone({ wave: 'square', start: 920, end: 210, gain: 0.045, duration: 45 }, 'combat', 0.045);
+        }
+    }
 }
 
 function playUISound(type) {
     const profile = UI_SOUND_PROFILES[type] || UI_SOUND_PROFILES.select;
-    playTone(profile);
+    playTone(profile, 'ui');
 }
 
 function playGlitchCancelSound() {
     playTone({ wave: 'square', start: 820, end: 260, gain: 0.10, duration: 55 });
-    setTimeout(() => playTone({ wave: 'triangle', start: 260, end: 620, gain: 0.10, duration: 70 }), 25);
+    playTone({ wave: 'triangle', start: 260, end: 620, gain: 0.10, duration: 70 }, 'combat', 0.025);
 }
 
 function playHitSound() {

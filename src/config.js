@@ -15,12 +15,34 @@ const MAX_SIMULATION_STEPS = 6;
 const FIGHTER_GRAVITY = 0.9;
 const AI_TACTICS = { wallMargin: 70, cornerPressureRange: 210, interceptHorizon: 24 };
 const COMBAT_FEEDBACK = {
-    hit: { shake: 8, stop: 5, particles: 14 },
-    block: { shake: 3, stop: 2, particles: 7 },
+    hit: { shake: 8, stop: 5, particles: 14, flashFrames: 10, arenaFrames: 16 },
+    combo: { shake: 11, stop: 7, particles: 20, flashFrames: 14, arenaFrames: 24 },
+    special: { shake: 14, stop: 9, particles: 26, flashFrames: 18, arenaFrames: 32 },
+    block: { shake: 3, stop: 2, particles: 7, flashFrames: 0, arenaFrames: 10 },
     shakeDecay: 0.78,
     dangerHealth: 30,
-    whiffFrames: 12
+    whiffFrames: 12,
+    maxParticles: 80,
+    maxTexts: 10
 };
+const COMBAT_SIGNATURES = {
+    balanced: { pattern: 'burst', bands: 4 },
+    fast: { pattern: 'streak', bands: 6 },
+    heavy: { pattern: 'fracture', bands: 5 },
+    technical: { pattern: 'scan', bands: 7 },
+    nullPointer: { pattern: 'pointer', bands: 4 },
+    lagSpike: { pattern: 'echo', bands: 4 },
+    mergeConflict: { pattern: 'split', bands: 6 },
+    boss500: { pattern: 'pixels', bands: 8 }
+};
+const IMPACT_PHRASES = {
+    hit: ['404', 'NaN', 'Segmentation Fault', '¡ZAP!', '¡SPLAT!', '¡BOOM!', '¡OW!', 'Python 2.7', 'Compiling...', 'Buffer Overflow', 'Stack Overflow', 'Syntax Error', 'NullReference', 'Cache MISS', 'ERR_CONNECTION_RESET'],
+    combo: ['STACK x2', 'DOUBLE FAULT', 'RECURSION!', 'MERGE FAILED', 'OVERLOAD'],
+    special: ['KERNEL PANIC', 'FATAL EXCEPTION', 'SYSTEM BREAK', 'CORE DUMP'],
+    block: ['¡BLOCK!', '*ping*', 'CHIP', '403 FORBIDDEN', 'FIREWALL', 'ACCESS DENIED']
+};
+// Reserve mix headroom when both fighters' layers overlap at full volume.
+const AUDIO_CONFIG = { combat: 0.65, ui: 0.55, mixGain: 0.75, maxVoices: 24, attackSeconds: 0.004, floorGain: 0.0001 };
 const TRAINING_POSITIONS = {
     mid: [350, 650],
     close: [440, 560],
@@ -266,6 +288,14 @@ const ARENAS = {
         background: '#fff7ed',
         ground: '#9a3412',
         accent: 'rgba(154, 52, 18, 0.18)'
+    },
+    terminal: {
+        label: 'TERMINAL', labelKey: 'arenaTerminal',
+        background: '#edf6ee', ground: '#245746', accent: 'rgba(36, 87, 70, 0.10)'
+    },
+    rooftop: {
+        label: 'AZOTEA', labelKey: 'arenaRooftop',
+        background: '#eee8f5', ground: '#584273', accent: 'rgba(88, 66, 115, 0.12)'
     }
 };
 

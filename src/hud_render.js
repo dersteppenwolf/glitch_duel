@@ -263,6 +263,9 @@ function drawVsIntro() {
 function drawImpactFlash() {
     if (!impactFlash) return;
 
+    drawCombatSignature(impactFlash);
+    if (reducedMotionEnabled) return;
+
     const progress = impactFlash.timer / impactFlash.maxTimer;
     const radius = 34 + (1 - progress) * 28;
 
@@ -290,6 +293,8 @@ function drawImpactFlash() {
 
 function drawSpecialFlash() {
     if (!specialFlash) return;
+
+    drawCombatSignature(specialFlash);
 
     const progress = specialFlash.timer / specialFlash.maxTimer;
     const expansion = reducedMotionEnabled ? 0 : 1 - progress;

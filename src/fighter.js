@@ -359,7 +359,7 @@ class Fighter {
         };
 
         this.comboFlashTimer = 18;
-        floatingTexts.push(new FloatingText(this.x, this.y - 122, labels[type], colors[type]));
+        addCombatText(this.x, this.y - 122, labels[type], colors[type], 'combo');
     }
 
     // Forecast observed motion only. Attacks have no startup: frame zero is a
@@ -836,10 +836,9 @@ class Fighter {
                 this.aiCounterTimer = difficulty.counterWindow ?? 14;
                 this.aiDecisionTimer = 0;
             }
-            const bTexts = ['¡BLOCK!', '*ping*', 'CHIP'];
-            floatingTexts.push(new FloatingText(this.x, this.y - 80, bTexts[Math.floor(randomCosmetic() * bTexts.length)], '#33f'));
+            addCombatText(this.x, this.y - 80, getImpactPhrase(attacker.lastAttackType, true), '#33f', 'block');
             showStatusMessage(t('blockStatus'), 28);
-            triggerImpactFeedback(this.x, this.y - 50, impactDirection, true);
+            triggerImpactFeedback(this.x, this.y - 50, impactDirection, true, attacker.accentColor, attacker);
             playImpactSound(attacker.lastAttackType, true);
             return { blocked: true, damageApplied: healthBefore - this.health };
         }
@@ -852,7 +851,7 @@ class Fighter {
         this.velX = attacker.facingRight ? 7 : -7;
         this.velY = -5;
         this.onGround = false;
-        triggerImpactFeedback(this.x, this.y - 55, impactDirection, false, attacker.accentColor);
+        triggerImpactFeedback(this.x, this.y - 55, impactDirection, false, attacker.accentColor, attacker);
         playImpactSound(attacker.lastAttackType);
 
         if (!this.isPlayer1) {
@@ -862,8 +861,7 @@ class Fighter {
             this.aiPostHitTimer = getDifficultyConfig().postHitPauseFrames;
         }
 
-        const texts = ['¡ZAP!', '¡SPLAT!', '¡BOOM!', '404', 'NaN', '¡OW!', 'Segmentation Fault', 'Python 2.7', 'Compiling...', 'Buffer Overflow'];
-        floatingTexts.push(new FloatingText(this.x, this.y - 70, texts[Math.floor(randomCosmetic() * texts.length)], '#c00'));
+        addCombatText(this.x, this.y - 85, getImpactPhrase(attacker.lastAttackType), attacker.accentColor, getCombatFeedbackKind(attacker.lastAttackType));
         return { blocked: false, damageApplied: healthBefore - this.health };
     }
 

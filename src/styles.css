@@ -100,6 +100,7 @@ canvas {
 }
 
 .menu-actions button,
+.audio-preview-actions button,
 #game-over button {
     padding: 12px 30px;
     font-size: 20px;
@@ -295,6 +296,25 @@ canvas:focus-visible,
     accent-color: #111;
 }
 
+.audio-settings {
+    display: grid;
+    grid-template-columns: minmax(90px, 1fr) minmax(100px, 2fr);
+    align-items: center;
+    gap: 10px;
+    margin: 14px 0;
+    padding: 12px;
+    border: 2px solid #111;
+    background: #fffdf5;
+    text-align: left;
+    font-size: 14px;
+}
+.audio-settings legend, .audio-settings label { font-weight: bold; }
+.audio-settings output { display: inline-block; min-width: 4ch; }
+.audio-settings input { width: 100%; min-width: 0; accent-color: #111; }
+.audio-settings p, .audio-preview-actions { grid-column: 1 / -1; margin: 0; }
+.audio-preview-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+#main-menu .audio-preview-actions button { padding: 8px 12px; font-size: 12px; min-height: 36px; }
+
 .arena-preview {
     display: grid;
     grid-template-columns: 170px 1fr;
@@ -402,6 +422,13 @@ canvas:focus-visible,
 .arena-preview--geekConvention .arena-preview-stage::after { background: #9a3412; }
 .arena-preview--geekConvention .arena-preview-prop-a,
 .arena-preview--geekConvention .arena-preview-prop-b { background: rgba(154, 52, 18, 0.22); }
+
+.arena-preview--terminal .arena-preview-stage { background: #edf6ee; }
+.arena-preview--terminal .arena-preview-stage::after { background: #245746; }
+.arena-preview--terminal .arena-preview-prop { border-color: #245746; background: repeating-linear-gradient(#dcebdd 0 5px, #245746 5px 7px); }
+.arena-preview--rooftop .arena-preview-stage { background: #eee8f5; }
+.arena-preview--rooftop .arena-preview-stage::after { background: #584273; }
+.arena-preview--rooftop .arena-preview-prop { height: 42px; background: repeating-linear-gradient(90deg, #ddd4e9 0 9px, #fff7e2 9px 14px); border-color: #584273; }
 
 .stats-summary {
     margin: 10px auto 0;
@@ -609,6 +636,7 @@ canvas:focus-visible,
 }
 
 .menu-actions button:hover,
+.audio-preview-actions button:hover,
 #game-over button:hover {
     background: #000;
     color: #fff;

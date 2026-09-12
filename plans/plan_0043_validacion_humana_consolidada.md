@@ -219,3 +219,20 @@ Checklist ejecutado:
 - [x] Determinismo en navegador: dos trazas idénticas de 180 ticks con seed 48, tanto con efectos normales como con movimiento reducido. Se compararon posiciones, salud, acción CPU, pausa tras hit, dirección de escape y timer; no se compararon píxeles ni tiempos de pared.
 
 Limitaciones y pendientes: revisión breve de estados controlados y navegación real, no playtest de balance ni medición de rendimiento. Las otras arenas, dispositivos físicos, gamepad, lector de pantalla y combate sostenido por teclado quedan pendientes para esta revisión. En el viewport estrecho disponible se observó el panel de Training existente superpuesto al HUD; no se modificó ese layout dentro del alcance de IA/impacto. Los escenarios temporales no se publican ni forman parte del juego.
+
+## Comprobación acotada de navegador y audio — plan 0049, 2026-09-12
+
+Cambio local sin commit, Windows, navegador integrado de Codex (Chromium), viewport 1280×720, `localhost:8000`, seed 49. Evidencia de herramienta con DOM, Canvas y Web Audio reales; no sesiones de participantes ni escucha humana.
+
+Checklist ejecutado:
+
+- [x] Menú de producción: ajustes de sonido ES/EN, rangos nativos con Home/End, porcentajes 0/100, botones de prueba y persistencia tras recarga. Se restauraron 65/55 y español. La primera carga mezcló recursos en caché (etiquetas sin traducir y `getAudioVolumes` ausente); se versionaron los recursos modificados y las cargas posteriores mostraron etiquetas, controles y juego operativos. Los botones de prueba se ajustaron al estilo común de tinta/papel tras la inspección.
+- [x] Selector real: Terminal y Azotea actualizan resumen y descripción de preview. Se inspeccionó la vista previa de Azotea y se inició un duelo allí. El timer avanzó a 54 s y P abrió pausa con foco en su título.
+- [x] Fixture temporal con scripts de producción, rAF del juego detenido y llamadas explícitas a simulación/dibujo: combo técnico en Terminal (firma scan, 7 pasos de stop, 20 partículas), especial de BOSS 500 en Azotea (pixels, 9 pasos, 26 partículas), bloqueo (escudo con barras, 2 pasos, 7 partículas) y whiff (arco abierto, 0 pasos, 1 partícula).
+- [x] Capturas: cartelas y firmas locales visibles; HUD estable y legible sobre ambos fondos; reacciones de monitores/letreros situadas en periferia. Tras 8 ticks del combo desapareció el stop y quedaron 16 ticks de reacción. No se afirma una valoración humana de intensidad o comodidad.
+- [x] Movimiento reducido en el fixture: especial de MERGE CONFLICT con firma split, cartelas y forma de contacto conservadas; 0 pasos de stop y 5 partículas, sin desplazamiento de pantalla en la captura. La inmovilidad de partículas y el avance de temporizadores están además cubiertos por tests.
+- [x] Determinismo: dos ejecuciones de 180 ticks, semilla 49, Terminal/Azotea, compararon seis muestras de posiciones, salud, acción CPU y timer. Trazas idénticas; se observaron decisiones kick, approach, retreat e idle y daño real. No se compararon píxeles ni rendimiento.
+- [x] Síntesis real con `OfflineAudioContext`, mono 44100 Hz, buffer de 1 segundo: dos ataques especiales + dos impactos especiales + UI start simultáneos, ambos canales al 100%. Primera medición peak 1,0442; tras `mixGain=0,75`, peak 0,7832, RMS 0,0487, muestras no finitas 0 y grafos activos finales 0. Este caso quedó por debajo del rango de clipping; no constituye una garantía para cualquier superposición artificial ni una prueba de escucha. El fixture no registró errores/advertencias de consola.
+- [x] Fixtures y controles auxiliares retirados después de la revisión; no se incluyen en producción.
+
+Pendiente: escucha de SFX y mezcla en altavoces/auriculares, juego sostenido, comodidad bajo movimiento reducido, pruebas físicas touch/gamepad/AT, rendimiento y revisión visual de todas las firmas y arenas anteriores. Esta entrada no certifica dichas validaciones ni modifica el cierre histórico por supuesto explícito.

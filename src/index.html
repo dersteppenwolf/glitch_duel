@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GLITCH DUEL - Arcade VS AI</title>
-    <link rel="stylesheet" href="styles.css?v=20260911-ai-impact">
+    <link rel="stylesheet" href="styles.css?v=20260912-juice3">
 </head>
 <body>
     <div id="game-container">
@@ -77,6 +77,8 @@
                                         <option value="mathClass" data-i18n="arenaMathClass">CLASE DE MATEMATICAS</option>
                                         <option value="serverDown" data-i18n="arenaServerDown">SERVIDOR CAIDO</option>
                                         <option value="geekConvention" data-i18n="arenaGeekConvention">CONVENCION GEEK</option>
+                                        <option value="terminal" data-i18n="arenaTerminal">TERMINAL</option>
+                                        <option value="rooftop" data-i18n="arenaRooftop">AZOTEA</option>
                                     </select>
                                 </label>
 
@@ -154,6 +156,19 @@
                                 <span data-i18n="reduceMotion">Reducir movimiento</span>
                             </label>
                         </div>
+
+                        <fieldset class="audio-settings" aria-describedby="audio-volume-hint">
+                            <legend data-i18n="audioSettings">SONIDO</legend>
+                            <label for="combat-volume"><span data-i18n="combatVolume">Combate</span> <output id="combat-volume-value" for="combat-volume">65%</output></label>
+                            <input id="combat-volume" type="range" min="0" max="100" step="5" value="65">
+                            <label for="ui-volume"><span data-i18n="uiVolume">Menus</span> <output id="ui-volume-value" for="ui-volume">55%</output></label>
+                            <input id="ui-volume" type="range" min="0" max="100" step="5" value="55">
+                            <p id="audio-volume-hint" data-i18n="audioVolumeHint">0% silencia el canal. Se guarda en este navegador.</p>
+                            <div class="audio-preview-actions">
+                                <button id="test-combat-audio" type="button" data-i18n="testCombatAudio">PROBAR COMBATE</button>
+                                <button id="test-ui-audio" type="button" data-i18n="testUiAudio">PROBAR MENUS</button>
+                            </div>
+                        </fieldset>
 
                         <div class="menu-actions menu-actions--utilities">
                             <button id="help-button" type="button" data-i18n="help">AYUDA</button>
@@ -390,16 +405,16 @@
         </div>
     </div>
 
-    <script src="i18n.js?v=20260819-menu-disclosure"></script>
-    <script src="config.js?v=20260911-ai-impact"></script>
+    <script src="i18n.js?v=20260912-juice3"></script>
+    <script src="config.js?v=20260912-juice3"></script>
     <script src="input.js?v=20260818-glitch-cancel"></script>
-    <script src="audio.js?v=20260818-glitch-cancel"></script>
-    <script src="effects.js?v=20260911-ai-impact"></script>
+    <script src="audio.js?v=20260912-juice3"></script>
+    <script src="effects.js?v=20260912-juice3"></script>
     <script src="ai.js?v=20260911-ai-impact"></script>
     <script src="fighter_render.js?v=20260911-ai-impact"></script>
-    <script src="fighter.js?v=20260911-ai-impact"></script>
-    <script src="arena_render.js?v=20260818-glitch-cancel"></script>
-    <script src="hud_render.js?v=20260911-ai-impact"></script>
-    <script src="game.js?v=20260911-ai-impact"></script>
+    <script src="fighter.js?v=20260912-juice3"></script>
+    <script src="arena_render.js?v=20260912-juice3"></script>
+    <script src="hud_render.js?v=20260912-juice3"></script>
+    <script src="game.js?v=20260912-juice3"></script>
 </body>
 </html>

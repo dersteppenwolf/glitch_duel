@@ -192,8 +192,10 @@ Not all decorative arena text or technical jokes are translated; some remain as 
 | CLASE DE MATEMATICAS / MATH CLASS | Blackboard, formulas, and absurd theorems. |
 | SERVIDOR CAIDO / SERVER DOWN | Broken rack, 500 errors, and retries. |
 | CONVENCION GEEK / GEEK CONVENTION | Booths, stickers, and infinite queue. |
+| TERMINAL / TERMINAL | Green command panels and circuit traces. |
+| AZOTEA / ROOFTOP | Lavender skyline, windows, moon, and rooftop sign. |
 
-Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victory rules.
+Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victory rules. Contact triggers brief peripheral scanlines, steam, paper marks or sign/window accents, scaled by hit strength. Reduced motion keeps these reactions stationary.
 
 ## Features
 
@@ -249,7 +251,9 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 
 ### Visual And Audio
 
-- Contact uses a small starburst; blocked contact uses a shield with two bars; a whiff leaves an open broken arc. Existing hitstop is retained, shake is bounded and advances at 60 Hz, and the HUD stays steady. Specials use a localized beam and outline instead of a full-screen flash.
+- Contact uses a starburst; blocked contact uses a shield with two bars; a whiff leaves an open broken arc. Hitstop lasts 5 fixed steps for normal hits, 7 for combos, 9 for specials and 2 for blocks (zero with reduced motion). Shake and particle intensity scale with contact strength; the HUD stays steady. Specials use a localized beam and outline.
+- Four player styles and four CPU rivals have distinct combo/special motifs: bursts, streaks, fractures, scanlines, brackets, echoes, split lines and pixel bands. These are local geometric effects, with no full-screen flash or framebuffer pixel processing.
+- Thematic floating text retains existing jokes and adds `Stack Overflow`, `Cache MISS`, `MERGE FAILED`, `CORE DUMP` and more. Paper labels adapt to text length; transient effects are capped at 80 particles and 10 labels.
 - Special-ready labels, double energy outlines and diamond marks follow the authoritative action state, including CPU recovery. Low health adds a warning triangle at 30% or below. Reduced motion keeps static contact shapes and labels while suppressing shake, moving particles and expanding special effects. Result panels retain the paper-and-ink style.
 
 - Differentiated characters: human with blue `P1` badge and band; CPU with red `AI` badge, visor, and antenna.
@@ -268,9 +272,10 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Combo feedback with text, halo/trail, and combo-window hint.
 - Stylized shake, hit-stop, and impact particles.
 - Themed arena backgrounds with light animations and layered background, midground, and peripheral foreground props that respect `Reducir movimiento`.
-- All eight arenas are reviewed for HUD, fighter, corner, foreground, and reduced-motion readability.
+- Ten arenas share HUD safe margins and peripheral foreground. Browser and device review scope is recorded in `plans/plan_0043_validacion_humana_consolidada.md`.
 - Rival badges, special-ready labels, and floating combat text stay inside safe canvas margins near either corner.
-- Audio generated with the Web Audio API, with distinct sounds for attacks, impact, block, combo, special, and UI.
+- Audio generated with the Web Audio API layers attack sweeps, impact body and digital chirps. Envelopes use the audio clock, with mix headroom and a 24-voice cap.
+- Settings/Help/Controls contains separate Combat and Menus volume sliders and preview buttons. Defaults are 65% / 55%; 0% mutes that channel. Values persist under `glitchDuelAudioVolumes`; invalid or unavailable storage falls back safely. Loading or adjusting settings does not create audio until a sound is requested.
 
 ### Technical
 
@@ -424,7 +429,9 @@ node --test tests\game.test.js
 - `Reducir movimiento` persists and reduces shake/hit-stop/particles.
 - With no saved choice, the system reduced-motion preference initializes the toggle; a saved choice takes precedence.
 - Human and CPU are visually distinct.
-- The eight arenas look different, with foreground props that do not block fighters, HUD, or combat feedback.
+- The ten arenas look different, with foreground props that do not block fighters, HUD, or combat feedback.
+- Volume sliders work with keyboard arrows/Home/End, update percentage labels, persist after reload, and mute only their channel. Check preview sounds and overlapping specials by listening at a comfortable device volume.
+- Compare normal hit, combo, special, block and whiff feedback in Terminal and Rooftop with reduced motion both off and on; peripheral reactions must not obscure combat.
 - On mobile landscape, HUD, pause, arena, and touch controls are visible without critical overlaps.
 - Touch controls are native buttons: holding two controls works, and cancelling or leaving a control does not retain input.
 - Keyboard, touch, and gamepad can hold the same action without one source releasing another; blur, hidden pages, pause, and controller disconnect release all sources.
@@ -560,7 +567,7 @@ Test limitations:
 | Initial accessibility | Visible focus, ARIA, and reduced motion. |
 | README gameplay trailer | Animated GIF near the top of the README showing menu, VS intro, combat, combos, and special feedback. |
 | Mobile | Touch controls, safe areas, optimized landscape, and degraded portrait with orientation warning. |
-| Arenas | Eight themed layered backgrounds with no gameplay effects. |
+| Arenas | Ten themed layered backgrounds with cosmetic contact reactions. |
 | Arena preview | Initial menu with mini-preview, name, and description per arena. |
 | Arcade VS intro | `P1 VS AI` overlay with round, difficulty, and arena before each round. |
 | i18n | Spanish/English with autodetection and persistence. |

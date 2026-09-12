@@ -39,6 +39,7 @@ let impactFlash = null;
 let matchStats = createMatchStats();
 let vsIntroTimer = 0;
 let specialFlash = null;
+let arenaReaction = null;
 let gameMode = 'versus';
 let arcadeRun = null;
 let trainingConfig = { position: 'mid', cpu: 'idle', timer: false };
@@ -593,7 +594,9 @@ function getArenaPreviewTextKey() {
         remoteMeeting: 'arenaPreviewRemoteMeeting',
         mathClass: 'arenaPreviewMathClass',
         serverDown: 'arenaPreviewServerDown',
-        geekConvention: 'arenaPreviewGeekConvention'
+        geekConvention: 'arenaPreviewGeekConvention',
+        terminal: 'arenaPreviewTerminal',
+        rooftop: 'arenaPreviewRooftop'
     };
 
     return previewKeys[selectedArena] || previewKeys.notebook;
@@ -893,6 +896,7 @@ function recordGlitchCancelAttempt(fighter) {
 }
 
 function resetTrainingFighters() {
+    arenaReaction = null;
     if (!player1 || !player2) return;
     const [playerPosition, cpuPosition] = getTrialPosition();
     [player1.x, player2.x] = [playerPosition, cpuPosition];
@@ -1926,6 +1930,7 @@ function updateOrientationWarning() {
 }
 
 function startRound() {
+    arenaReaction = null;
     closeAllModalDialogs();
     player1 = new Fighter(250, true);
     player2 = new Fighter(750, false);
@@ -2130,6 +2135,7 @@ function refillTraining(type) {
 }
 
 function showMainMenu() {
+    arenaReaction = null;
     restoreArcadeMenuSelection();
     pendingStartMode = null;
     activeTrialId = 'free';
@@ -2419,6 +2425,10 @@ function updateEffects() {
         specialFlash.timer--;
         if (specialFlash.timer <= 0) specialFlash = null;
     }
+    if (arenaReaction) {
+        arenaReaction.timer--;
+        if (arenaReaction.timer <= 0) arenaReaction = null;
+    }
 }
 
 function triggerSpecialFeedback(fighter) {
@@ -2433,7 +2443,8 @@ function triggerSpecialFeedback(fighter) {
         maxTimer: duration,
         fullFlash: false
     };
-    floatingTexts.push(new FloatingText(fighter.x, fighter.y - 140, t('specialImpact'), color));
+    specialFlash.signature = getCombatSignature(fighter);
+    addCombatText(fighter.x, fighter.y - 140, t('specialImpact'), color, 'special');
 }
 
 function updateHealthAnimations() {
@@ -2449,29 +2460,34 @@ function updateHealthAnimations() {
     });
 }
 
-function triggerImpactFeedback(x, y, direction, blocked = false, accentColor = null) {
-    const feedback = COMBAT_FEEDBACK[blocked ? 'block' : 'hit'];
+function triggerImpactFeedback(x, y, direction, blocked = false, accentColor = null, attacker = null) {
+    const kind = blocked ? 'block' : getCombatFeedbackKind(attacker && attacker.lastAttackType);
+    const feedback = COMBAT_FEEDBACK[kind];
+    const signature = getCombatSignature(attacker);
     screenShake = reducedMotionEnabled ? 0 : Math.max(screenShake, feedback.shake);
     hitStopFrames = reducedMotionEnabled ? 0 : Math.max(hitStopFrames, feedback.stop);
 
     const count = reducedMotionEnabled ? (blocked ? 3 : 5) : feedback.particles;
     const colors = blocked ? ['#33f', '#8af', '#fff'] : [accentColor || '#c00', '#f90', '#fff'];
 
-    if (!reducedMotionEnabled && !blocked) {
-        impactFlash = { x, y, direction, color: accentColor || '#c00', timer: 10, maxTimer: 10 };
+    if (!blocked && (!reducedMotionEnabled || kind !== 'hit')) {
+        impactFlash = { x, y, direction, color: accentColor || '#c00', timer: feedback.flashFrames, maxTimer: feedback.flashFrames,
+            signature: kind === 'hit' ? null : signature };
     }
+    arenaReaction = { x, kind, timer: feedback.arenaFrames, maxTimer: feedback.arenaFrames };
 
     for (let i = 0; i < count; i++) {
         const spread = -1.2 + randomCosmetic() * 2.4;
-        const speed = blocked ? 3 + randomCosmetic() * 3 : 5 + randomCosmetic() * 6;
+        const speed = blocked ? 3 + randomCosmetic() * 3 : 5 + randomCosmetic() * (kind === 'hit' ? 6 : 9);
         const vx = direction * speed;
         const vy = spread * speed;
         const color = i === count - 1 ? colors[0]
             : (!blocked && accentColor && i === 0 ? accentColor : colors[Math.floor(randomCosmetic() * colors.length)]);
         // Draw the contact silhouette last so sparks cannot obscure its shape.
-        const type = i === count - 1 ? (blocked ? 'shield' : 'burst') : (i % 3 === 0 ? 'dot' : 'line');
+        const type = i === count - 1 ? (blocked ? 'shield' : 'burst')
+            : (kind !== 'hit' && !blocked && i % 3 === 0 ? 'pixel' : (i % 3 === 0 ? 'dot' : 'line'));
 
-        impactParticles.push(new ImpactParticle(x, y, vx, vy, color, type));
+        addImpactParticle(new ImpactParticle(x, y, vx, vy, color, type));
     }
 }
 
@@ -3078,7 +3094,34 @@ function setupRestartButton() {
     });
 }
 
+function renderAudioSettings() {
+    const volumes = getAudioVolumes();
+    for (const channel of ['combat', 'ui']) {
+        const slider = document.getElementById(`${channel}-volume`);
+        const output = document.getElementById(`${channel}-volume-value`);
+        const value = Math.round(volumes[channel] * 100);
+        if (slider) { slider.value = String(value); slider.setAttribute('aria-valuetext', `${value}%`); }
+        if (output) output.textContent = `${value}%`;
+    }
+}
+
+function setupAudioSettings() {
+    renderAudioSettings();
+    for (const channel of ['combat', 'ui']) {
+        const slider = document.getElementById(`${channel}-volume`);
+        if (slider) slider.addEventListener('input', (event) => {
+            setAudioVolume(channel, Number(event.target.value) / 100);
+            renderAudioSettings();
+        });
+    }
+    const combatTest = document.getElementById('test-combat-audio');
+    if (combatTest) combatTest.addEventListener('click', () => { playAttackSound('kick'); playImpactSound('kick'); });
+    const uiTest = document.getElementById('test-ui-audio');
+    if (uiTest) uiTest.addEventListener('click', () => playUISound('select'));
+}
+
 function setupMainMenu() {
+    setupAudioSettings();
     setupTouchInputTracking();
     document.getElementById('start-button').addEventListener('click', () => {
         playUISound('start');

@@ -38,22 +38,33 @@ function createMockContext() {
 }
 
 function createMockAudioContext(audioEvents = [], options = {}) {
+    function parameter(name) {
+        return {
+            value: 0,
+            setValueAtTime(value, time) { this.value = value; audioEvents.push({ event: 'automation', name, curve: 'set', value, time }); },
+            linearRampToValueAtTime(value, time) { audioEvents.push({ event: 'automation', name, curve: 'linear', value, time }); },
+            exponentialRampToValueAtTime(value, time) { audioEvents.push({ event: 'automation', name, curve: 'exponential', value, time }); }
+        };
+    }
     return class MockAudioContext {
         constructor() {
             this.destination = {};
+            this.currentTime = 10;
+            this.state = 'running';
         }
 
         createOscillator() {
             return {
                 type: '',
-                frequency: { value: 0 },
+                frequency: parameter('frequency'),
                 connect() { return this; },
                 disconnect() { audioEvents.push({ event: 'disconnect', type: 'oscillator' }); },
-                start() { audioEvents.push({ event: 'start', type: this.type, frequency: this.frequency.value }); },
-                stop() {
-                    audioEvents.push({ event: 'stop', type: this.type, frequency: this.frequency.value });
+                start(time) { audioEvents.push({ event: 'start', type: this.type, frequency: this.frequency.value, time }); },
+                stop(time) {
+                    audioEvents.push({ event: 'stop', type: this.type, frequency: this.frequency.value, time });
                     const onended = this.onended;
-                    for (let index = 0; index < (options.audioOnendedCalls || 0); index++) {
+                    if (options.audioDeferredEnd) { audioEvents.push({ event: 'pendingEnd', end: onended }); return; }
+                    for (let index = 0; index < (options.audioOnendedCalls || 1); index++) {
                         if (typeof onended === 'function') onended();
                     }
                 }
@@ -62,7 +73,7 @@ function createMockAudioContext(audioEvents = [], options = {}) {
 
         createGain() {
             return {
-                gain: { value: 0 },
+                gain: parameter('gain'),
                 connect() { return this; },
                 disconnect() { audioEvents.push({ event: 'disconnect', type: 'gain' }); }
             };
@@ -88,6 +99,10 @@ function loadGame(options = {}) {
         'style-select': 'select',
         'rival-select': 'select',
         'reduce-motion-toggle': 'input',
+        'combat-volume': 'input',
+        'ui-volume': 'input',
+        'test-combat-audio': 'button',
+        'test-ui-audio': 'button',
         'back-button': 'button',
         'controls-back-button': 'button',
         'reset-controls-button': 'button',
@@ -354,6 +369,15 @@ function loadGame(options = {}) {
             playUISound,
             playGlitchCancelSound,
             getAudioDiagnostics,
+            getAudioVolumes,
+            setAudioVolume,
+            setupAudioSettings,
+            renderAudioSettings,
+            AUDIO_CONFIG,
+            getCombatSignature,
+            getCombatFeedbackKind,
+            IMPACT_PHRASES,
+            addCombatText,
             announceCombatStatus,
             renderCombatStatus,
             recordCombatEvent,
@@ -518,6 +542,7 @@ function loadGame(options = {}) {
                 visualFrame,
                 impactFlash,
                 specialFlash,
+                arenaReaction,
                 lastCombatEvent: lastCombatEvent && typeof lastCombatEvent === 'object' ? { ...lastCombatEvent } : lastCombatEvent,
                 vsIntroTimer,
                 matchStats,
@@ -776,9 +801,15 @@ test('combat sounds use distinct attack and impact profiles', () => {
         starts.map((event) => [event.type, event.frequency]),
         [
             ['square', 420],
+            ['triangle', 950],
             ['sawtooth', 190],
+            ['sine', 85],
+            ['square', 1800],
             ['triangle', 220],
-            ['sawtooth', 140]
+            ['triangle', 950],
+            ['sawtooth', 140],
+            ['sine', 85],
+            ['square', 1800]
         ]
     );
 });
@@ -798,10 +829,16 @@ test('special and block sounds have stronger distinct profiles', () => {
         starts.map((event) => [event.type, event.frequency]),
         [
             ['sawtooth', 680],
+            ['triangle', 1500],
             ['triangle', 120],
             ['sawtooth', 95],
+            ['sine', 85],
+            ['square', 1800],
+            ['square', 920],
             ['triangle', 180],
-            ['square', 620]
+            ['triangle', 950],
+            ['square', 620],
+            ['sine', 1250]
         ]
     );
 });
@@ -831,8 +868,8 @@ test('Web Audio diagnostics clean each tone graph exactly once', () => {
     api.playAttackSound('punch');
 
     const after = api.getAudioDiagnostics();
-    assert.equal(after.createdGraphs, before.createdGraphs + 1);
-    assert.equal(after.endedGraphs, before.endedGraphs + 1);
+    assert.equal(after.createdGraphs, before.createdGraphs + 2);
+    assert.equal(after.endedGraphs, before.endedGraphs + 2);
     assert.equal(after.activeGraphs, 0);
     assert.equal(after.oscillatorsCreated - after.oscillatorsDisconnected, 0);
     assert.equal(after.gainsCreated - after.gainsDisconnected, 0);
@@ -844,10 +881,223 @@ test('Web Audio cleanup stays idempotent when onended is delivered repeatedly', 
     api.playAttackSound('punch');
 
     const diagnostics = api.getAudioDiagnostics();
-    assert.equal(diagnostics.createdGraphs, 1);
-    assert.equal(diagnostics.endedGraphs, 1);
+    assert.equal(diagnostics.createdGraphs, 2);
+    assert.equal(diagnostics.endedGraphs, 2);
     assert.equal(diagnostics.activeGraphs, 0);
-    assert.equal(audioEvents.filter((event) => event.event === 'disconnect').length, 2);
+    assert.equal(audioEvents.filter((event) => event.event === 'disconnect').length, 4);
+});
+
+test('audio settings stay lazy, persist each channel, clamp setters and isolate mute', () => {
+    const { api, context, audioEvents } = loadGame();
+    assert.deepEqual({ ...api.getAudioVolumes() }, { combat: 0.65, ui: 0.55 });
+    api.setupAudioSettings();
+    assert.equal(api.getAudioDiagnostics().contextState, 'uninitialized');
+    api.setAudioVolume('combat', 0);
+    api.playAttackSound('special');
+    api.playImpactSound('kick');
+    api.playGlitchCancelSound();
+    assert.equal(api.getAudioDiagnostics().contextState, 'uninitialized');
+    api.playUISound('select');
+    assert.equal(audioEvents.filter((event) => event.event === 'start').length, 1);
+    api.setAudioVolume('ui', 0);
+    api.setAudioVolume('combat', 0.3);
+    const starts = audioEvents.filter((event) => event.event === 'start').length;
+    api.playUISound('start');
+    assert.equal(audioEvents.filter((event) => event.event === 'start').length, starts);
+    api.playImpactSound('special');
+    assert(audioEvents.filter((event) => event.event === 'start').length > starts);
+    const saved = context.window.localStorage.getItem('glitchDuelAudioVolumes');
+    const reload = loadGame({ storage: { glitchDuelAudioVolumes: saved } });
+    assert.deepEqual({ ...reload.api.getAudioVolumes() }, { combat: 0.3, ui: 0 });
+    assert.equal(reload.api.getAudioDiagnostics().contextState, 'uninitialized');
+    assert.equal(api.setAudioVolume('music', 1), false);
+    assert.equal(api.setAudioVolume('ui', NaN), false);
+    api.setAudioVolume('ui', 2);
+    assert.equal(api.getAudioVolumes().ui, 1);
+    api.setAudioVolume('ui', -1);
+    assert.equal(api.getAudioVolumes().ui, 0);
+});
+
+test('invalid or unavailable audio preferences preserve defaults and native slider feedback', () => {
+    for (const stored of ['{broken', 'null', '[]', '{"version":2,"combat":0}', '{"version":1,"combat":"0","ui":5}']) {
+        const { api } = loadGame({ storage: { glitchDuelAudioVolumes: stored } });
+        assert.deepEqual({ ...api.getAudioVolumes() }, { combat: 0.65, ui: 0.55 });
+    }
+    const { api, elements } = loadGame({ storageGetThrows: true, storageSetThrows: true });
+    api.setupAudioSettings();
+    const slider = elements.get('combat-volume');
+    slider.listeners.input({ target: { value: '25' } });
+    assert.equal(api.getAudioVolumes().combat, 0.25);
+    assert.equal(elements.get('combat-volume-value').textContent, '25%');
+    assert.equal(slider.getAttribute('aria-valuetext'), '25%');
+    assert.equal(api.getAudioDiagnostics().contextState, 'uninitialized');
+});
+
+test('layered tones schedule envelopes on the audio clock and respect channel gain', () => {
+    const { api, audioEvents } = loadGame();
+    api.setAudioVolume('combat', 0.5);
+    api.playImpactSound('special');
+    const peaks = audioEvents.filter((event) => event.name === 'gain' && event.curve === 'linear');
+    assert.equal(peaks.length, 4);
+    assert.equal(peaks[0].value, 0.32 * 0.5 * api.AUDIO_CONFIG.mixGain);
+    assert(peaks.every((event) => event.time >= 10 && event.value > 0 && event.value < 0.2));
+    const tails = audioEvents.filter((event) => event.name === 'gain' && event.curve === 'exponential');
+    assert(tails.every((event) => event.value === api.AUDIO_CONFIG.floorGain));
+    const starts = audioEvents.filter((event) => event.event === 'start');
+    assert(starts.some((event) => event.time > 10), 'digital layers use sample-clock offsets');
+    const stops = audioEvents.filter((event) => event.event === 'stop');
+    assert(stops.every((event) => event.time > 10));
+    assert.equal(api.getAudioDiagnostics().activeGraphs, 0);
+});
+
+test('audio voice budget bounds overlapping layers and every delayed graph is released once', () => {
+    const { api, audioEvents } = loadGame({ audioDeferredEnd: true });
+    for (let i = 0; i < 20; i++) api.playImpactSound('special');
+    const active = api.getAudioDiagnostics();
+    assert.equal(active.activeGraphs, api.AUDIO_CONFIG.maxVoices);
+    assert(active.droppedVoices > 0);
+    for (const event of audioEvents.filter((event) => event.event === 'pendingEnd')) { event.end(); event.end(); }
+    const ended = api.getAudioDiagnostics();
+    assert.equal(ended.activeGraphs, 0);
+    assert.equal(ended.createdGraphs, ended.endedGraphs);
+    assert.equal(ended.oscillatorsCreated, ended.oscillatorsDisconnected);
+    assert.equal(ended.gainsCreated, ended.gainsDisconnected);
+});
+
+test('unsupported Web Audio stays silent without breaking combat or volume settings', () => {
+    const { api, context } = loadGame();
+    context.window.AudioContext = null;
+    context.window.webkitAudioContext = null;
+    api.playAttackSound('special');
+    api.playUISound('select');
+    assert.equal(api.getAudioDiagnostics().contextState, 'uninitialized');
+    const { player, opponent } = createFighters(api, 100, 220);
+    player.attack('kick', opponent);
+    assert.equal(opponent.health, 86);
+});
+
+test('hitstop and particles scale with contact strength while damage and block rules stay intact', () => {
+    for (const [type, health, stop, particles] of [['punch', 92, 5, 14], ['comboKick', 82, 7, 20], ['special', 74, 9, 26]]) {
+        const { api } = loadGame();
+        const { player, opponent } = createFighters(api, 100, 220);
+        player.energy = 100;
+        player.attack(type, opponent);
+        const state = api.getState();
+        assert.equal(opponent.health, health, type);
+        assert.equal(state.hitStopFrames, stop, type);
+        assert.equal(state.impactParticles.length, particles, type);
+        assert.equal(state.arenaReaction.kind, api.getCombatFeedbackKind(type));
+    }
+    const { api } = loadGame();
+    const { player, opponent } = createFighters(api, 100, 220);
+    player.energy = 100; opponent.state = 'block';
+    player.attack('special', opponent);
+    assert.equal(opponent.health, 95);
+    assert.equal(api.getState().hitStopFrames, 2);
+    assert.equal(api.getState().arenaReaction.kind, 'block');
+});
+
+test('every style and rival has a distinct cosmetic signature without changing combat tuning', () => {
+    const { api } = loadGame();
+    const patterns = new Set();
+    for (const key of ['balanced', 'fast', 'heavy', 'technical', 'nullPointer', 'lagSpike', 'mergeConflict', 'boss500']) {
+        const isPlayer = ['balanced', 'fast', 'heavy', 'technical'].includes(key);
+        const fighter = new api.Fighter(400, isPlayer);
+        if (isPlayer) fighter.applyStyle(key); else fighter.applyRival(key);
+        const before = [fighter.health, fighter.damageModifier, fighter.moveSpeedModifier];
+        api.triggerSpecialFeedback(fighter);
+        patterns.add(api.getState().specialFlash.signature.pattern);
+        api.draw();
+        assert.deepEqual([fighter.health, fighter.damageModifier, fighter.moveSpeedModifier], before);
+    }
+    assert.equal(patterns.size, 8);
+});
+
+test('combat text and particle budgets bound a barrage and keep thematic feedback', () => {
+    const { api } = loadGame();
+    const { player, opponent } = createFighters(api, 100, 220);
+    for (let i = 0; i < 40; i++) { player.attackCooldown = 0; player.attack('comboKick', opponent); }
+    const state = api.getState();
+    assert.equal(state.impactParticles.length, api.COMBAT_FEEDBACK.maxParticles);
+    assert.equal(state.floatingTexts.length, api.COMBAT_FEEDBACK.maxTexts);
+    assert(state.floatingTexts.every((label) => api.IMPACT_PHRASES.combo.includes(label.text)));
+    assert(state.impactParticles.some((particle) => particle.type === 'pixel'));
+    api.draw();
+});
+
+test('reactive arenas and signature flashes tick only in simulation and reset cleanly', () => {
+    const { api } = loadGame();
+    startPlayingGame(api);
+    const { player1, player2 } = api.getState();
+    player1.x = 400; player2.x = 520; player1.energy = 100;
+    player1.attack('special', player2);
+    const before = api.getState().arenaReaction.timer;
+    const cooldown = player1.attackCooldown;
+    api.draw(); api.draw();
+    assert.equal(api.getState().arenaReaction.timer, before);
+    api.update();
+    assert.equal(api.getState().arenaReaction.timer, before - 1);
+    assert.equal(player1.attackCooldown, cooldown, 'extra hitstop does not advance fighter recovery');
+    api.pauseGame(); api.advanceSimulation(100);
+    assert.equal(api.getState().arenaReaction.timer, before - 1);
+    api.startRound();
+    assert.equal(api.getState().arenaReaction, null);
+    api.startTraining();
+    api.skipVsIntro();
+    api.triggerImpactFeedback(300, 300, 1);
+    for (let frame = 0; frame < 64; frame++) api.update();
+    assert.equal(api.getState().arenaReaction, null);
+    assert.equal(api.getState().impactFlash, null);
+    assert.equal(api.getState().impactParticles.length, 0);
+    api.triggerImpactFeedback(300, 300, 1);
+    api.resetTraining();
+    assert.equal(api.getState().arenaReaction, null);
+    api.triggerImpactFeedback(300, 300, 1);
+    api.showMainMenu();
+    assert.equal(api.getState().arenaReaction, null);
+});
+
+test('reduced motion keeps signature and contact shapes with no shake or hitstop', () => {
+    const { api } = loadGame({ reducedMotionSystem: true });
+    const { player, opponent } = createFighters(api, 100, 220);
+    player.applyStyle('technical'); player.energy = 100;
+    player.attack('special', opponent);
+    const state = api.getState();
+    assert.equal(state.hitStopFrames, 0);
+    assert.equal(state.screenShake, 0);
+    assert.equal(state.impactFlash.signature.pattern, 'scan');
+    const before = state.impactParticles.map((p) => [p.x, p.y]);
+    state.impactParticles.forEach((p) => p.update());
+    assert.deepEqual(state.impactParticles.map((p) => [p.x, p.y]), before);
+    api.draw();
+});
+
+test('new arenas integrate localized selection and previews without changing seeded combat', () => {
+    function trace(arena, muted) {
+        const { api } = loadGame({ search: '?seed=49' });
+        api.setArena(arena); api.setAudioVolume('combat', muted ? 0 : 1);
+        startPlayingGame(api);
+        const states = [];
+        for (let i = 0; i < 120; i++) {
+            api.advanceSimulation(1000 / 60); api.draw();
+            const s = api.getState();
+            states.push([s.player1.x, s.player1.health, s.player2.x, s.player2.y, s.player2.aiAction, s.roundTimerFrames]);
+        }
+        return states;
+    }
+    const base = trace('notebook', false);
+    for (const key of ['terminal', 'rooftop']) {
+        assert.deepEqual(trace(key, true), base, key);
+        const { api } = loadGame();
+        api.setArena(key);
+        assert.equal(api.getState().arenaPreviewClass, `arena-preview arena-preview--${key}`);
+        assert.notEqual(api.getState().arenaPreviewText, 'arenaPreviewTerminal');
+        assert.equal(api.getArenaLabel(), key === 'terminal' ? 'TERMINAL' : 'AZOTEA');
+        api.setLanguage('en');
+        assert.equal(api.getArenaLabel(), key === 'terminal' ? 'TERMINAL' : 'ROOFTOP');
+        api.triggerImpactFeedback(500, 300, 1);
+        api.drawBackground(); api.drawArenaForeground();
+    }
 });
 
 test('simple combos increase damage and cooldown', () => {
@@ -1689,9 +1939,9 @@ test('static HTML contract preserves local assets, script order, controls, and a
     assert.match(html, /<label class="training-trial-picker" for="training-trial-select">/);
     assert.match(html, /<select id="training-trial-select">/);
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260911-ai-impact">/);
-    assert.match(html, /<script src="i18n\.js\?v=20260819-menu-disclosure"><\/script>/);
-    assert.match(html, /<script src="game\.js\?v=20260911-ai-impact"><\/script>/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260912-juice3">/);
+    assert.match(html, /<script src="i18n\.js\?v=20260912-juice3"><\/script>/);
+    assert.match(html, /<script src="game\.js\?v=20260912-juice3"><\/script>/);
     assert.match(html, /<option value="glitchCancel" data-i18n="trainingGlitchCancelOption">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
@@ -4169,7 +4419,7 @@ test('arena selection supports themed arenas and falls back to notebook', () => 
     assert.equal(api.getState().selectedArena, 'remoteMeeting');
     assert.equal(api.getArenaLabel(), 'REUNION REMOTA');
 
-    api.setArena('terminal');
+    api.setArena('missing-arena');
     assert.equal(api.getState().selectedArena, 'notebook');
     assert.equal(api.getArenaLabel(), 'CUADERNO');
 
@@ -4239,7 +4489,7 @@ test('new arena backgrounds render themed canvas primitives', () => {
 });
 
 test('arena foreground layer renders peripheral props for every arena and fallback', () => {
-    const arenaKeys = ['notebook', 'cafeteria', 'lab', 'meeting', 'remoteMeeting', 'mathClass', 'serverDown', 'geekConvention'];
+    const arenaKeys = Object.keys(loadGame().api.ARENAS);
 
     arenaKeys.forEach((arenaKey) => {
         const { api } = loadGame();
