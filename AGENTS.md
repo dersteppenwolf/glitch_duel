@@ -54,7 +54,6 @@ node --test tests\game.test.js
 
 | Change | Required validation |
 | --- | --- |
-| Documentation only | Check changed paths, commands, links, and terminology. Run a command if its documented behavior changed. |
 | Any `src/*.js` change | Run the full automated validation above. Add or update focused unit tests for changed behavior. |
 | UI, controls, gameplay, rendering, audio, or accessibility | Run full automated validation and define a focused manual browser checklist. |
 | Workflow or deployment | Keep validation before deployment and verify the workflow syntax and published path. |
@@ -118,5 +117,5 @@ Update `Readme.md` when run instructions, controls, game states, or implemented 
 ## ExecPlans
 
 - When any ExecPlan condition may apply, read `PLANS.md` completely before drafting or executing the plan, then follow it.
-- Before finalizing an ExecPlan, load and apply the `karpathy-guidelines` skill when available. If it is unavailable, apply the `PLANS.md` final-review checklist manually. In either case, reduce scope if the review identifies overcomplication.
+- Keep ExecPlans proportionate to the task. Use the `karpathy-guidelines` skill or the `PLANS.md` final-review checklist only when a plan is unusually complex or a review identifies concrete overcomplication.
 - Keep the plan current when scope, validation, or implementation details change.
