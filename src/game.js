@@ -2390,6 +2390,8 @@ function updateStatusMessage() {
 function updateEffects() {
     updateStatusMessage();
     updateHealthAnimations();
+    screenShake = reducedMotionEnabled ? 0 : screenShake * COMBAT_FEEDBACK.shakeDecay;
+    if (screenShake < 0.4) screenShake = 0;
 
     if (player1 && player1.energy >= MAX_ENERGY && !specialReadyAnnounced) {
         specialReadyAnnounced = true;
@@ -2429,7 +2431,7 @@ function triggerSpecialFeedback(fighter) {
         color,
         timer: duration,
         maxTimer: duration,
-        fullFlash: !reducedMotionEnabled
+        fullFlash: false
     };
     floatingTexts.push(new FloatingText(fighter.x, fighter.y - 140, t('specialImpact'), color));
 }
@@ -2448,10 +2450,11 @@ function updateHealthAnimations() {
 }
 
 function triggerImpactFeedback(x, y, direction, blocked = false, accentColor = null) {
-    screenShake = reducedMotionEnabled ? 0 : Math.max(screenShake, blocked ? 4 : 10);
-    hitStopFrames = reducedMotionEnabled ? 0 : Math.max(hitStopFrames, blocked ? 2 : 5);
+    const feedback = COMBAT_FEEDBACK[blocked ? 'block' : 'hit'];
+    screenShake = reducedMotionEnabled ? 0 : Math.max(screenShake, feedback.shake);
+    hitStopFrames = reducedMotionEnabled ? 0 : Math.max(hitStopFrames, feedback.stop);
 
-    const count = reducedMotionEnabled ? (blocked ? 3 : 5) : (blocked ? 7 : 14);
+    const count = reducedMotionEnabled ? (blocked ? 3 : 5) : feedback.particles;
     const colors = blocked ? ['#33f', '#8af', '#fff'] : [accentColor || '#c00', '#f90', '#fff'];
 
     if (!reducedMotionEnabled && !blocked) {
@@ -2463,8 +2466,10 @@ function triggerImpactFeedback(x, y, direction, blocked = false, accentColor = n
         const speed = blocked ? 3 + randomCosmetic() * 3 : 5 + randomCosmetic() * 6;
         const vx = direction * speed;
         const vy = spread * speed;
-        const color = !blocked && accentColor && i === 0 ? accentColor : colors[Math.floor(randomCosmetic() * colors.length)];
-        const type = i % 3 === 0 ? 'dot' : 'line';
+        const color = i === count - 1 ? colors[0]
+            : (!blocked && accentColor && i === 0 ? accentColor : colors[Math.floor(randomCosmetic() * colors.length)]);
+        // Draw the contact silhouette last so sparks cannot obscure its shape.
+        const type = i === count - 1 ? (blocked ? 'shield' : 'burst') : (i % 3 === 0 ? 'dot' : 'line');
 
         impactParticles.push(new ImpactParticle(x, y, vx, vy, color, type));
     }
@@ -2476,12 +2481,10 @@ function draw() {
 
     ctx.save();
 
-    if (screenShake > 0) {
-        const shakeX = (Math.random() - 0.5) * screenShake;
-        const shakeY = (Math.random() - 0.5) * screenShake;
+    if (screenShake > 0 && !reducedMotionEnabled && gameState === 'playing') {
+        const shakeX = Math.sin(matchElapsedFrames * 2.4) * screenShake * 0.5;
+        const shakeY = Math.cos(matchElapsedFrames * 1.7) * screenShake * 0.3;
         ctx.translate(shakeX, shakeY);
-        screenShake *= 0.78;
-        if (screenShake < 0.4) screenShake = 0;
     }
 
     drawBackground();
@@ -2494,6 +2497,8 @@ function draw() {
     drawSpecialFlash();
     drawImpactFlash();
     floatingTexts.forEach((t) => t.draw());
+    ctx.restore();
+    ctx.save();
     drawHealthBars();
     drawVsIntro();
     drawStatusMessage();

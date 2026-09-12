@@ -211,6 +211,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Special attack on `L` with full energy and stronger visual feedback.
 - Fighter styles: balanced, fast, heavy, and technical.
 - AI with difficulty-based reactions, range-aware attacks, tactical specials, counter windows, attack-type/zone memory, wall-aware defense, one-shot whiff punish opportunities, mid-range bait, punch-pattern crouch defense, legal air attacks, timed late-round pressure while behind, and bounded anti-turtle pressure from accumulated block memory.
+- Grounded anti-air responses forecast a short window from observed motion and strike only when the actual hitbox connects. Whiff pursuit checks travel time, CPU recovery, and a difficulty-tuned safety margin; an expired opportunity is abandoned without another roll. Corner escapes jump toward the center, corner pressure stays probabilistic, and a brief post-hit pause preserves live defense. All timing stays in the fixed simulation and all adaptation uses the existing round-local pattern memory.
 - Visual CPU rivals: `NULL POINTER`, `LAG SPIKE`, `MERGE CONFLICT`, and `BOSS 500`. Rival selection changes presentation only; difficulty remains responsible for CPU behavior.
 
 ### UI/UX
@@ -248,12 +249,15 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 
 ### Visual And Audio
 
+- Contact uses a small starburst; blocked contact uses a shield with two bars; a whiff leaves an open broken arc. Existing hitstop is retained, shake is bounded and advances at 60 Hz, and the HUD stays steady. Specials use a localized beam and outline instead of a full-screen flash.
+- Special-ready labels, double energy outlines and diamond marks follow the authoritative action state, including CPU recovery. Low health adds a warning triangle at 30% or below. Reduced motion keeps static contact shapes and labels while suppressing shake, moving particles and expanding special effects. Result panels retain the paper-and-ink style.
+
 - Differentiated characters: human with blue `P1` badge and band; CPU with red `AI` badge, visor, and antenna.
 - CPU visual details vary by difficulty.
 - Difficulty keeps attack windows readable: Easy retreats less and all profiles cap reactive blocking.
 - Animated high-contrast health bars with threshold colors.
 - High-contrast energy bars with a visual marker when the special is ready.
-- `ESPECIAL LISTO` indicator above the character when energy is full.
+- `ESPECIAL LISTO` indicator above the character when the authoritative action state is ready.
 - Monospace typography based on `JetBrains Mono`, with local fallbacks and no external dependencies.
 - HUD uses paper plates for stable contrast over all arenas, with a central timer, secondary round score, and aligned mode/pause toolbar.
 - HUD and impact feedback tied to character color so attacks are easier to read.

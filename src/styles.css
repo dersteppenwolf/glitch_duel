@@ -884,12 +884,12 @@ canvas:focus-visible,
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(255, 255, 255, 0.98);
-    padding: 30px 50px;
+    background: #fffdf5;
+    padding: 24px clamp(18px, 4vw, 50px);
     border: 6px solid #000;
     text-align: center;
     z-index: 200;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+    box-shadow: 8px 8px 0 #111, 0 0 0 100vmax rgba(0, 0, 0, 0.35);
     box-sizing: border-box;
     max-width: calc(100vw - 24px);
     max-height: calc(100dvh - 24px);
@@ -897,8 +897,16 @@ canvas:focus-visible,
     touch-action: pan-y;
 }
 
+#game-over-title {
+    margin: 0 0 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px double #111;
+    font-size: clamp(20px, 4vw, 30px);
+    letter-spacing: 0.12em;
+}
+
 #winner-text {
-    font-size: 38px;
+    font-size: clamp(24px, 5vw, 38px);
     font-weight: bold;
     margin-bottom: 15px;
 }

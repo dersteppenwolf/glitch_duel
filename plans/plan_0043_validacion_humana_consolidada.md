@@ -202,3 +202,20 @@ Closure record:
 - Esta entrada registra una aceptacion explicita del usuario, no sustituye los registros primarios que un estudio real normalmente conservaria.
 
 El plan queda cerrado. Cualquier nueva validacion humana o correccion reproducible requiere un plan posterior; no se duplica esta matriz en otros planes.
+
+## Comprobación acotada de navegador — plan 0048, 2026-09-11
+
+Cambio local sin commit, Windows, navegador integrado de Codex (Chromium), `localhost:8000`, idiomas EN/ES, Cuaderno, Normal/Difícil, seed 48 (0 para disparar decisiones específicas). Esta entrada añade evidencia de herramienta; no reabre ni certifica la matriz histórica de participantes, AT o dispositivos.
+
+Checklist ejecutado:
+
+- [x] Página real `src/`: menú, onboarding, Entrenamiento, selección de distancia/CPU, recarga de energía, cambio EN/ES y opción Reducir movimiento. Se observó actividad de CPU Normal, daño y anuncio existente de peligro.
+- [x] Tecla P abrió pausa y restauró foco en el diálogo; navegación por botones de menú y ajustes. Los pulsos de ataque de la herramienta fueron demasiado breves para confirmar combate por teclado: pueden comenzar y terminar entre snapshots fijos, según el contrato actual. No se afirma validación de teclado humano, touch, gamepad ni AT.
+- [x] Página temporal con HTML/CSS/scripts de producción, Canvas y DOM reales, bucle automático del juego detenido y `update()`/`draw()` explícitos: inspección de hit, bloqueo, whiff, especial, energía lista, salud 24% y resultado 2-0. No eran mocks de Canvas. Fixtures y botones auxiliares retirados después de la prueba.
+- [x] Hit: estallido y líneas localizados; bloqueo: escudo hexagonal con dos barras; whiff: arco abierto junto al ataque sin daño. La primera inspección mostró que las chispas tapaban el escudo y su color podía ser blanco. Se corrigió el orden para dibujar la silueta al final y fijar su contorno azul; una segunda captura confirmó las barras y el contorno.
+- [x] Especial: haz y líneas locales, sin flash de pantalla completa, HUD legible. Ready/peligro: etiquetas sin espejo en CPU, rombos y doble borde de energía, triángulo `!` en salud. Resultado: panel de papel, marcador, medalla y ambos botones visibles.
+- [x] Movimiento reducido: inspección del estallido estático sin sacudida; los tests automáticos comprueban inmovilidad de partículas y temporización. No se midió comodidad vestibular ni se hizo una sesión humana prolongada.
+- [x] IA ejecutada con simulación real en navegador: antiaéreo `antiAir / idle / idle / idle`, salud P1 92; persecución `punish` durante cinco pasos y golpe, salud P1 86 con recuperación restante 4; escape izquierdo de x=60 a x=91.2, y=290.9, dirección +1 tras seis pasos.
+- [x] Determinismo en navegador: dos trazas idénticas de 180 ticks con seed 48, tanto con efectos normales como con movimiento reducido. Se compararon posiciones, salud, acción CPU, pausa tras hit, dirección de escape y timer; no se compararon píxeles ni tiempos de pared.
+
+Limitaciones y pendientes: revisión breve de estados controlados y navegación real, no playtest de balance ni medición de rendimiento. Las otras arenas, dispositivos físicos, gamepad, lector de pantalla y combate sostenido por teclado quedan pendientes para esta revisión. En el viewport estrecho disponible se observó el panel de Training existente superpuesto al HUD; no se modificó ese layout dentro del alcance de IA/impacto. Los escenarios temporales no se publican ni forman parte del juego.

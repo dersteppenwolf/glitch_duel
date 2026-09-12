@@ -12,6 +12,15 @@ const ROUND_TIMER_FRAMES = ROUND_TIME_SECONDS * 60;
 const FIXED_STEP_MS = 1000 / 60;
 const MAX_FRAME_DELTA_MS = 100;
 const MAX_SIMULATION_STEPS = 6;
+const FIGHTER_GRAVITY = 0.9;
+const AI_TACTICS = { wallMargin: 70, cornerPressureRange: 210, interceptHorizon: 24 };
+const COMBAT_FEEDBACK = {
+    hit: { shake: 8, stop: 5, particles: 14 },
+    block: { shake: 3, stop: 2, particles: 7 },
+    shakeDecay: 0.78,
+    dangerHealth: 30,
+    whiffFrames: 12
+};
 const TRAINING_POSITIONS = {
     mid: [350, 650],
     close: [440, 560],
@@ -103,6 +112,13 @@ const DIFFICULTIES = {
         baitChance: 0.06,
         crouchDefenseChance: 0.08,
         whiffPunishChance: 0.18,
+        punishSafetyFrames: 3,
+        antiAirChance: 0.22,
+        antiAirHorizon: 4,
+        airPatternBonus: 0.06,
+        cornerEscapeChance: 0.18,
+        cornerPressureChance: 0.12,
+        postHitPauseFrames: 8,
         airAttackChance: 0.20
     },
     normal: {
@@ -140,6 +156,13 @@ const DIFFICULTIES = {
         baitChance: 0.14,
         crouchDefenseChance: 0.18,
         whiffPunishChance: 0.42,
+        punishSafetyFrames: 2,
+        antiAirChance: 0.44,
+        antiAirHorizon: 6,
+        airPatternBonus: 0.10,
+        cornerEscapeChance: 0.30,
+        cornerPressureChance: 0.24,
+        postHitPauseFrames: 5,
         airAttackChance: 0.40
     },
     hard: {
@@ -177,6 +200,13 @@ const DIFFICULTIES = {
         baitChance: 0.24,
         crouchDefenseChance: 0.30,
         whiffPunishChance: 0.68,
+        punishSafetyFrames: 1,
+        antiAirChance: 0.66,
+        antiAirHorizon: 8,
+        airPatternBonus: 0.14,
+        cornerEscapeChance: 0.42,
+        cornerPressureChance: 0.36,
+        postHitPauseFrames: 3,
         airAttackChance: 0.60
     }
 };

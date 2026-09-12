@@ -18,7 +18,7 @@ function drawHealthBars() {
     ctx.fillStyle = '#000';
     ctx.textAlign = 'right';
     ctx.fillText(`${hudCompactMode ? 'CPU' : (player2.labelKey ? t(player2.labelKey) : t('cpuAI'))}: ${player2.health}%`, WIDTH - 50, 26);
-    drawEnergyBar(WIDTH - 252, 67, player2.energy, true, player2.accentColor);
+    drawEnergyBar(WIDTH - 252, 67, player2.energy, true, player2.accentColor, getSpecialActionState(player2));
 
     ctx.textAlign = 'center';
     ctx.font = `bold ${hudCompactMode ? 20 : 13}px ${GAME_FONT_FAMILY}`;
@@ -80,10 +80,27 @@ function drawHealthBar(x, y, health, displayHealth, alignRight, accentColor = '#
         ctx.lineTo(markerX, y + height - 3);
         ctx.stroke();
     }
+    if (health > 0 && health <= COMBAT_FEEDBACK.dangerHealth) {
+        const center = x + width / 2;
+        ctx.fillStyle = '#fffdf2';
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(center, y + 3);
+        ctx.lineTo(center - 11, y + height - 3);
+        ctx.lineTo(center + 11, y + height - 3);
+        ctx.lineTo(center, y + 3);
+        ctx.fill();
+        ctx.stroke();
+        ctx.font = `bold 15px ${GAME_FONT_FAMILY}`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#111';
+        ctx.fillText('!', center, y + 21);
+    }
 }
 
 function getHealthBarColor(health) {
-    if (health <= 30) return '#e11d48';
+    if (health <= COMBAT_FEEDBACK.dangerHealth) return '#e11d48';
     if (health <= 60) return '#facc15';
     return '#22c55e';
 }
@@ -118,7 +135,22 @@ function drawEnergyBar(x, y, energy, alignRight, accentColor = '#000', actionSta
         ctx.stroke();
     }
 
-    if (full && !hudCompactMode) {
+    if (actionState === 'special-ready') {
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - 4, y - 4, width + 8, height + 8);
+        // A diamond remains visible at compact/mobile sizes and in grayscale.
+        const symbolX = alignRight ? x - 16 : x + width + 16;
+        ctx.beginPath();
+        ctx.moveTo(symbolX, y - 2);
+        ctx.lineTo(symbolX + 7, y + height / 2);
+        ctx.lineTo(symbolX, y + height + 2);
+        ctx.lineTo(symbolX - 7, y + height / 2);
+        ctx.lineTo(symbolX, y - 2);
+        ctx.stroke();
+    }
+
+    if (actionState === 'special-ready' && !hudCompactMode) {
         ctx.font = `bold 12px ${GAME_FONT_FAMILY}`;
         ctx.fillStyle = '#000';
         ctx.textAlign = 'center';
@@ -260,8 +292,9 @@ function drawSpecialFlash() {
     if (!specialFlash) return;
 
     const progress = specialFlash.timer / specialFlash.maxTimer;
-    const beamLength = 170 + (1 - progress) * 90;
-    const beamHeight = 28 + (1 - progress) * 18;
+    const expansion = reducedMotionEnabled ? 0 : 1 - progress;
+    const beamLength = 170 + expansion * 90;
+    const beamHeight = 28 + expansion * 18;
     const startX = specialFlash.x;
     const endX = startX + specialFlash.direction * beamLength;
 
@@ -289,7 +322,14 @@ function drawSpecialFlash() {
 
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.arc(startX, specialFlash.y, 34 + (1 - progress) * 24, 0, Math.PI * 2);
+    ctx.arc(startX, specialFlash.y, 34 + expansion * 24, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.lineWidth = 2;
+    for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(startX + specialFlash.direction * 25, specialFlash.y + side * 26);
+        ctx.lineTo(endX - specialFlash.direction * 12, specialFlash.y + side * 35 - 8);
+        ctx.stroke();
+    }
     ctx.restore();
 }

@@ -24,6 +24,10 @@ function chooseAIAction({
     repeatedAttackBias = 0,
     opponentWhiffed = false,
     opponentRecovery = 0,
+    whiffIntercept = null,
+    antiAirIntercept = null,
+    opponentCornered = false,
+    postHitPause = false,
     canAirPunch = false,
     canAirKick = false,
     airAttackUsed = false,
@@ -50,6 +54,9 @@ function chooseAIAction({
             zoneAttackBias * (difficulty.zoneBlockBonus ?? 0)
     );
 
+    // Hesitation never disables a live grounded defensive response.
+    if (postHitPause) return opponentAttacking && onGround && dist < 170 ? 'block' : 'idle';
+
     if (!onGround) {
         if (!canAttack || airAttackUsed || rand >= (difficulty.airAttackChance ?? 0)) return 'idle';
         if (canAirKick && dist > ATTACKS.airPunch.range) return 'airKick';
@@ -59,11 +66,17 @@ function chooseAIAction({
     }
 
     if (opponentWhiffed && opponentRecovery > 0 && rand < (difficulty.whiffPunishChance ?? 0)) {
-        if (kickReady && dist > ATTACKS.punch.range) return 'kick';
-        if (punchReady) return 'punch';
-        if (kickReady) return 'kick';
-        if (inMidRange) return 'approach';
+        if (opponentRecovery > (difficulty.punishSafetyFrames ?? 0)) {
+            if (kickReady && dist > ATTACKS.punch.range) return 'kick';
+            if (punchReady) return 'punch';
+            if (kickReady) return 'kick';
+            if (whiffIntercept) return 'punish';
+        }
     }
+
+    const antiAirChance = Math.min(difficulty.maxBlockReaction ?? 0.9,
+        (difficulty.antiAirChance ?? 0) + opponentAirBias * (difficulty.airPatternBonus ?? 0));
+    if (antiAirIntercept && rand < antiAirChance) return 'antiAir';
 
     if (!opponentAttacking && opponentPunchBias > 0.45 && opponentPunchBias > opponentKickBias && opponentPunchBias > opponentSpecialBias && rand < (difficulty.crouchDefenseChance ?? 0)) {
         return 'crouch';
@@ -96,11 +109,20 @@ function chooseAIAction({
         }
     }
 
+    if (retreatBlocked && !opponentAttacking && opponentAttackBias <= 0.5 && repeatedAttackBias <= 0.5 &&
+        canAttack && dist < AI_TACTICS.cornerPressureRange &&
+        rand < (difficulty.cornerEscapeChance ?? 0)) return 'escape';
+
     if (latePressure && !opponentAttacking) {
         return chooseAIPressureAction(dist, punchReady, kickReady);
     }
 
     if (!opponentAttacking && opponentBlockBias >= (difficulty.antiTurtleBlockThreshold ?? 1) && rand < (difficulty.antiTurtleChance ?? 0)) {
+        return chooseAIPressureAction(dist, punchReady, kickReady);
+    }
+
+    if (opponentCornered && !opponentAttacking && dist < AI_TACTICS.cornerPressureRange &&
+        rand < (difficulty.cornerPressureChance ?? 0)) {
         return chooseAIPressureAction(dist, punchReady, kickReady);
     }
 

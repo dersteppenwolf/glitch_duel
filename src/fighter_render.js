@@ -6,6 +6,7 @@ function drawFighter(fighter) {
 
     drawFighterIdentityMarker(fighter, baseX, baseY, accentColor);
     drawGlitchCancelFeedback(fighter, baseX, baseY);
+    if (fighter.state !== 'victory' && fighter.state !== 'defeat') drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor);
 
     if (!fighter.facingRight) {
         ctx.scale(-1, 1);
@@ -13,7 +14,7 @@ function drawFighter(fighter) {
     }
 
     const legAngle = fighter.state === 'walk' && fighter.onGround ? Math.sin(fighter.frame / 3) * 20 : 0;
-    const headBob = fighter.state === 'hit' ? Math.sin(fighter.frame / 2) * 5 : 0;
+    const headBob = fighter.state === 'hit' && !reducedMotionEnabled ? Math.sin(fighter.frame / 2) * 5 : 0;
     const isCrouching = fighter.state === 'crouch';
     const hipY = isCrouching ? baseY + 4 : baseY - 20;
     const torsoTopY = isCrouching ? baseY - 34 : baseY - 55;
@@ -31,8 +32,6 @@ function drawFighter(fighter) {
         ctx.restore();
         return;
     }
-
-    drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor);
 
     ctx.strokeStyle = accentColor;
     ctx.lineWidth = 2;
@@ -237,7 +236,7 @@ function getFighterMarkerLayout(fighter, baseX, baseY, label) {
 }
 
 function drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor) {
-    const actionState = fighter.isPlayer1 ? getSpecialActionState(fighter) : (fighter.energy >= MAX_ENERGY ? 'special-ready' : 'charging');
+    const actionState = getSpecialActionState(fighter);
     if (actionState === 'charging' || fighter.state === 'special') return;
 
     const layout = getFighterMarkerLayout(

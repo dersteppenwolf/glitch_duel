@@ -40,6 +40,8 @@ class Fighter {
         this.glitchCancelUsed = false;
         this.glitchCancelFeedbackFrames = 0;
         this.aiCounterTimer = 0;
+        this.aiPostHitTimer = 0;
+        this.aiEscapeDirection = 0;
         this.aiMemory = this.createAIMemory();
         this.airAttackUsed = false;
         this.styleKey = 'balanced';
@@ -135,6 +137,10 @@ class Fighter {
 
         this.applyPhysics();
         this.frame++;
+        if (this.aiPostHitTimer > 0) {
+            this.aiPostHitTimer--;
+            if (this.aiPostHitTimer === 0) this.aiDecisionTimer = 0;
+        }
     }
 
     updatePlayerControls(actions, opponent) {
@@ -356,6 +362,30 @@ class Fighter {
         floatingTexts.push(new FloatingText(this.x, this.y - 122, labels[type], colors[type]));
     }
 
+    // Forecast observed motion only. Attacks have no startup: frame zero is a
+    // legal instant hit. Use the real boxes; execution rechecks them every tick.
+    findAIIntercept(opponent, horizon, moveSpeed = 0, airborneOnly = false) {
+        if (!this.onGround || horizon < 0 || (airborneOnly && opponent.onGround)) return null;
+        const direction = opponent.x >= this.x ? 1 : -1;
+        const hurtBox = opponent.getHurtBox();
+        for (let frames = this.attackCooldown; frames <= Math.min(horizon, AI_TACTICS.interceptHorizon); frames++) {
+            const targetY = opponent.onGround ? opponent.y : Math.min(GROUND_Y,
+                opponent.y + opponent.velY * frames + FIGHTER_GRAVITY * frames * (frames + 1) / 2);
+            if (airborneOnly && targetY >= GROUND_Y) continue;
+            const targetX = Math.max(50, Math.min(WIDTH - 50, opponent.x + opponent.velX * frames));
+            const ownX = Math.max(50, Math.min(WIDTH - 50, this.x + direction * moveSpeed * frames));
+            if ((targetX - ownX) * direction <= 0) continue;
+            const projectedHurt = { ...hurtBox, x: hurtBox.x + targetX - opponent.x, y: hurtBox.y + targetY - opponent.y };
+            const types = airborneOnly || Math.abs(targetX - ownX) <= ATTACKS.punch.range ? ['punch', 'kick'] : ['kick', 'punch'];
+            for (const type of types) {
+                const box = this.getHitBox(type);
+                const projectedHit = { ...box, x: box.x + ownX - this.x };
+                if (this.intersects(projectedHit, projectedHurt)) return { type, frames };
+            }
+        }
+        return null;
+    }
+
     updateAI(opponent, aiContext = null) {
         const context = aiContext || {};
         const timedRound = context.timedRound === true;
@@ -384,8 +414,11 @@ class Fighter {
         const canSpecial = this.canHitOpponent('special', opponent);
         const canAirPunch = this.canHitOpponent('airPunch', opponent);
         const canAirKick = this.canHitOpponent('airKick', opponent);
-        const nearLeftWall = this.x <= 70;
-        const nearRightWall = this.x >= WIDTH - 70;
+        const nearLeftWall = this.x <= AI_TACTICS.wallMargin;
+        const nearRightWall = this.x >= WIDTH - AI_TACTICS.wallMargin;
+        const opponentCornered = (opponent.x < this.x && opponent.x <= AI_TACTICS.wallMargin) ||
+            (opponent.x > this.x && opponent.x >= WIDTH - AI_TACTICS.wallMargin);
+        if (this.onGround) this.aiEscapeDirection = 0;
         this.updateAIMemory(opponent, difficulty);
         const opponentSequenceChanged = opponent.attackSequence !== this.aiMemory.lastObservedAttackSequence;
         const opponentWhiffed = opponentSequenceChanged && opponent.lastAttackOutcome === 'whiff' && opponent.attackCooldown > 0;
@@ -410,6 +443,12 @@ class Fighter {
                 attackCooldown: this.attackCooldown,
                 opponentWhiffed,
                 opponentRecovery: opponent.attackCooldown,
+                whiffIntercept: opponentWhiffed && opponent.onGround
+                    ? this.findAIIntercept(opponent, opponent.attackCooldown - difficulty.punishSafetyFrames - 1, difficulty.moveSpeed)
+                    : null,
+                antiAirIntercept: this.findAIIntercept(opponent, difficulty.antiAirHorizon, 0, true),
+                opponentCornered,
+                postHitPause: this.aiPostHitTimer > 0,
                 opponentHealth: opponent.health,
                 x: this.x,
                 opponentX: opponent.x,
@@ -442,7 +481,31 @@ class Fighter {
             }
         }
 
-        if (this.aiAction === 'approach') {
+        if (this.aiPostHitTimer > 0) {
+            this.aiAction = opponentAttacking && this.onGround && dist < 170 ? 'block' : 'idle';
+        }
+
+        if (this.aiAction === 'punish' || this.aiAction === 'antiAir') {
+            const punish = this.aiAction === 'punish';
+            const validWhiff = opponent.onGround && opponent.lastAttackOutcome === 'whiff' &&
+                opponent.attackSequence === this.aiMemory.lastObservedAttackSequence;
+            const intercept = !punish || validWhiff
+                ? this.findAIIntercept(opponent, punish ? opponent.attackCooldown - difficulty.punishSafetyFrames - 1 : difficulty.antiAirHorizon,
+                    punish ? difficulty.moveSpeed : 0, !punish)
+                : null;
+            this.velX = 0;
+            if (!intercept) {
+                this.aiAction = 'idle';
+            } else if (intercept.frames === 0 && this.canHitOpponent(intercept.type, opponent)) {
+                // A previous block posture must not swallow the chosen response.
+                this.state = 'idle';
+                this.attack(intercept.type, opponent);
+                this.aiAction = 'idle';
+            } else if (punish) {
+                this.velX = this.x < opponent.x ? difficulty.moveSpeed : -difficulty.moveSpeed;
+                if (this.attackCooldown === 0) this.state = 'walk';
+            }
+        } else if (this.aiAction === 'approach') {
             this.velX = this.x < opponent.x ? difficulty.moveSpeed : -difficulty.moveSpeed;
             if (this.onGround && this.attackCooldown === 0) this.state = 'walk';
         } else if (this.aiAction === 'retreat') {
@@ -455,7 +518,8 @@ class Fighter {
                 this.velX = this.x < opponent.x ? -difficulty.moveSpeed : difficulty.moveSpeed;
                 if (this.onGround && this.attackCooldown === 0) this.state = 'walk';
             }
-        } else if (this.aiAction === 'jump' && this.onGround) {
+        } else if ((this.aiAction === 'jump' || this.aiAction === 'escape') && this.onGround) {
+            if (this.aiAction === 'escape') this.aiEscapeDirection = this.x < WIDTH / 2 ? 1 : -1;
             this.velY = -18;
             this.onGround = false;
             this.state = 'jump';
@@ -467,7 +531,7 @@ class Fighter {
             this.state = 'crouch';
             this.velX = 0;
         } else if (this.aiAction === 'airPunch' || this.aiAction === 'airKick') {
-            if (!this.onGround && !this.airAttackUsed) {
+            if (!this.onGround && !this.airAttackUsed && this.attackCooldown === 0 && this.canHitOpponent(this.aiAction, opponent)) {
                 this.airAttackUsed = true;
                 this.clearComboSequence();
                 this.attack(this.aiAction, opponent);
@@ -479,6 +543,7 @@ class Fighter {
         } else if (this.aiAction === 'special' && this.onGround) {
             this.attack('special', opponent);
         }
+        if (!this.onGround && this.aiEscapeDirection) this.velX = this.aiEscapeDirection * difficulty.moveSpeed;
     }
 
     updateAIMemory(opponent, difficulty) {
@@ -578,7 +643,7 @@ class Fighter {
     }
 
     applyPhysics() {
-        this.velY += 0.9;
+        this.velY += FIGHTER_GRAVITY;
         this.x += this.velX;
         this.y += this.velY;
 
@@ -737,6 +802,7 @@ class Fighter {
 
         const energyAfter = Math.max(0, Math.min(MAX_ENERGY, Math.round(this.energy)));
         this.lastAttackOutcome = outcome;
+        if (outcome === 'whiff') triggerWhiffFeedback(attackBox, this.accentColor);
         recordCombatEvent({
             type: 'attackResolved',
             frame: matchElapsedFrames,
@@ -789,7 +855,12 @@ class Fighter {
         triggerImpactFeedback(this.x, this.y - 55, impactDirection, false, attacker.accentColor);
         playImpactSound(attacker.lastAttackType);
 
-        if (!this.isPlayer1) this.aiDecisionTimer = 0;
+        if (!this.isPlayer1) {
+            this.aiDecisionTimer = 0;
+            this.aiAction = 'idle';
+            this.aiEscapeDirection = 0;
+            this.aiPostHitTimer = getDifficultyConfig().postHitPauseFrames;
+        }
 
         const texts = ['¡ZAP!', '¡SPLAT!', '¡BOOM!', '404', 'NaN', '¡OW!', 'Segmentation Fault', 'Python 2.7', 'Compiling...', 'Buffer Overflow'];
         floatingTexts.push(new FloatingText(this.x, this.y - 70, texts[Math.floor(randomCosmetic() * texts.length)], '#c00'));

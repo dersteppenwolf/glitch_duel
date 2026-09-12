@@ -9,7 +9,7 @@ class FloatingText {
     }
 
     update() {
-        this.y += this.vy;
+        if (!reducedMotionEnabled) this.y += this.vy;
         this.life--;
     }
 
@@ -40,14 +40,18 @@ class ImpactParticle {
         this.vy = vy;
         this.color = color;
         this.type = type;
+        this.lineX = vx * 3;
+        this.lineY = vy * 3;
         this.life = 18;
         this.maxLife = 18;
         this.size = 4 + randomCosmetic() * 5;
     }
 
     update() {
-        this.x += this.vx;
-        this.y += this.vy;
+        if (!reducedMotionEnabled && !['burst', 'shield', 'whiff'].includes(this.type)) {
+            this.x += this.vx;
+            this.y += this.vy;
+        }
         this.vx *= 0.9;
         this.vy *= 0.9;
         this.life--;
@@ -63,10 +67,43 @@ class ImpactParticle {
         ctx.lineWidth = 4;
         ctx.lineCap = 'round';
 
-        if (this.type === 'line') {
+        if (this.type === 'burst' || this.type === 'shield') {
+            const points = this.type === 'shield' ? 6 : 12;
+            const radius = this.type === 'shield' ? 25 : 32;
+            ctx.fillStyle = '#fffdf2';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let i = 0; i <= points; i++) {
+                const angle = i * Math.PI * 2 / points;
+                const r = this.type === 'burst' && i % 2 ? radius * 0.4 : radius;
+                const x = this.x + Math.cos(angle) * r;
+                const y = this.y + Math.sin(angle) * r;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.fill();
+            ctx.stroke();
+            if (this.type === 'shield') {
+                ctx.beginPath();
+                ctx.moveTo(this.x - 7, this.y - 10);
+                ctx.lineTo(this.x - 7, this.y + 10);
+                ctx.moveTo(this.x + 7, this.y - 10);
+                ctx.lineTo(this.x + 7, this.y + 10);
+                ctx.stroke();
+            }
+        } else if (this.type === 'whiff') {
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            // An open, broken arc distinguishes empty space from contact.
+            ctx.arc(this.x, this.y, 16, -0.7, 0.2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 16, 0.6, 1.3);
+            ctx.stroke();
+        } else if (this.type === 'line') {
             ctx.beginPath();
             ctx.moveTo(this.x, this.y);
-            ctx.lineTo(this.x - this.vx * 3, this.y - this.vy * 3);
+            ctx.lineTo(this.x - this.lineX, this.y - this.lineY);
             ctx.stroke();
         } else {
             ctx.beginPath();
@@ -76,4 +113,11 @@ class ImpactParticle {
 
         ctx.restore();
     }
+}
+
+function triggerWhiffFeedback(box, color) {
+    if (!box) return;
+    const cue = new ImpactParticle(box.x + box.width / 2, box.y + box.height / 2, 0, 0, color, 'whiff');
+    cue.life = cue.maxLife = COMBAT_FEEDBACK.whiffFrames;
+    impactParticles.push(cue);
 }

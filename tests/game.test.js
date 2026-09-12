@@ -470,6 +470,9 @@ function loadGame(options = {}) {
             checkCollision,
             triggerImpactFeedback,
             triggerSpecialFeedback,
+            drawHealthBar,
+            drawEnergyBar,
+            COMBAT_FEEDBACK,
             getState: () => ({
                 player1,
                 player2,
@@ -1686,9 +1689,9 @@ test('static HTML contract preserves local assets, script order, controls, and a
     assert.match(html, /<label class="training-trial-picker" for="training-trial-select">/);
     assert.match(html, /<select id="training-trial-select">/);
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260819-menu-disclosure">/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260911-ai-impact">/);
     assert.match(html, /<script src="i18n\.js\?v=20260819-menu-disclosure"><\/script>/);
-    assert.match(html, /<script src="game\.js\?v=20260819-menu-disclosure"><\/script>/);
+    assert.match(html, /<script src="game\.js\?v=20260911-ai-impact"><\/script>/);
     assert.match(html, /<option value="glitchCancel" data-i18n="trainingGlitchCancelOption">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
@@ -3005,7 +3008,7 @@ test('blocked hits keep health and create lighter impact feedback', () => {
     const state = api.getState();
     assert.equal(defender.health, 97);
     assert.equal(state.hitStopFrames, 2);
-    assert.equal(state.screenShake, 4);
+    assert.equal(state.screenShake, api.COMBAT_FEEDBACK.block.shake);
     assert.equal(state.impactParticles.length, 7);
     assert.equal(state.floatingTexts.length, 1);
 });
@@ -3458,6 +3461,239 @@ test('CPU crouch defense stops movement but remains vulnerable to kicks', () => 
 
     assert.equal(cpu.health, 86);
     assert.equal(cpu.state, 'hit');
+});
+
+test('whiff intercept uses real boxes, cooldown, observed movement and a strict recovery margin', () => {
+    const { api } = loadGame();
+    const cpu = new api.Fighter(400, false);
+    const opponent = new api.Fighter(600, true);
+    cpu.facingRight = true;
+    const speed = api.DIFFICULTIES.normal.moveSpeed;
+    assert.equal(cpu.findAIIntercept(opponent, 4, speed), null);
+    assert.deepEqual({ ...cpu.findAIIntercept(opponent, 5, speed) }, { type: 'kick', frames: 5 });
+    cpu.attackCooldown = 6;
+    assert.equal(cpu.findAIIntercept(opponent, 5, speed), null);
+    cpu.attackCooldown = 0;
+    opponent.velX = speed + 1;
+    assert.equal(cpu.findAIIntercept(opponent, 12, speed), null);
+    assert.equal(cpu.x, 400, 'forecast does not mutate fighters');
+    assert.equal(opponent.x, 600);
+});
+
+test('committed whiff approach hits within recovery and cancels expired or changed sequences without rerolling', () => {
+    for (const cancel of [false, 'expired', 'newAttack']) {
+        const { api } = loadGame();
+        api.setDifficulty('normal');
+        api.setMatchRandomSeed(0);
+        const cpu = new api.Fighter(400, false);
+        const opponent = new api.Fighter(600, true);
+        cpu.facingRight = true;
+        Object.assign(opponent, { attackSequence: 1, lastAttackOutcome: 'whiff', attackCooldown: 10, state: 'kick' });
+        cpu.updateAI(opponent);
+        assert.equal(cpu.aiAction, 'punish');
+        assert.equal(cpu.aiMemory.lastObservedAttackSequence, 1);
+        if (cancel === 'expired') opponent.attackCooldown = 1;
+        if (cancel === 'newAttack') {
+            opponent.attackSequence++;
+            opponent.lastAttackOutcome = 'blocked';
+        }
+        for (let frame = 0; frame < 6; frame++) {
+            cpu.applyPhysics();
+            opponent.attackCooldown = Math.max(0, opponent.attackCooldown - 1);
+            cpu.updateAI(opponent);
+        }
+        if (cancel) {
+            assert.equal(opponent.health, 100, cancel);
+            assert.equal(cpu.aiAction, 'idle', cancel);
+        } else {
+            assert.equal(opponent.health, 86);
+            assert(opponent.attackCooldown > 0);
+            assert.equal(cpu.attackSequence, 1);
+        }
+    }
+});
+
+test('anti-air forecasts descending contact, rejects unreachable trajectories and respects decision cadence', () => {
+    const { api } = loadGame();
+    api.setDifficulty('hard');
+    api.setMatchRandomSeed(0);
+    const cpu = new api.Fighter(400, false);
+    const opponent = new api.Fighter(480, true);
+    cpu.facingRight = true;
+    Object.assign(opponent, { y: 290, velY: 7, onGround: false, state: 'jump' });
+    assert.equal(cpu.canHitOpponent('punch', opponent), false);
+    assert.deepEqual({ ...cpu.findAIIntercept(opponent, 8, 0, true) }, { type: 'punch', frames: 2 });
+    cpu.aiDecisionTimer = 10;
+    cpu.updateAI(opponent);
+    assert.equal(cpu.aiAction, 'idle');
+    assert.equal(cpu.aiDecisionTimer, 9, 'jump does not force a new decision');
+    cpu.aiDecisionTimer = 0;
+    cpu.updateAI(opponent);
+    assert.equal(cpu.aiAction, 'antiAir');
+    assert.equal(opponent.health, 100, 'no early hit during projection');
+    opponent.applyPhysics();
+    cpu.updateAI(opponent);
+    assert.equal(opponent.health, 100);
+    opponent.applyPhysics();
+    cpu.updateAI(opponent);
+    assert.equal(opponent.health, 92);
+    assert.equal(cpu.aiAction, 'idle', 'one strike consumes the response');
+
+    Object.assign(opponent, { y: 290, velY: -12, onGround: false, x: 480 });
+    assert.equal(cpu.findAIIntercept(opponent, 8, 0, true), null);
+    cpu.attackCooldown = 20;
+    opponent.velY = 7;
+    assert.equal(cpu.findAIIntercept(opponent, 8, 0, true), null);
+    cpu.attackCooldown = 0;
+    opponent.x = 700;
+    assert.equal(cpu.findAIIntercept(opponent, 8, 0, true), null);
+});
+
+test('anti-air cancels a changed trajectory and never spends an attack on an empty box', () => {
+    const { api } = loadGame();
+    const cpu = new api.Fighter(400, false);
+    const opponent = new api.Fighter(480, true);
+    cpu.facingRight = true;
+    cpu.aiAction = 'antiAir';
+    cpu.aiDecisionTimer = 10;
+    Object.assign(opponent, { x: 750, y: 290, velY: 7, onGround: false });
+    cpu.updateAI(opponent);
+    assert.equal(cpu.aiAction, 'idle');
+    assert.equal(cpu.attackSequence, 0);
+});
+
+test('ordinary committed CPU attacks can still whiff when the opponent escapes their range', () => {
+    const { api } = loadGame();
+    const cpu = new api.Fighter(400, false);
+    const opponent = new api.Fighter(700, true);
+    Object.assign(cpu, { facingRight: true, aiAction: 'kick', aiDecisionTimer: 8 });
+    cpu.updateAI(opponent);
+    assert.equal(cpu.lastAttackOutcome, 'whiff');
+    assert.equal(cpu.attackCooldown, 24);
+    assert.equal(opponent.health, 100);
+});
+
+test('corner escape moves toward center on both sides, while live attacks retain block priority', () => {
+    for (const left of [true, false]) {
+        const { api } = loadGame();
+        api.setDifficulty('hard');
+        api.setMatchRandomSeed(0);
+        const cpu = new api.Fighter(left ? 60 : 940, false);
+        const opponent = new api.Fighter(left ? 200 : 800, true);
+        cpu.update({}, opponent);
+        assert.equal(cpu.onGround, false);
+        assert.equal(Math.sign(cpu.velX), left ? 1 : -1);
+        cpu.update({}, opponent);
+        assert.equal(Math.sign(cpu.velX), left ? 1 : -1, 'escape drift persists while airborne');
+        const base = { dist: 140, health: 100, energy: 0, onGround: true, canPunch: false, canKick: false,
+            x: left ? 60 : 940, opponentX: left ? 200 : 800, nearLeftWall: left, nearRightWall: !left,
+            opponentAttacking: true, difficulty: api.DIFFICULTIES.hard, rand: 0.1 };
+        assert.equal(api.chooseAIAction(base), 'block');
+        assert.equal(api.chooseAIAction({ ...base, opponentAttacking: false, opponentCornered: true,
+            nearLeftWall: false, nearRightWall: false, canKick: true, dist: 130 }), 'kick');
+    }
+});
+
+test('post-hit hesitation starts after hit-stun, keeps defense, freezes on pause and resets each round', () => {
+    const { api } = loadGame();
+    startPlayingGame(api);
+    const { player1, player2 } = api.getState();
+    player1.x = 400;
+    player2.x = 480;
+    player2.takeHit(8, player1);
+    const pause = api.DIFFICULTIES.normal.postHitPauseFrames;
+    assert.equal(player2.aiPostHitTimer, pause);
+    player2.update({}, player1);
+    assert.equal(player2.aiPostHitTimer, pause, 'hit-stun does not consume hesitation');
+    api.pauseGame();
+    api.advanceSimulation(100);
+    assert.equal(player2.aiPostHitTimer, pause);
+    Object.assign(player2, { hitStun: 0, onGround: true, y: 380, state: 'idle' });
+    player1.state = 'kick';
+    player2.update({}, player1);
+    assert.equal(player2.state, 'block');
+    assert.equal(player2.aiPostHitTimer, pause - 1);
+    player1.state = 'idle';
+    for (let i = 1; i < pause; i++) player2.update({}, player1);
+    assert.equal(player2.attackSequence, 0);
+    assert.equal(player2.aiPostHitTimer, 0);
+    assert.equal(player2.aiDecisionTimer, 0);
+    api.startRound();
+    assert.equal(api.getState().player2.aiPostHitTimer, 0);
+    assert.equal(api.getState().player2.aiEscapeDirection, 0);
+});
+
+test('new AI probabilities and response windows are bounded and difficulty tuned', () => {
+    const { api } = loadGame();
+    for (const field of ['antiAirChance', 'airPatternBonus', 'cornerEscapeChance', 'cornerPressureChance']) {
+        const values = ['easy', 'normal', 'hard'].map((key) => api.DIFFICULTIES[key][field]);
+        assert(values.every((value) => value > 0 && value < 1), field);
+        assert(values[0] < values[1] && values[1] < values[2], field);
+    }
+    assert(api.DIFFICULTIES.easy.postHitPauseFrames > api.DIFFICULTIES.hard.postHitPauseFrames);
+    const base = { dist: 80, health: 100, energy: 0, onGround: true, opponentAttacking: false,
+        canPunch: false, canKick: false, antiAirIntercept: { type: 'punch', frames: 2 }, difficulty: api.DIFFICULTIES.hard };
+    assert.equal(api.chooseAIAction({ ...base, rand: 0.65 }), 'antiAir');
+    assert.notEqual(api.chooseAIAction({ ...base, rand: 0.66 }), 'antiAir');
+    assert.equal(api.chooseAIAction({ ...base, opponentAirBias: 1, rand: 0.7 }), 'antiAir');
+    assert.notEqual(api.chooseAIAction({ ...base, opponentAirBias: 1, rand: 0.95 }), 'antiAir');
+});
+
+test('contact shapes and whiff cue remain distinct and stationary under reduced motion', () => {
+    const { api } = loadGame({ reducedMotionSystem: true });
+    api.triggerImpactFeedback(300, 300, 1, false, '#123');
+    api.triggerImpactFeedback(300, 300, 1, true);
+    const player = new api.Fighter(100, true);
+    player.attack('kick', new api.Fighter(600, false));
+    const particles = api.getState().impactParticles;
+    assert(particles.some((p) => p.type === 'burst'));
+    assert(particles.some((p) => p.type === 'shield'));
+    assert.equal(particles.find((p) => p.type === 'shield').color, '#33f');
+    assert(particles.some((p) => p.type === 'whiff'));
+    for (const particle of particles) {
+        const before = [particle.x, particle.y];
+        particle.update();
+        particle.draw();
+        assert.deepEqual([particle.x, particle.y], before);
+    }
+    assert.equal(api.getState().hitStopFrames, 0);
+    assert.equal(api.getState().screenShake, 0);
+});
+
+test('shake advances only in simulation and renders do not consume it', () => {
+    const { api } = loadGame();
+    startPlayingGame(api);
+    api.triggerImpactFeedback(300, 300, 1);
+    const before = api.getState().screenShake;
+    api.draw();
+    api.draw();
+    assert.equal(api.getState().screenShake, before);
+    api.update();
+    assert.equal(api.getState().screenShake, before * api.COMBAT_FEEDBACK.shakeDecay);
+    api.pauseGame();
+    const paused = api.getState().screenShake;
+    api.draw();
+    api.advanceSimulation(100);
+    assert.equal(api.getState().screenShake, paused);
+});
+
+test('HUD danger and special readiness use non-color cues and authoritative availability', () => {
+    const danger = loadGame();
+    danger.api.drawHealthBar(50, 34, 30, 30, false);
+    assert(danger.api.getState().textCalls.includes('!'));
+    const healthy = loadGame();
+    healthy.api.drawHealthBar(50, 34, 31, 31, false);
+    assert(!healthy.api.getState().textCalls.includes('!'));
+    const ready = loadGame();
+    ready.api.drawEnergyBar(50, 67, 100, false, '#123', 'special-ready');
+    assert(ready.api.getState().textCalls.includes(ready.api.t('specialReadyShort')));
+    const recovering = loadGame();
+    recovering.api.drawEnergyBar(50, 67, 100, false, '#123', 'charging');
+    assert(!recovering.api.getState().textCalls.includes(recovering.api.t('specialReadyShort')));
+    const cpu = new recovering.api.Fighter(800, false);
+    Object.assign(cpu, { energy: 100, attackCooldown: 10 });
+    cpu.draw();
+    assert(!recovering.api.getState().textCalls.includes(recovering.api.t('specialReady')));
 });
 
 test('CPU air decisions use real hitboxes once per jump and never execute stale ground attacks', () => {
@@ -4514,7 +4750,10 @@ test('contextual AI trace is equivalent at 30, 60, and 120 FPS', () => {
         const trace = [];
 
         for (let sample = 0; sample < 10; sample++) {
-            for (let frame = 0; frame < framesPerSample; frame++) api.advanceSimulation(frameMs);
+            for (let frame = 0; frame < framesPerSample; frame++) {
+                api.advanceSimulation(frameMs);
+                api.draw();
+            }
             const state = api.getState();
             trace.push({
                 player1: {
