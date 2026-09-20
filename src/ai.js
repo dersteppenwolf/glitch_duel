@@ -186,3 +186,76 @@ function chooseAIPressureAction(dist, punchReady, kickReady) {
     if (kickReady && dist <= ATTACKS.kick.range) return 'kick';
     return 'approach';
 }
+
+// Q-learning helpers for plan_0051 — shadow round-local learning
+// 45 states = 3 distances × 5 opponent states × 3 health buckets
+// 7 actions = approach, retreat, block, jump, idle, punch, kick
+// 315 cells total in Float32Array
+
+function encodeAILearningState(dist, opponentState, cpuHealth, opponentHealth, difficulty) {
+    const distanceIdx = dist <= 110 ? 0 : (dist <= 250 ? 1 : 2);
+    let oppIdx;
+    if (!opponentState.onGround) oppIdx = 0; // air
+    else if (opponentState.lastAttackOutcome === 'whiff' && opponentState.attackCooldown > 0) oppIdx = 1; // whiffRecovery
+    else if (opponentState.state === 'punch' || opponentState.state === 'kick' || opponentState.state === 'special') oppIdx = 2; // attack
+    else if (opponentState.state === 'block') oppIdx = 3; // block
+    else oppIdx = 4; // neutral
+    const delta = cpuHealth - opponentHealth;
+    const gap = difficulty.lateRoundHealthGap || 18;
+    const healthIdx = delta >= gap ? 0 : (delta <= -gap ? 2 : 1);
+    return ((distanceIdx * 5) + oppIdx) * 3 + healthIdx;
+}
+
+function updateAIQValue(table, state, action, reward, nextState, nextLegalMask, config) {
+    const alpha = config.alpha;
+    const gamma = config.gamma;
+    const currentQ = table[state * 7 + action];
+    let maxNextQ = 0;
+    if (nextState >= 0 && nextLegalMask) {
+        let maxVal = -Infinity;
+        for (let a = 0; a < 7; a++) {
+            if (nextLegalMask[a] && table[nextState * 7 + a] > maxVal) maxVal = table[nextState * 7 + a];
+        }
+        maxNextQ = maxVal > -Infinity ? maxVal : 0;
+    }
+    const target = reward + gamma * maxNextQ;
+    const newQ = currentQ + alpha * (target - currentQ);
+    table[state * 7 + action] = Math.max(-1, Math.min(1, newQ));
+    return table[state * 7 + action];
+}
+
+function applyAIQWeights(candidates, stateIndex, table, config) {
+    if (!candidates || candidates.length === 0) return candidates;
+    const influence = config.influence || 0;
+    if (influence <= 0) return candidates;
+    const actionMap = { approach: 0, retreat: 1, block: 2, jump: 3, idle: 4, punch: 5, kick: 6 };
+    return candidates.map(([action, weight]) => {
+        const actionIdx = actionMap[action];
+        if (actionIdx === undefined) return [action, weight];
+        const q = table[stateIndex * 7 + actionIdx];
+        const multiplier = Math.max(0.5, Math.min(1.5, 1 + influence * q));
+        return [action, weight * multiplier];
+    });
+}
+
+function getAIDecisionCandidates({ dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty: d }) {
+    const candidates = [];
+    const add = (action, weight, legal = true) => { if (legal && weight > 0) candidates.push([action, weight]); };
+    if (dist > 250) {
+        add('approach', d.approachLong);
+        add('idle', 1 - d.approachLong);
+    } else if (dist > 110) {
+        add('kick', d.kickMid, kickReady);
+        add('approach', d.approachMid - d.kickMid);
+        add('retreat', d.retreatMid - d.approachMid, !retreatBlocked);
+        add('jump', d.jumpMid - d.retreatMid);
+        add('block', 1 - d.jumpMid);
+    } else {
+        const outer = dist > ATTACKS.punch.range;
+        add('punch', d.punchClose, punchReady && !(outer && kickReady));
+        add('kick', outer ? d.kickClose : d.kickClose - d.punchClose, kickReady);
+        add('block', d.blockClose - (outer && !kickReady ? d.punchClose : d.kickClose));
+        add(punchReady || kickReady || opponentBlockBias > 0.5 ? 'retreat' : 'approach', 1 - d.blockClose);
+    }
+    return candidates;
+}

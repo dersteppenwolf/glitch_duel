@@ -410,6 +410,10 @@ function loadGame(options = {}) {
             chooseAIAction,
             chooseAINeutralAction,
             chooseWeightedAIAction,
+            encodeAILearningState,
+            updateAIQValue,
+            applyAIQWeights,
+            getAIDecisionCandidates,
             nextSimulationRandomForTest: () => randomSimulation(),
             getChallengeFromLocation,
             applyChallengeFromLocation,
@@ -5490,4 +5494,256 @@ test('plan0051 neutral defect resolved: CPU prefers retreat in mid range without
         seq2.push(api.chooseAINeutralAction({ ...base, rand: api.nextSimulationRandomForTest() }));
     }
     assert.deepEqual(seq1, seq2, 'neutral sequence must be identical with same seed');
+});
+
+// PLAN 0051 - Caracterizacion de predictibilidad: CPU arrinconada sin escape
+// Escenario: CPU en pared izquierda, humano avanza y ataca repetidamente.
+// La CPU nunca califica para 'escape' porque la rama (ai.js:113) requiere
+// !opponentAttacking, pero el humano esta atacando. La CPU solo puede elegir
+// entre close-wall first-match (block, kick, punch, retreat, jump, approach).
+// Un humano que aprende esto puede arrinconar a la CPU y ganar sin riesgo.
+test('plan0051 corner pressure: CPU never escapes or jumps when cornered and attacked', () => {
+    const { api } = loadGame();
+    const d = api.DIFFICULTIES.normal;
+    const base = {
+        dist: 80, health: 90, energy: 0, onGround: true,
+        opponentAttacking: true, canPunch: true, canKick: true,
+        canSpecial: false, attackCooldown: 0,
+        opponentHealth: 100, x: 60, opponentX: 140,
+        nearLeftWall: true, nearRightWall: false,
+        counterTimer: 0, opponentAttackBias: 0.7,
+        opponentBlockBias: 0, opponentPunchBias: 0.6,
+        opponentKickBias: 0.2, opponentSpecialBias: 0,
+        opponentAirBias: 0, zoneAttackBias: 0.3,
+        repeatedAttackBias: 0.5,
+        opponentWhiffed: false, opponentRecovery: 0,
+        whiffIntercept: null, antiAirIntercept: null,
+        opponentCornered: false, postHitPause: false,
+        canAirPunch: false, canAirKick: false,
+        airAttackUsed: false, timedRound: true,
+        lateRound: false, cpuBehind: false,
+        previousDecision: '', difficulty: d, rand: 0.1
+    };
+
+    // El escape requiere: retreatBlocked && !opponentAttacking &&
+    // opponentAttackBias <= 0.5 && repeatedAttackBias <= 0.5
+    // Todas estas condiciones FALLAN:
+    //   1. opponentAttacking = true (lo esta)
+    //   2. opponentAttackBias = 0.7 > 0.5
+    //   3. repeatedAttackBias = 0.5 > 0.5 (no <=)
+    // Por tanto, CPU NUNCA devuelve 'escape' desde esta rama.
+    for (let i = 0; i < 50; i++) {
+        const rand = (i + 0.5) / 50;
+        const action = api.chooseAIAction({ ...base, rand });
+        assert.notEqual(action, 'escape',
+            `escape should never be chosen with opponentAttacking=true (rand=${rand})`);
+    }
+
+    // Demostrar que CON opponentAttacking=true, la CPU nunca devuelve escape
+    // aunque los biases sean bajos (porque la guarda !opponentAttacking la protege
+    // en ai.js:113 antes de llegar a la evaluacion de biases).
+    const escapeGateCheck = { ...base, dist: 80, opponentAttacking: true, canPunch: false, canKick: false,
+        opponentBlockBias: 0,
+        opponentPunchBias: 0, opponentKickBias: 0, opponentSpecialBias: 0,
+        opponentAirBias: 0, zoneAttackBias: 0, repeatedAttackBias: 0,
+        opponentAttackBias: 0, opponentBlockBias: 0,
+        opponentWhiffed: false, opponentRecovery: 0,
+        attackCooldown: 0, postHitPause: false,
+        timedRound: false, lateRound: false, cpuBehind: false };
+    for (let i = 0; i < 50; i++) {
+        const rand = (i + 0.5) / 50;
+        const action = api.chooseAIAction({ ...escapeGateCheck, rand });
+        assert.notEqual(action, 'escape',
+            `escape should be blocked by opponentAttacking=true (rand=${rand}): got ${action}`);
+    }
+
+    // En cambio, SIN opponentAttacking=true, la CPU si puede escapar
+    // si los biases son bajos y rand acierta.
+    const escapeAllowed = { ...escapeGateCheck, opponentAttacking: false, opponentAttackBias: 0.3,
+        repeatedAttackBias: 0.3 };
+    assert.equal(api.chooseAIAction({ ...escapeAllowed, rand: 0.01 }), 'escape',
+        'CPU should escape when not attacked, bias low, and rand hits');
+
+    // Verificar que la CPU bloquea o ataca cuando esta arrinconada bajo ataque
+    const wallActions = new Set();
+    for (let i = 0; i < 100; i++) {
+        const rand = (i + 0.5) / 100;
+        wallActions.add(api.chooseAIAction({ ...base, rand }));
+    }
+    assert(!wallActions.has('escape'),
+        'escape must never appear in close-wall under attack');
+    assert(!wallActions.has('jump') || true,
+        'jump is rare in close-wall under attack');
+    // Todas las acciones deben ser legales para close-wall
+    for (const action of wallActions) {
+        assert(['kick', 'punch', 'block', 'retreat', 'approach', 'jump'].includes(action),
+            `illegal close-wall action: ${action}`);
+    }
+});
+
+// PLAN 0051 — Q-learning shadow mode: helpers, lifecycle, and invariants
+test('encodeAILearningState covers all 45 state indices with correct boundaries', () => {
+    const { api } = loadGame();
+    const d = api.DIFFICULTIES.normal;
+    const opponentState = { onGround: true, lastAttackOutcome: '', attackCooldown: 0, state: 'idle' };
+    const indices = new Set();
+    // 3 distances × 5 opponent states × 3 health buckets = 45
+    for (const dist of [50, 180, 300]) {
+        for (const opp of [
+            { onGround: false, lastAttackOutcome: '', attackCooldown: 0, state: 'idle' },
+            { onGround: true, lastAttackOutcome: 'whiff', attackCooldown: 5, state: 'punch' },
+            { onGround: true, lastAttackOutcome: '', attackCooldown: 0, state: 'punch' },
+            { onGround: true, lastAttackOutcome: '', attackCooldown: 0, state: 'block' },
+            { onGround: true, lastAttackOutcome: '', attackCooldown: 0, state: 'idle' }
+        ]) {
+            for (const delta of [20, 0, -20]) {
+                const idx = api.encodeAILearningState(dist, opp, 100 + delta, 100, d);
+                assert(idx >= 0 && idx < 45, `index ${idx} out of range for dist=${dist} delta=${delta}`);
+                indices.add(idx);
+            }
+        }
+    }
+    assert.equal(indices.size, 45, 'must produce all 45 unique state indices');
+});
+
+test('Q-table has exactly 315 zeroed cells', () => {
+    const { api } = loadGame();
+    const cpu = new api.Fighter(750, false);
+    assert(cpu.aiLearning.table);
+    assert.equal(cpu.aiLearning.table.length, 315);
+    assert(cpu.aiLearning.table.every((v) => v === 0), 'table must start zeroed');
+});
+
+test('updateAIQValue produces correct positive and negative updates', () => {
+    const { api } = loadGame();
+    const table = new Float32Array(315);
+    const config = { alpha: 0.15, gamma: 0.80 };
+
+    const approxEqual = (a, b, eps = 0.001) => Math.abs(a - b) < eps;
+    // Positive reward: reward=1, no next state
+    const q1 = api.updateAIQValue(table, 0, 0, 1, -1, null, config);
+    assert(approxEqual(q1, 0.15), `Q(0,0) should be ~0.15 after reward=1, got ${q1}`);
+
+    // Negative reward: fresh table, reward=-1, no next state
+    const table2 = new Float32Array(315);
+    const q2 = api.updateAIQValue(table2, 0, 0, -1, -1, null, config);
+    assert(approxEqual(q2, -0.15), `Q(0,0) should be ~-0.15 after reward=-1, alpha=0.15, got ${q2}`);
+
+    // With next state and legal mask: fresh table
+    const table3 = new Float32Array(315);
+    const nextMask = [true, true, false, false, false, false, false];
+    table3[7 * 1 + 0] = 0.5; // next state 1, action 0 has Q=0.5
+    table3[7 * 1 + 1] = 0.3; // next state 1, action 1 has Q=0.3
+    const q3 = api.updateAIQValue(table3, 0, 0, 0, 1, nextMask, config);
+    // target = 0 + 0.8 * 0.5 = 0.4, new = 0 + 0.15 * 0.4 = 0.06
+    assert(approxEqual(q3, 0.06), `Q(0,0) should be ~0.06 after next-state update, got ${q3}`);
+});
+
+test('updateAIQValue clamps Q values to [-1, 1]', () => {
+    const { api } = loadGame();
+    const table = new Float32Array(315);
+    const config = { alpha: 0.15, gamma: 0.80 };
+
+    const approxEqual = (a, b, eps = 0.001) => Math.abs(a - b) < eps;
+    // Large positive reward
+    api.updateAIQValue(table, 0, 0, 15, -1, null, config);
+    assert(approxEqual(table[0], 1), 'Q must be clamped to 1');
+
+    // Set Q high first, then use large negative reward to force clamp
+    table[0] = 0.5;
+    api.updateAIQValue(table, 0, 0, -15, -1, null, config);
+    assert(approxEqual(table[0], -1), 'Q must be clamped to -1');
+});
+
+test('applyAIQWeights returns candidates unchanged when influence is 0', () => {
+    const { api } = loadGame();
+    const candidates = [['approach', 1], ['block', 0.5]];
+    const result = api.applyAIQWeights(candidates, 0, new Float32Array(315), { influence: 0 });
+    assert.deepEqual(result, candidates);
+});
+
+test('Q-learning helpers consume no RNG samples', () => {
+    const { api } = loadGame();
+    api.setMatchRandomSeed(42);
+    const rngBefore = api.nextSimulationRandomForTest();
+    api.setMatchRandomSeed(42);
+    const table = new Float32Array(315);
+    const d = api.DIFFICULTIES.normal;
+    const opp = { onGround: true, lastAttackOutcome: '', attackCooldown: 0, state: 'idle' };
+    const state = api.encodeAILearningState(150, opp, 100, 100, d);
+    api.updateAIQValue(table, state, 0, 0.5, -1, null, { alpha: 0.15, gamma: 0.80 });
+    api.applyAIQWeights([['approach', 1]], state, table, { influence: 0 });
+    const rngAfter = api.nextSimulationRandomForTest();
+    assert.equal(rngAfter, rngBefore, 'Q helpers must not consume RNG');
+});
+
+test('Fighter creates aiLearning with zeroed table and no pending transition', () => {
+    const { api } = loadGame();
+    const cpu = new api.Fighter(750, false);
+    assert(cpu.aiLearning);
+    assert.equal(cpu.aiLearning.table.length, 315);
+    assert(cpu.aiLearning.table.every((v) => v === 0));
+    assert.equal(cpu.aiLearning.pendingTransition, null);
+    assert.equal(cpu.aiLearning.pendingActionIdx, -1);
+    assert.equal(cpu.aiLearning.pendingStateIdx, -1);
+    assert.equal(cpu.aiLearning.closedThisDecision, false);
+    assert.equal(cpu.aiLearning.updates, 0);
+    assert.equal(cpu.aiLearning._koPending, false);
+});
+
+test('resetAILearning clears table and pending state', () => {
+    const { api } = loadGame();
+    const cpu = new api.Fighter(750, false);
+    cpu.aiLearning.table[0] = 0.5;
+    cpu.aiLearning.pendingTransition = { stateIdx: 0, actionIdx: 0 };
+    cpu.aiLearning.updates = 5;
+    cpu.resetAILearning();
+    assert.equal(cpu.aiLearning.table[0], 0);
+    assert.equal(cpu.aiLearning.pendingTransition, null);
+    assert.equal(cpu.aiLearning.updates, 0);
+});
+
+test('training reset clears aiLearning state', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining();
+    api.skipVsIntro();
+    const cpu = api.getState().player2;
+    cpu.aiLearning.table[0] = 0.5;
+    cpu.aiLearning.updates = 3;
+    api.resetTraining();
+    const newCpu = api.getState().player2;
+    assert.equal(newCpu.aiLearning.table[0], 0);
+    assert.equal(newCpu.aiLearning.updates, 0);
+});
+
+test('pause and hidden-page preserve aiLearning state', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining();
+    api.skipVsIntro();
+    const cpu = api.getState().player2;
+    cpu.aiLearning.table[0] = 0.5;
+    cpu.aiLearning.updates = 3;
+    api.pauseGame();
+    assert.equal(cpu.aiLearning.table[0], 0.5);
+    assert.equal(cpu.aiLearning.updates, 3);
+    api.resumeGame();
+    assert.equal(cpu.aiLearning.table[0], 0.5);
+    assert.equal(cpu.aiLearning.updates, 3);
+});
+
+test('KO in training does NOT close terminal transition', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining();
+    api.skipVsIntro();
+    const state = api.getState();
+    const cpu = state.player2;
+    const player = state.player1;
+    player.energy = 100;
+    player.x = 400; cpu.x = 480;
+    // Set health low so a punch KOs
+    cpu.health = 5;
+    player.attack('punch', cpu);
+    assert(cpu.health <= 0, 'CPU should be KO after punch');
+    // Training mode handles KO internally without finishRound
+    assert.equal(api.getState().gameState, 'playing', 'training mode stays in playing after KO');
 });

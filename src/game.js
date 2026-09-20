@@ -925,7 +925,8 @@ function resetTrainingFighters() {
         fighter.glitchCancelEnabled = fighter.isPlayer1 && activeTrialId === 'glitchCancel';
         fighter.glitchCancelUsed = false;
         fighter.glitchCancelFeedbackFrames = 0;
-        fighter.aiDecisionTimer = 0;
+fighter.aiDecisionTimer = 0;
+        if (fighter.aiLearning) fighter.resetAILearning();
     });
     player1.health = Math.round(100 * (FIGHTER_STYLES[player1.styleKey] || FIGHTER_STYLES.balanced).health);
     player1.displayHealth = player1.health;
@@ -2328,6 +2329,26 @@ function update() {
 
 function finishRound(playerWon) {
     if (gameState !== 'playing') return;
+
+    if (player2 && player2.aiLearning && player2.aiLearning.pendingTransition && !player2.aiLearning.closedThisDecision) {
+        const damageDealt = player2.aiLearning.pendingTransition.opponentHealth - (player1 ? player1.health : 100);
+        const damageTaken = player2.aiLearning.pendingTransition.cpuHealth - player2.health;
+        const exchangeReward = Math.max(-1, Math.min(1, (damageDealt - damageTaken) / (ATTACKS.special ? ATTACKS.special.damage : 14)));
+        const terminalBonus = playerWon === false ? 1 : (playerWon === true ? -1 : 0);
+        const terminalReward = Math.max(-2, Math.min(2, exchangeReward + terminalBonus));
+        const pt = player2.aiLearning.pendingTransition;
+        const table = player2.aiLearning.table;
+        const alpha = 0.15;
+        const currentQ = table[pt.stateIdx * 7 + pt.actionIdx];
+        const newQ = currentQ + alpha * (terminalReward - currentQ);
+        table[pt.stateIdx * 7 + pt.actionIdx] = Math.max(-1, Math.min(1, newQ));
+        player2.aiLearning.updates++;
+        player2.aiLearning.closedThisDecision = true;
+        player2.aiLearning.pendingTransition = null;
+        player2.aiLearning.pendingActionIdx = -1;
+        player2.aiLearning.pendingStateIdx = -1;
+    }
+
     captureRoundHighlight(playerWon);
 
     clearActiveInput();

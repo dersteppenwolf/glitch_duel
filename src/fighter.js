@@ -44,6 +44,7 @@ class Fighter {
         this.aiPostHitTimer = 0;
         this.aiEscapeDirection = 0;
         this.aiMemory = this.createAIMemory();
+        this.aiLearning = this.createAILearning();
         this.airAttackUsed = false;
         this.styleKey = 'balanced';
         this.moveSpeedModifier = 1;
@@ -51,7 +52,7 @@ class Fighter {
         this.energyModifier = 1;
     }
 
-    createAIMemory() {
+createAIMemory() {
         return {
             attack: 0,
             block: 0,
@@ -66,6 +67,50 @@ class Fighter {
             observingAttack: false,
             lastObservedAttackSequence: 0
         };
+    }
+
+    createAILearning() {
+        return {
+            table: new Float32Array(315),
+            pendingTransition: null,
+            pendingActionIdx: -1,
+            pendingStateIdx: -1,
+            closedThisDecision: false,
+            updates: 0,
+            _koPending: false
+        };
+    }
+
+    resetAILearning() {
+        this.aiLearning = this.createAILearning();
+    }
+
+    encodeLearningState(dist, opponent, difficulty) {
+        const distIdx = dist <= 110 ? 0 : (dist <= 250 ? 1 : 2);
+        let oppIdx;
+        if (!opponent.onGround) oppIdx = 0;
+        else if (opponent.lastAttackOutcome === 'whiff' && opponent.attackCooldown > 0) oppIdx = 1;
+        else if (opponent.state === 'punch' || opponent.state === 'kick' || opponent.state === 'special') oppIdx = 2;
+        else if (opponent.state === 'block') oppIdx = 3;
+        else oppIdx = 4;
+        const delta = this.health - opponent.health;
+        const gap = difficulty.lateRoundHealthGap || 18;
+        const healthIdx = delta >= gap ? 0 : (delta <= -gap ? 2 : 1);
+        return ((distIdx * 5) + oppIdx) * 3 + healthIdx;
+    }
+
+    closeAITransition(opponent, difficulty, dist, nextStateIdx, nextLegalMask) {
+        if (!this.aiLearning || !this.aiLearning.pendingTransition || this.aiLearning.closedThisDecision) return;
+        const pt = this.aiLearning.pendingTransition;
+        const damageDealt = pt.opponentHealth - opponent.health;
+        const damageTaken = pt.cpuHealth - this.health;
+        const reward = Math.max(-1, Math.min(1, (damageDealt - damageTaken) / (ATTACKS.special ? ATTACKS.special.damage : 14)));
+        const table = this.aiLearning.table;
+        const config = { alpha: 0.15, gamma: 0.80 };
+        updateAIQValue(table, pt.stateIdx, pt.actionIdx, reward, nextStateIdx !== undefined ? nextStateIdx : -1,
+            nextLegalMask || null, config);
+        this.aiLearning.updates++;
+        this.aiLearning.closedThisDecision = true;
     }
 
     applyStyle(styleKey) {
@@ -407,6 +452,8 @@ class Fighter {
             return;
         }
 
+        if (this.aiLearning) this.aiLearning.closedThisDecision = false;
+
         const dist = Math.abs(this.x - opponent.x);
         const difficulty = getDifficultyConfig();
         const opponentAttacking = opponent.state === 'punch' || opponent.state === 'kick' || opponent.state === 'special';
@@ -426,9 +473,20 @@ class Fighter {
         if (opponentWhiffed) this.aiDecisionTimer = 0;
         this.aiDecisionTimer--;
 
-        if (this.aiDecisionTimer <= 0) {
+if (this.aiDecisionTimer <= 0) {
             this.aiDecisionTimer = difficulty.decisionMin + Math.floor(randomSimulation() * difficulty.decisionSpread);
             const rand = randomSimulation();
+
+            if (this.aiLearning && this.aiLearning.pendingTransition && !this.aiLearning.closedThisDecision) {
+                this.closeAITransition(opponent, difficulty, dist, null, null);
+            }
+
+            const isNeutral = dist > 110 || !((this.x < opponent.x && this.x <= AI_TACTICS.wallMargin) || (this.x > opponent.x && this.x >= WIDTH - AI_TACTICS.wallMargin));
+            let candidates = null;
+            if (this.aiLearning && isNeutral) {
+                candidates = getAIDecisionCandidates({ dist, punchReady: this.attackCooldown <= 0 && canPunch, kickReady: this.attackCooldown <= 0 && canKick, retreatBlocked: (this.x < opponent.x && nearLeftWall) || (this.x > opponent.x && nearRightWall), opponentBlockBias: this.aiMemory.block / 100, difficulty });
+            }
+
             this.aiAction = chooseAIAction({
                 dist,
                 health: this.health,
@@ -467,12 +525,29 @@ class Fighter {
                 rand
             });
             this.aiPreviousDecisionAction = this.aiAction;
+
+            if (this.aiLearning && candidates && candidates.length > 0) {
+                const stateIdx = this.encodeLearningState(dist, opponent, difficulty);
+                const actionMap = { approach: 0, retreat: 1, block: 2, jump: 3, idle: 4, punch: 5, kick: 6 };
+                const actionIdx = actionMap[this.aiAction];
+                const legalMask = new Array(7).fill(false);
+                candidates.forEach(([a]) => { const idx = actionMap[a]; if (idx !== undefined) legalMask[idx] = true; });
+                this.aiLearning.pendingTransition = { stateIdx, actionIdx, legalMask, cpuHealth: this.health, opponentHealth: opponent.health };
+                this.aiLearning.pendingStateIdx = stateIdx;
+                this.aiLearning.pendingActionIdx = actionIdx;
+                this.aiLearning.closedThisDecision = false;
+            } else if (this.aiLearning) {
+                this.aiLearning.pendingTransition = null;
+                this.aiLearning.pendingActionIdx = -1;
+                this.aiLearning.pendingStateIdx = -1;
+            }
+
             if (opponentSequenceChanged) this.aiMemory.lastObservedAttackSequence = opponent.attackSequence;
         } else if (opponentSequenceChanged && !opponentWhiffed) {
             this.aiMemory.lastObservedAttackSequence = opponent.attackSequence;
         }
 
-        if (latePressure && this.onGround && this.aiAction === 'retreat') {
+if (latePressure && this.onGround && this.aiAction === 'retreat') {
             if (opponentAttacking) {
                 this.aiAction = 'block';
             } else {
@@ -482,6 +557,17 @@ class Fighter {
                     this.attackCooldown === 0 && canKick
                 );
             }
+        }
+
+        if (this.aiLearning && this.aiLearning.pendingTransition && !this.aiLearning.closedThisDecision &&
+            this.aiAction !== this.aiPreviousDecisionAction && this.aiAction !== 'idle' &&
+            this.aiPreviousDecisionAction !== '' &&
+            ((this.aiAction === 'block' && this.aiPreviousDecisionAction === 'retreat' &&
+              ((this.x < opponent.x && nearLeftWall) || (this.x > opponent.x && nearRightWall))) ||
+             (latePressure && ['retreat'].includes(this.aiPreviousDecisionAction)))) {
+            this.aiLearning.pendingTransition = null;
+            this.aiLearning.pendingActionIdx = -1;
+            this.aiLearning.pendingStateIdx = -1;
         }
 
         if (this.aiPostHitTimer > 0) {
@@ -852,8 +938,11 @@ class Fighter {
             return { blocked: true, damageApplied: healthBefore - this.health };
         }
 
-        const healthBefore = this.health;
+const healthBefore = this.health;
         this.health = Math.max(0, this.health - damage);
+        if (!this.isPlayer1 && this.aiLearning && this.aiLearning.pendingTransition && !this.aiLearning.closedThisDecision && this.health <= 0) {
+            this.aiLearning._koPending = true;
+        }
         this.gainEnergy(ENERGY_GAIN_ON_DAMAGE, 'damage');
         this.hitStun = 20;
         this.state = 'hit';
