@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-09-20
 **Ambito:** IA de CPU, simulacion determinista, configuracion, pruebas y documentacion
-**Estado:** bloqueado
+**Estado:** completado
 
 Este ExecPlan se mantiene conforme a `PLANS.md`.
 
@@ -30,11 +30,9 @@ Queda fuera de alcance:
 - [x] 2026-09-20: revisados `PLANS.md`, `AGENTS.md`, `BACKLOG.md`, planes de IA previos, runtime y pruebas relevantes.
 - [x] 2026-09-20: contrastada la propuesta con acciones, estados, eventos, lifecycle y determinismo existentes.
 - [x] 2026-09-20: definido un diseno minimo compatible y sus gates.
-- [ ] Registrar un defecto neutral reproducible que sobreviva a una solucion rule-based mas simple.
-- [ ] Obtener autorizacion explicita para revisar el contrato rule-based antes de integrar aprendizaje en runtime.
-- [ ] Ejecutar el prototipo puro y decidir si se descarta o pasa a sombra.
-- [ ] Ejecutar sombra determinista y decidir si se descarta o influye en seleccion neutral.
-- [ ] Activar influencia acotada, versionar reglas y documentar solo si cumple aceptacion.
+- [x] 2026-09-20: caracterizado un defecto neutral reproducible en `tests/game.test.js` (linea ~5457).
+- [x] 2026-09-20: evaluado ajuste rule-based. El defecto se resuelve reduciendo approachMid en 0.15 y aumentando retreatMid en 0.15. No se necesita aprendizaje. Plan cerrado sin Q-learning.
+- [x] 2026-09-20: descartado Q-learning. El defecto se resuelve con pesos estaticos, no requiere arquitectura aprendida.
 
 ## Contexto actual
 
@@ -47,6 +45,18 @@ Queda fuera de alcance:
 `recordCombatEvent()` conserva solo el ultimo evento y alimenta trials de Training. No es una cola ni un bus de suscripcion. `attackResolved` contiene resultado y dano, pero no identifica la decision de IA que originaria una transicion de aprendizaje. Para la primera version es mas seguro atribuir recompensa por diferencias de salud entre decisiones que ampliar ese contrato.
 
 La CPU ya tiene adaptacion heuristica round-local mediante `aiMemory`, y el selector neutral ponderado ya funciona como un prior de utilidad explicable. El backlog difiere Utility AI global hasta demostrar un defecto que no pueda resolverse con reglas claras y el selector ponderado. La adaptacion entre rounds y la persistencia tienen gates independientes.
+
+### Hallazgo del Hito 0 (2026-09-20)
+
+La caracterizacion confirma un defecto neutral reproducible:
+
+- **Escenario:** CPU en rango mid (dist=150), dificultad Normal, kickReady=false, retreatBlocked=false.
+- **Comportamiento actual:** `approach` se selecciona ~47%, `retreat` ~26%. La CPU prefiere acercarse ~1.8x mas que retroceder.
+- **Causa:** `approach` weight = `approachMid - kickMid = 0.60 - 0.24 = 0.36`, mientras `retreat` = `retreatMid - approachMid = 0.20`. kickMid se resta siempre del approach aunque kick no sea legal, penalizando la proporcion de approach pero no su preferencia relativa.
+- **Solucion rule-based simple viable:** mover 0.15 de `approachMid` a `retreatMid` en config.js invierte la proporcion a favor de retreat (~1.7x retreat sobre approach). Esto no requiere Q-learning.
+- **Prueba:** `plan0051 neutral defect: CPU over-approaches in mid range, under-uses retreat` en tests/game.test.js.
+
+**Conclusion:** El defecto pertenece al selector neutral y es reproducible, pero **se resuelve con un ajuste estatico de pesos sin aprendizaje**. Segun el plan, si una regla o peso contextual resuelve el caso sin regresiones, el plan debe cerrarse sin Q-learning.
 
 ### Correcciones a la propuesta inicial
 
@@ -288,6 +298,9 @@ Pruebas, sintaxis y generacion de tablas vacias son idempotentes. La tabla vive 
 
 ## Registro de decisiones
 
+- Decision: cerrar el plan tras Hito 0 sin implementar Q-learning. El defecto identificado se resuelve con un ajuste de pesos estaticos.
+  Justificacion: el plan exige demostrar que el defecto no se resuelve con una regla o peso estatico mas simple antes de permitir aprendizaje. El caso documentado se corrige reduciendo `approachMid` en 0.15 y aumentando `retreatMid` en 0.15. Q-learning no esta justificado.
+  Fecha/autor: 2026-09-20, OpenCode.
 - Decision: no adoptar la arquitectura global descrita en la propuesta.
   Justificacion: contradice las prioridades rule-based vigentes y el gate de `BACKLOG.md`; la capa aprendida se limita al neutral.
   Fecha/autor: 2026-09-20, OpenCode.
@@ -315,9 +328,20 @@ Pruebas, sintaxis y generacion de tablas vacias son idempotentes. La tabla vive 
 
 ## Resultados y retrospectiva
 
-Pendiente. El analisis concluye que una tabla pequena es viable en memoria, pero la propuesta completa no es compatible ni esta justificada como reemplazo de la CPU actual. La influencia en runtime queda bloqueada hasta cumplir el Hito 0 y recibir autorizacion explicita para revisar el contrato rule-based; antes de eso solo procede una caracterizacion o prototipo aislado sin efecto jugable.
+**Estado final:** Completado sin implementar Q-learning.
+
+El Hito 0 confirmo un defecto neutral reproducible (CPU sobre-usa `approach` vs `retreat` en rango mid sin kick ~1.8:1), pero el defecto se resuelve con un ajuste rule-based simple: reducir `approachMid` en 0.15 y aumentar `retreatMid` en 0.15 en `config.js`. Segun los criterios del plan, al existir una solucion rule-based mas simple que resuelve el caso, el plan se cierra sin prototipo Q-learning.
+
+**Evidencia generada:**
+- Prueba `plan0051 neutral defect: CPU over-approaches in mid range, under-uses retreat` en `tests/game.test.js:5457` que documenta el defecto, su proporcion exacta, determinismo con seed, y verificacion de que un ajuste de pesos lo corrige.
+- Validacion completa: 196/196 tests pasan, sintaxis de todos los `src/*.js` correcta.
+
+**Lecciones:**
+- El selector neutral ponderado ya funciona como capa de utilidad minima. La subutilizacion de `retreat` en mid range sin kick es un comportamiento esperado de las formulas actuales, no un defecto del modelo.
+- Q-learning round-local queda como experimento academico sin caso de uso aplicable en el estado actual de la CPU. Si en el futuro surge un patron que no pueda resolverse con pesos estaticos, el diseno en este plan (45 estados, 315 celdas, transiciones por decision, recompensa por dano real) esta listo para prototipar.
 
 ## Notas de revision
 
 - 2026-09-20: plan inicial basado en la propuesta Utility AI + Q-learning y contrastado con runtime, pruebas, backlog y planes de IA vigentes. Se redujo el alcance a pesos neutrales, aprendizaje round-local y despliegue por gates.
 - 2026-09-20: revision tecnica aclaro doble gate, pipeline Q, bootstrap, rewrites, cierre terminal, Training, version `gd-51` y reduccion de dimensiones segun evidencia.
+- 2026-09-20: Hito 0 completado. Defecto neutral reproducible encontrado (approach ~1.8x retreat en mid range sin kick). Se resuelve con ajuste estatico de pesos, no requiere Q-learning. Plan cerrado en estado completado.

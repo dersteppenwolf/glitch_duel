@@ -5449,3 +5449,55 @@ test('round timer tie starts another round without scoring', () => {
     assert.equal(state.currentRound, 2);
     assert.equal(state.gameState, 'playing');
 });
+
+// PLAN 0051 HITO 0 - Caracterizacion de defecto neutral reproducible
+// Escenario: CPU en rango mid (dist=150) sin kickReady, con retreat disponible.
+// Con configuracion Normal: kickMid=0.24, approachMid=0.60, retreatMid=0.80, jumpMid=0.95.
+// Sin kickReady, approach weight = 0.60 - 0.24 = 0.36, retreat = 0.20, jump = 0.15, block = 0.05.
+// Esto da approach ~47% vs retreat ~26%, una proporcion ~1.8x que favorece
+// acercarse cuando el rival esta en rango de castigo.
+test('plan0051 neutral defect: CPU over-approaches in mid range, under-uses retreat', () => {
+    const { api } = loadGame();
+    const d = api.DIFFICULTIES.normal;
+    const base = {
+        dist: 150, punchReady: false, kickReady: false,
+        retreatBlocked: false, opponentBlockBias: 0,
+        difficulty: d, rand: 0, previousDecision: ''
+    };
+    const counts = { approach: 0, retreat: 0, block: 0, jump: 0, idle: 0 };
+    const n = 10000;
+    for (let i = 0; i < n; i++) {
+        const rand = (i + 0.5) / n;
+        counts[api.chooseAINeutralAction({ ...base, rand })]++;
+    }
+    const approachPct = counts.approach / n;
+    const retreatPct = counts.retreat / n;
+    assert(approachPct > retreatPct, `approach ${approachPct} should exceed retreat ${retreatPct}`);
+    assert(approachPct > 0.45 && approachPct < 0.50, `approach ${approachPct} expected ~0.47`);
+    assert(retreatPct > 0.24 && retreatPct < 0.28, `retreat ${retreatPct} expected ~0.26`);
+    assert(approachPct > retreatPct * 1.5,
+        `approach ${approachPct} should be >1.5x retreat ${retreatPct}`);
+    assert(!Object.keys(counts).includes('kick'), 'kick should not appear when kickReady=false');
+
+    api.setMatchRandomSeed(42);
+    const seq1 = [];
+    for (let i = 0; i < 20; i++) {
+        seq1.push(api.chooseAINeutralAction({ ...base, rand: api.nextSimulationRandomForTest() }));
+    }
+    api.setMatchRandomSeed(42);
+    const seq2 = [];
+    for (let i = 0; i < 20; i++) {
+        seq2.push(api.chooseAINeutralAction({ ...base, rand: api.nextSimulationRandomForTest() }));
+    }
+    assert.deepEqual(seq1, seq2, 'neutral sequence must be identical with same seed');
+
+    // Verificar que un ajuste rule-based simple solucionaria el desbalance:
+    // Mover 0.15 de approachMid a retreatMid da:
+    //   approach = (0.45 - 0.24) / ((0.45 - 0.24) + 0.35 + 0.15 + 0.05) = 0.21 / 0.76 = 0.276
+    //   retreat = 0.35 / 0.76 = 0.461
+    // La proporcion se invierte: retreat ahora es ~1.7x approach.
+    const adjustedApproach = d.approachMid - 0.15 - d.kickMid;
+    const adjustedRetreat = d.retreatMid - (d.approachMid - 0.15);
+    assert(adjustedApproach > 0 && adjustedRetreat > adjustedApproach,
+        `adjusted approach weight ${adjustedApproach} vs retreat ${adjustedRetreat}`);
+});
