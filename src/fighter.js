@@ -522,7 +522,9 @@ if (this.aiDecisionTimer <= 0) {
                 cpuBehind,
                 previousDecision: this.aiPreviousDecisionAction,
                 difficulty,
-                rand
+                rand,
+                aiLearningState: this.aiLearning && isNeutral ? this.encodeLearningState(dist, opponent, difficulty) : undefined,
+                aiLearningTable: this.aiLearning && isNeutral ? this.aiLearning.table : undefined
             });
             this.aiPreviousDecisionAction = this.aiAction;
 

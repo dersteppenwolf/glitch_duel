@@ -1,3 +1,5 @@
+const AI_LEARNING_INFLUENCE = 0;
+
 function chooseAIAction({
     dist,
     health,
@@ -36,7 +38,9 @@ function chooseAIAction({
     cpuBehind = false,
     previousDecision = '',
     difficulty,
-    rand
+    rand,
+    aiLearningState,
+    aiLearningTable
 }) {
     const canAttack = attackCooldown <= 0;
     const punchReady = canAttack && canPunch;
@@ -137,7 +141,8 @@ function chooseAIAction({
 
     // Keep close-wall defense first-match; variation only chooses neutral options.
     if (dist > 110 || !retreatBlocked) return chooseAINeutralAction({
-        dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty, rand, previousDecision
+        dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty, rand, previousDecision,
+        aiLearningState, aiLearningTable
     });
 
     if (kickReady && dist > ATTACKS.punch.range && rand < difficulty.kickClose) return 'kick';
@@ -159,7 +164,7 @@ function chooseWeightedAIAction(candidates, rand, previousDecision, repeatWeight
     return candidates[candidates.length - 1][0];
 }
 
-function chooseAINeutralAction({ dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty: d, rand, previousDecision }) {
+function chooseAINeutralAction({ dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty: d, rand, previousDecision, aiLearningState, aiLearningTable }) {
     const candidates = [];
     const add = (action, weight, legal = true) => { if (legal && weight > 0) candidates.push([action, weight]); };
     if (dist > 250) {
@@ -178,7 +183,10 @@ function chooseAINeutralAction({ dist, punchReady, kickReady, retreatBlocked, op
         add('block', d.blockClose - (outer && !kickReady ? d.punchClose : d.kickClose));
         add(punchReady || kickReady || opponentBlockBias > 0.5 ? 'retreat' : 'approach', 1 - d.blockClose);
     }
-    return chooseWeightedAIAction(candidates, rand, previousDecision, d.neutralRepeatWeight);
+    const weighted = aiLearningState !== undefined && aiLearningTable
+        ? applyAIQWeights(candidates, aiLearningState, aiLearningTable, { influence: AI_LEARNING_INFLUENCE })
+        : candidates;
+    return chooseWeightedAIAction(weighted, rand, previousDecision, d.neutralRepeatWeight);
 }
 
 function chooseAIPressureAction(dist, punchReady, kickReady) {
