@@ -1162,7 +1162,8 @@ test('weighted neutral pools preserve baseline cutoffs, legal options and nonzer
         assert.equal(baseline.kick, Math.round(d.kickMid * 10000));
         assert.equal(baseline.approach, Math.round((d.approachMid - d.kickMid) * 10000));
         assert(repeated.approach > 0 && repeated.approach < baseline.approach);
-        assert.equal(Object.keys(repeated).length, 5);
+        const expectedCount = d.retreatMid < d.jumpMid ? 5 : 4;
+        assert.equal(Object.keys(repeated).length, expectedCount);
         assert.equal(api.chooseAINeutralAction({ ...base, dist: 95, rand: 0 }), 'punch');
         assert.equal(api.chooseAINeutralAction({ ...base, dist: 95.001, rand: 0 }), 'kick');
         assert.equal(api.chooseAINeutralAction({ ...base, dist: 110, rand: 0 }), 'kick');
@@ -2308,7 +2309,7 @@ test('arcade route and difficulty caps are declarative and valid', () => {
         Object.fromEntries(Object.entries(api.DIFFICULTIES).map(([key, config]) => [key, config.maxBlockReaction])),
         { easy: 0.55, normal: 0.80, hard: 0.90 }
     );
-    assert.equal(api.DIFFICULTIES.easy.retreatMid, 0.65);
+    assert.equal(api.DIFFICULTIES.easy.retreatMid, 0.80);
 });
 
 test('match history uses a bounded versioned record and excludes training', () => {
@@ -5450,13 +5451,12 @@ test('round timer tie starts another round without scoring', () => {
     assert.equal(state.gameState, 'playing');
 });
 
-// PLAN 0051 HITO 0 - Caracterizacion de defecto neutral reproducible
-// Escenario: CPU en rango mid (dist=150) sin kickReady, con retreat disponible.
-// Con configuracion Normal: kickMid=0.24, approachMid=0.60, retreatMid=0.80, jumpMid=0.95.
-// Sin kickReady, approach weight = 0.60 - 0.24 = 0.36, retreat = 0.20, jump = 0.15, block = 0.05.
-// Esto da approach ~47% vs retreat ~26%, una proporcion ~1.8x que favorece
-// acercarse cuando el rival esta en rango de castigo.
-test('plan0051 neutral defect: CPU over-approaches in mid range, under-uses retreat', () => {
+// PLAN 0051 HITO 0 - Caracterizacion de defecto neutral resuelto
+// Tras el ajuste rule-based: approachMid reducido 0.15, retreatMid aumentado 0.15.
+// Normal ahora: approachMid=0.45, retreatMid=0.95, jumpMid=0.95, kickMid=0.24.
+// Sin kickReady en mid range: approach=0.21, retreat=0.50, block=0.05 (jump weight=0, no se agrega).
+// La CPU ahora prefiere retreat ~65.8% vs approach ~27.6%, invirtiendo la proporcion original.
+test('plan0051 neutral defect resolved: CPU prefers retreat in mid range without kick', () => {
     const { api } = loadGame();
     const d = api.DIFFICULTIES.normal;
     const base = {
@@ -5472,12 +5472,12 @@ test('plan0051 neutral defect: CPU over-approaches in mid range, under-uses retr
     }
     const approachPct = counts.approach / n;
     const retreatPct = counts.retreat / n;
-    assert(approachPct > retreatPct, `approach ${approachPct} should exceed retreat ${retreatPct}`);
-    assert(approachPct > 0.45 && approachPct < 0.50, `approach ${approachPct} expected ~0.47`);
-    assert(retreatPct > 0.24 && retreatPct < 0.28, `retreat ${retreatPct} expected ~0.26`);
-    assert(approachPct > retreatPct * 1.5,
-        `approach ${approachPct} should be >1.5x retreat ${retreatPct}`);
+    assert(retreatPct > approachPct, `retreat ${retreatPct} should exceed approach ${approachPct}`);
+    assert(Math.abs(approachPct - 0.276) < 0.02, `approach ${approachPct} expected ~0.276`);
+    assert(Math.abs(retreatPct - 0.658) < 0.02, `retreat ${retreatPct} expected ~0.658`);
     assert(!Object.keys(counts).includes('kick'), 'kick should not appear when kickReady=false');
+    assert(!Object.keys(counts).includes('jump') || counts.jump === 0,
+        'jump should not appear when retreatMid === jumpMid');
 
     api.setMatchRandomSeed(42);
     const seq1 = [];
@@ -5490,14 +5490,4 @@ test('plan0051 neutral defect: CPU over-approaches in mid range, under-uses retr
         seq2.push(api.chooseAINeutralAction({ ...base, rand: api.nextSimulationRandomForTest() }));
     }
     assert.deepEqual(seq1, seq2, 'neutral sequence must be identical with same seed');
-
-    // Verificar que un ajuste rule-based simple solucionaria el desbalance:
-    // Mover 0.15 de approachMid a retreatMid da:
-    //   approach = (0.45 - 0.24) / ((0.45 - 0.24) + 0.35 + 0.15 + 0.05) = 0.21 / 0.76 = 0.276
-    //   retreat = 0.35 / 0.76 = 0.461
-    // La proporcion se invierte: retreat ahora es ~1.7x approach.
-    const adjustedApproach = d.approachMid - 0.15 - d.kickMid;
-    const adjustedRetreat = d.retreatMid - (d.approachMid - 0.15);
-    assert(adjustedApproach > 0 && adjustedRetreat > adjustedApproach,
-        `adjusted approach weight ${adjustedApproach} vs retreat ${adjustedRetreat}`);
 });
