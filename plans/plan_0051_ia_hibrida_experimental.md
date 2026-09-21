@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-09-20
 **Ambito:** IA de CPU, simulacion determinista, configuracion, pruebas y documentacion
-**Estado:** completado
+**Estado:** completado (sombra round-local; influencia desactivada)
 
 Este ExecPlan se mantiene conforme a `PLANS.md`.
 
@@ -31,8 +31,9 @@ Queda fuera de alcance:
 - [x] 2026-09-20: contrastada la propuesta con acciones, estados, eventos, lifecycle y determinismo existentes.
 - [x] 2026-09-20: definido un diseno minimo compatible y sus gates.
 - [x] 2026-09-20: caracterizado un defecto neutral reproducible en `tests/game.test.js` (linea ~5457).
-- [x] 2026-09-20: evaluado ajuste rule-based. El defecto se resuelve reduciendo approachMid en 0.15 y aumentando retreatMid en 0.15. No se necesita aprendizaje. Plan cerrado sin Q-learning.
-- [x] 2026-09-20: descartado Q-learning. El defecto se resuelve con pesos estaticos, no requiere arquitectura aprendida.
+- [x] 2026-09-20: evaluado ajuste rule-based. El defecto se resuelve reduciendo approachMid en 0.15 y aumentando retreatMid en 0.15. No se necesita influencia aprendida para corregirlo.
+- [x] 2026-09-20: descartada la influencia Q para corregir el defecto. El caso se resuelve con pesos estaticos y no justifica cambiar el balance.
+- [x] 2026-09-21: implementada la sombra round-local acotada para validar lifecycle y determinismo, manteniendo `influence = 0` y sin alterar decisiones del runtime.
 
 ## Contexto actual
 
@@ -298,8 +299,8 @@ Pruebas, sintaxis y generacion de tablas vacias son idempotentes. La tabla vive 
 
 ## Registro de decisiones
 
-- Decision: cerrar el plan tras Hito 0 sin implementar Q-learning. El defecto identificado se resuelve con un ajuste de pesos estaticos.
-  Justificacion: el plan exige demostrar que el defecto no se resuelve con una regla o peso estatico mas simple antes de permitir aprendizaje. El caso documentado se corrige reduciendo `approachMid` en 0.15 y aumentando `retreatMid` en 0.15. Q-learning no esta justificado.
+- Decision: no activar influencia Q para corregir el defecto neutral.
+  Justificacion: el plan exige demostrar que el defecto no se resuelve con una regla o peso estatico mas simple antes de permitir aprendizaje. El caso documentado se corrige reduciendo `approachMid` en 0.15 y aumentando `retreatMid` en 0.15. La tabla de sombra no participa en el balance.
   Fecha/autor: 2026-09-20, OpenCode.
 - Decision: no adoptar la arquitectura global descrita en la propuesta.
   Justificacion: contradice las prioridades rule-based vigentes y el gate de `BACKLOG.md`; la capa aprendida se limita al neutral.
@@ -325,23 +326,28 @@ Pruebas, sintaxis y generacion de tablas vacias son idempotentes. La tabla vive 
 - Decision: no agregar un reaction delay separado.
   Justificacion: la cadencia por dificultad ya expresa entre aproximadamente 117 y 583 ms y esta integrada al fixed-step.
   Fecha/autor: 2026-09-20, OpenCode.
+- Decision: mantener el learner round-local en sombra con `influence = 0`.
+  Justificacion: permite validar actualizaciones, lifecycle y determinismo sin cambiar acciones, balance, cadencia ni prioridades protegidas de la CPU.
+  Fecha/autor: 2026-09-21, OpenCode.
 
 ## Resultados y retrospectiva
 
-**Estado final:** Completado sin implementar Q-learning.
+**Estado final:** Completado con aprendizaje Q round-local en sombra; la influencia sobre decisiones permanece desactivada (`0`).
 
-El Hito 0 confirmo un defecto neutral reproducible (CPU sobre-usa `approach` vs `retreat` en rango mid sin kick ~1.8:1), pero el defecto se resuelve con un ajuste rule-based simple: reducir `approachMid` en 0.15 y aumentar `retreatMid` en 0.15 en `config.js`. Segun los criterios del plan, al existir una solucion rule-based mas simple que resuelve el caso, el plan se cierra sin prototipo Q-learning.
+El Hito 0 confirmo un defecto neutral reproducible (CPU sobre-usa `approach` vs `retreat` en rango mid sin kick ~1.8:1), pero el defecto se resuelve con un ajuste rule-based simple: reducir `approachMid` en 0.15 y aumentar `retreatMid` en 0.15 en `config.js`. Segun los criterios del plan, la influencia Q no se promovio; la continuacion implemento un learner de sombra para validar lifecycle y determinismo sin modificar decisiones.
 
 **Evidencia generada:**
 - Prueba `plan0051 neutral defect: CPU over-approaches in mid range, under-uses retreat` en `tests/game.test.js:5457` que documenta el defecto, su proporcion exacta, determinismo con seed, y verificacion de que un ajuste de pesos lo corrige.
-- Validacion completa: 196/196 tests pasan, sintaxis de todos los `src/*.js` correcta.
+- Validacion inicial: 196/196 tests pasan, sintaxis de todos los `src/*.js` correcta.
+- Continuacion validada: 208/208 tests pasan, sintaxis de todos los `src/*.js` correcta y `git diff --check` sin errores.
 
 **Lecciones:**
 - El selector neutral ponderado ya funciona como capa de utilidad minima. La subutilizacion de `retreat` en mid range sin kick es un comportamiento esperado de las formulas actuales, no un defecto del modelo.
-- Q-learning round-local queda como experimento academico sin caso de uso aplicable en el estado actual de la CPU. Si en el futuro surge un patron que no pueda resolverse con pesos estaticos, el diseno en este plan (45 estados, 315 celdas, transiciones por decision, recompensa por dano real) esta listo para prototipar.
+- La sombra Q round-local queda como experimento tecnico sin influencia de producto: permite validar tabla, atribucion, lifecycle y determinismo sin cambiar el balance actual. Si en el futuro surge un patron que no pueda resolverse con pesos estaticos, la promocion requiere un gate nuevo y autorizacion explicita.
 
 ## Notas de revision
 
 - 2026-09-20: plan inicial basado en la propuesta Utility AI + Q-learning y contrastado con runtime, pruebas, backlog y planes de IA vigentes. Se redujo el alcance a pesos neutrales, aprendizaje round-local y despliegue por gates.
 - 2026-09-20: revision tecnica aclaro doble gate, pipeline Q, bootstrap, rewrites, cierre terminal, Training, version `gd-51` y reduccion de dimensiones segun evidencia.
-- 2026-09-20: Hito 0 completado. Defecto neutral reproducible encontrado (approach ~1.8x retreat en mid range sin kick). Se resuelve con ajuste estatico de pesos, no requiere Q-learning. Plan cerrado en estado completado.
+- 2026-09-20: Hito 0 completado. Defecto neutral reproducible encontrado (approach ~1.8x retreat en mid range sin kick). Se resuelve con ajuste estatico de pesos; la influencia Q no se promueve.
+- 2026-09-21: continuacion integrada en sombra round-local. Se corrigio la constante de influencia ausente; `AI_LEARNING_INFLUENCE = 0` mantiene el selector neutral identico mientras la tabla se actualiza y se descarta por Fighter.
