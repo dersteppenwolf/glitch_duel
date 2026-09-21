@@ -1,4 +1,4 @@
-const AI_LEARNING_INFLUENCE = 0;
+const AI_LEARNING_INFLUENCE = 0.10;
 
 function chooseAIAction({
     dist,
@@ -40,8 +40,16 @@ function chooseAIAction({
     difficulty,
     rand,
     aiLearningState,
-    aiLearningTable
+    aiLearningTable,
+    decisionMeta
 }) {
+    const protectedAction = (action) => {
+        if (decisionMeta) {
+            decisionMeta.source = 'protected';
+            decisionMeta.candidates = null;
+        }
+        return action;
+    };
     const canAttack = attackCooldown <= 0;
     const punchReady = canAttack && canPunch;
     const kickReady = canAttack && canKick;
@@ -60,102 +68,109 @@ function chooseAIAction({
     );
 
     // Hesitation never disables a live grounded defensive response.
-    if (postHitPause) return opponentAttacking && onGround && dist < 170 ? 'block' : 'idle';
+    if (postHitPause) return protectedAction(opponentAttacking && onGround && dist < 170 ? 'block' : 'idle');
 
     if (!onGround) {
-        if (!canAttack || airAttackUsed || rand >= (difficulty.airAttackChance ?? 0)) return 'idle';
-        if (canAirKick && dist > ATTACKS.airPunch.range) return 'airKick';
-        if (canAirPunch) return 'airPunch';
-        if (canAirKick) return 'airKick';
-        return 'idle';
+        if (!canAttack || airAttackUsed || rand >= (difficulty.airAttackChance ?? 0)) return protectedAction('idle');
+        if (canAirKick && dist > ATTACKS.airPunch.range) return protectedAction('airKick');
+        if (canAirPunch) return protectedAction('airPunch');
+        if (canAirKick) return protectedAction('airKick');
+        return protectedAction('idle');
     }
 
     if (opponentWhiffed && opponentRecovery > 0 && rand < (difficulty.whiffPunishChance ?? 0)) {
         if (opponentRecovery > (difficulty.punishSafetyFrames ?? 0)) {
-            if (kickReady && dist > ATTACKS.punch.range) return 'kick';
-            if (punchReady) return 'punch';
-            if (kickReady) return 'kick';
-            if (whiffIntercept) return 'punish';
+            if (kickReady && dist > ATTACKS.punch.range) return protectedAction('kick');
+            if (punchReady) return protectedAction('punch');
+            if (kickReady) return protectedAction('kick');
+            if (whiffIntercept) return protectedAction('punish');
         }
     }
 
     const antiAirChance = Math.min(difficulty.maxBlockReaction ?? 0.9,
         (difficulty.antiAirChance ?? 0) + opponentAirBias * (difficulty.airPatternBonus ?? 0));
-    if (antiAirIntercept && rand < antiAirChance) return 'antiAir';
+    if (antiAirIntercept && rand < antiAirChance) return protectedAction('antiAir');
 
     if (!opponentAttacking && opponentPunchBias > 0.45 && opponentPunchBias > opponentKickBias && opponentPunchBias > opponentSpecialBias && rand < (difficulty.crouchDefenseChance ?? 0)) {
-        return 'crouch';
+        return protectedAction('crouch');
     }
 
     if (!latePressure && !opponentAttacking && inMidRange && !retreatBlocked && (opponentAttackBias > 0.5 || repeatedAttackBias > 0.5) && rand < (difficulty.baitChance ?? 0)) {
-        return 'retreat';
+        return protectedAction('retreat');
     }
 
     if (opponentAttacking && dist < 170 && onGround && rand < blockReaction) {
-        return 'block';
+        return protectedAction('block');
     }
 
     if (specialReady && (
         opponentHealth <= ATTACKS.special.damage ||
         opponentHealth - health >= (difficulty.comebackSpecialGap ?? 22) && rand < (difficulty.comebackSpecialChance ?? 0.28) ||
         rand < (difficulty.specialChance ?? 0.18)
-    )) return 'special';
+    )) return protectedAction('special');
 
     if (counterTimer > 0 && rand < (difficulty.counterChance ?? 0.45)) {
-        if (kickReady && dist > ATTACKS.punch.range) return 'kick';
-        if (punchReady) return 'punch';
-        if (kickReady) return 'kick';
+        if (kickReady && dist > ATTACKS.punch.range) return protectedAction('kick');
+        if (punchReady) return protectedAction('punch');
+        if (kickReady) return protectedAction('kick');
     }
 
     if (health <= 30 && dist < 190) {
         if (!latePressure) {
-            if (!retreatBlocked && rand < (difficulty.lowHealthRetreat ?? 0.7)) return 'retreat';
-            return 'block';
+            if (!retreatBlocked && rand < (difficulty.lowHealthRetreat ?? 0.7)) return protectedAction('retreat');
+            return protectedAction('block');
         }
     }
 
     if (retreatBlocked && !opponentAttacking && opponentAttackBias <= 0.5 && repeatedAttackBias <= 0.5 &&
         canAttack && dist < AI_TACTICS.cornerPressureRange &&
-        rand < (difficulty.cornerEscapeChance ?? 0)) return 'escape';
+        rand < (difficulty.cornerEscapeChance ?? 0)) return protectedAction('escape');
 
     if (latePressure && !opponentAttacking) {
-        return chooseAIPressureAction(dist, punchReady, kickReady);
+        return protectedAction(chooseAIPressureAction(dist, punchReady, kickReady));
     }
 
     if (!opponentAttacking && opponentBlockBias >= (difficulty.antiTurtleBlockThreshold ?? 1) && rand < (difficulty.antiTurtleChance ?? 0)) {
-        return chooseAIPressureAction(dist, punchReady, kickReady);
+        return protectedAction(chooseAIPressureAction(dist, punchReady, kickReady));
     }
 
     if (opponentCornered && !opponentAttacking && dist < AI_TACTICS.cornerPressureRange &&
         rand < (difficulty.cornerPressureChance ?? 0)) {
-        return chooseAIPressureAction(dist, punchReady, kickReady);
+        return protectedAction(chooseAIPressureAction(dist, punchReady, kickReady));
     }
 
-    if (opponentAttackBias > 0.5 && dist < 170 && onGround && rand < blockReaction) return 'block';
+    if (opponentAttackBias > 0.5 && dist < 170 && onGround && rand < blockReaction) return protectedAction('block');
 
     if (opponentAirBias > 0.45 && zoneAttackBias > 0.35 && dist < 180 && onGround && kickReady && rand < (difficulty.airPatternKick ?? 0)) {
-        return 'kick';
+        return protectedAction('kick');
     }
 
-    if (repeatedAttackBias > 0.5 && dist < 180 && onGround && rand < blockReaction) return 'block';
+    if (repeatedAttackBias > 0.5 && dist < 180 && onGround && rand < blockReaction) return protectedAction('block');
 
     // Keep close-wall defense first-match; variation only chooses neutral options.
     if (dist > 110 || !retreatBlocked) return chooseAINeutralAction({
         dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty, rand, previousDecision,
-        aiLearningState, aiLearningTable
+        aiLearningState, aiLearningTable, decisionMeta
     });
 
-    if (kickReady && dist > ATTACKS.punch.range && rand < difficulty.kickClose) return 'kick';
-    if (punchReady && rand < difficulty.punchClose) return 'punch';
-    if (kickReady && rand < difficulty.kickClose) return 'kick';
-    if (opponentBlockBias > 0.5 && !retreatBlocked && rand > difficulty.blockClose) return 'retreat';
-    if (rand < difficulty.blockClose) return 'block';
-    if (retreatBlocked) return onGround && rand < (difficulty.cornerJump ?? 0.45) ? 'jump' : 'block';
-    return punchReady || kickReady ? 'retreat' : 'approach';
+    if (kickReady && dist > ATTACKS.punch.range && rand < difficulty.kickClose) return protectedAction('kick');
+    if (punchReady && rand < difficulty.punchClose) return protectedAction('punch');
+    if (kickReady && rand < difficulty.kickClose) return protectedAction('kick');
+    if (opponentBlockBias > 0.5 && !retreatBlocked && rand > difficulty.blockClose) return protectedAction('retreat');
+    if (rand < difficulty.blockClose) return protectedAction('block');
+    if (retreatBlocked) return protectedAction(onGround && rand < (difficulty.cornerJump ?? 0.45) ? 'jump' : 'block');
+    return protectedAction(punchReady || kickReady ? 'retreat' : 'approach');
 }
 
-function chooseWeightedAIAction(candidates, rand, previousDecision, repeatWeight) {
-    const weights = candidates.map(([action, weight]) => weight * (action === previousDecision ? repeatWeight : 1));
+function chooseWeightedAIAction(candidates, rand, previousDecision, repeatWeight, stateIndex, table, influence = 0) {
+    const repeatedCandidates = candidates.map(([action, weight]) => [
+        action,
+        weight * (action === previousDecision ? repeatWeight : 1)
+    ]);
+    const weightedCandidates = table && stateIndex !== undefined
+        ? applyAIQWeights(repeatedCandidates, stateIndex, table, { influence })
+        : repeatedCandidates;
+    const weights = weightedCandidates.map(([, weight]) => weight);
     let cursor = rand * weights.reduce((sum, weight) => sum + weight, 0);
     for (let i = 0; i < candidates.length; i++) {
         cursor -= weights[i];
@@ -164,7 +179,7 @@ function chooseWeightedAIAction(candidates, rand, previousDecision, repeatWeight
     return candidates[candidates.length - 1][0];
 }
 
-function chooseAINeutralAction({ dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty: d, rand, previousDecision, aiLearningState, aiLearningTable }) {
+function chooseAINeutralAction({ dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty: d, rand, previousDecision, aiLearningState, aiLearningTable, decisionMeta }) {
     const candidates = [];
     const add = (action, weight, legal = true) => { if (legal && weight > 0) candidates.push([action, weight]); };
     if (dist > 250) {
@@ -183,10 +198,12 @@ function chooseAINeutralAction({ dist, punchReady, kickReady, retreatBlocked, op
         add('block', d.blockClose - (outer && !kickReady ? d.punchClose : d.kickClose));
         add(punchReady || kickReady || opponentBlockBias > 0.5 ? 'retreat' : 'approach', 1 - d.blockClose);
     }
-    const weighted = aiLearningState !== undefined && aiLearningTable
-        ? applyAIQWeights(candidates, aiLearningState, aiLearningTable, { influence: AI_LEARNING_INFLUENCE })
-        : candidates;
-    return chooseWeightedAIAction(weighted, rand, previousDecision, d.neutralRepeatWeight);
+    if (decisionMeta) {
+        decisionMeta.source = 'neutral';
+        decisionMeta.candidates = candidates;
+    }
+    return chooseWeightedAIAction(candidates, rand, previousDecision, d.neutralRepeatWeight,
+        aiLearningState, aiLearningTable, AI_LEARNING_INFLUENCE);
 }
 
 function chooseAIPressureAction(dist, punchReady, kickReady) {
@@ -195,7 +212,7 @@ function chooseAIPressureAction(dist, punchReady, kickReady) {
     return 'approach';
 }
 
-// Q-learning helpers for plan_0051 — shadow round-local learning
+// Q-learning helpers for plan_0051 — bounded round-local learning
 // 45 states = 3 distances × 5 opponent states × 3 health buckets
 // 7 actions = approach, retreat, block, jump, idle, punch, kick
 // 315 cells total in Float32Array

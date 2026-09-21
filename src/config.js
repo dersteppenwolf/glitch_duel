@@ -14,7 +14,7 @@ const MAX_FRAME_DELTA_MS = 100;
 const MAX_SIMULATION_STEPS = 6;
 const FIGHTER_GRAVITY = 0.9;
 const AI_TACTICS = { wallMargin: 70, cornerPressureRange: 210, interceptHorizon: 24, baitMaxDistance: 220 };
-const DUEL_RULES_VERSION = 'gd-50';
+const DUEL_RULES_VERSION = 'gd-51';
 const COMIC_FEEDBACK = { cooldownFrames: 150, lowHealth: 5 };
 const COMBAT_FEEDBACK = {
     hit: { shake: 8, stop: 5, particles: 14, flashFrames: 10, arenaFrames: 16 },

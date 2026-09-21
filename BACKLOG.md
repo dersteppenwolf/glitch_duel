@@ -36,7 +36,7 @@ The accepted human-validation closure record is `plans/plan_0043_validacion_huma
 
 The historical AI roadmap and its final decisions are closed in `plans/plan_0044_hoja_ruta_ia_cpu_priorizada.md`. The user explicitly authorized plan `0045`; its neutral selector was delivered with plan `0050`.
 
-Plan `0051` added a bounded round-local Q-learning learner in shadow mode for measurement and lifecycle validation. Its influence remains `0`, so the authoritative CPU behavior is still the existing rule-based selector; no AI architecture promotion or persistence was accepted.
+Plan `0051` promoted a bounded round-local Q-learning learner for legal neutral decisions. Its influence is fixed at `0.10` after the existing repeat penalty; first-match protected tactics, rule-based legality, and no cross-round persistence remain authoritative.
 
 ## Active Backlog
 

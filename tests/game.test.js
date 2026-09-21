@@ -1326,8 +1326,10 @@ test('challenge links round-trip validated configuration and never auto-start or
     const s = loaded.api.getState();
     assert.equal(s.gameState, 'menu'); assert.equal(s.selectedArena, 'rooftop'); assert.equal(s.selectedDifficulty, 'hard');
     assert.equal(s.selectedFighterStyle, 'technical'); assert.equal(s.selectedRival, 'boss500'); assert(s.reducedMotionEnabled);
-    loaded.api.initGame(); assert.equal(loaded.api.getState().matchSeed, 4294967295);
-    for (const [key, value] of [['duel', 'future'], ['seed', '4294967296'], ['seed', '-1'], ['seed', 'NaN'], ['arena', '__proto__'], ['rival', '<script>'], ['mode', 'training']]) {
+    loaded.api.initGame();
+    assert.equal(loaded.api.getState().matchSeed, 4294967295);
+    assert(loaded.api.getState().player2.aiLearning.table.every((value) => value === 0), 'challenge starts with an empty Q table');
+    for (const [key, value] of [['duel', 'future'], ['duel', 'gd-50'], ['seed', '4294967296'], ['seed', '-1'], ['seed', 'NaN'], ['arena', '__proto__'], ['rival', '<script>'], ['mode', 'training']]) {
         const invalid = new URL(url); invalid.searchParams.set(key, value);
         const game = loadGame({ search: invalid.search }); game.api.applyChallengeFromLocation();
         assert.equal(game.api.getChallengeFromLocation(), null, key);
@@ -1337,6 +1339,7 @@ test('challenge links round-trip validated configuration and never auto-start or
     }
     api.startArcadeRun();
     assert.equal(new URL(api.buildChallengeUrl()).searchParams.get('mode'), 'arcade');
+    assert(api.getState().player2.aiLearning.table.every((value) => value === 0), 'new Arcade challenge starts with an empty Q table');
 });
 
 test('result card exports locally, shares on demand, preserves cancel and offers manual copy fallback', async () => {
@@ -2223,7 +2226,7 @@ test('static HTML contract preserves local assets, script order, controls, and a
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
     assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260912-duels3">/);
     assert.match(html, /<script src="i18n\.js\?v=20260912-duels3"><\/script>/);
-    assert.match(html, /<script src="game\.js\?v=20260912-duels3"><\/script>/);
+    assert.match(html, /<script src="game\.js\?v=20260921-ai3"><\/script>/);
     assert.match(html, /<option value="glitchCancel" data-i18n="trainingGlitchCancelOption">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
@@ -5746,4 +5749,38 @@ test('KO in training does NOT close terminal transition', () => {
     assert(cpu.health <= 0, 'CPU should be KO after punch');
     // Training mode handles KO internally without finishRound
     assert.equal(api.getState().gameState, 'playing', 'training mode stays in playing after KO');
+});
+
+test('runtime Q learner opens and closes only neutral transitions with bootstrap', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining();
+    api.skipVsIntro();
+    const state = api.getState();
+    const cpu = state.player2;
+    const player = state.player1;
+    cpu.trainingBehavior = 'normal';
+    cpu.x = 750; player.x = 250;
+    cpu.aiDecisionTimer = 0;
+    api.setMatchRandomSeed(7);
+    cpu.updateAI(player);
+    assert(cpu.aiLearning.pendingTransition, 'neutral decision must open a transition');
+    const pending = { ...cpu.aiLearning.pendingTransition };
+    const nextState = cpu.encodeLearningState(Math.abs(cpu.x - player.x), player, api.DIFFICULTIES.normal);
+    cpu.aiLearning.table[nextState * 7] = 0.5;
+    player.health -= 4;
+    cpu.aiDecisionTimer = 0;
+    cpu.updateAI(player);
+    assert.equal(cpu.aiLearning.updates, 1);
+    assert.notEqual(cpu.aiLearning.table[pending.stateIdx * 7 + pending.actionIdx], 0);
+    assert(cpu.aiLearning.pendingTransition, 'next neutral decision must open a new transition');
+
+    const decisionMeta = {};
+    api.chooseAIAction({
+        dist: 150, health: 100, energy: 100, onGround: true,
+        opponentAttacking: false, canPunch: true, canKick: true, canSpecial: true,
+        difficulty: api.DIFFICULTIES.normal, rand: 0, opponentHealth: 10,
+        previousDecision: '', decisionMeta
+    });
+    assert.equal(decisionMeta.source, 'protected', 'lethal Special must remain protected');
+    assert.equal(decisionMeta.candidates, null);
 });

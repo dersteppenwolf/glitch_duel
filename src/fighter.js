@@ -99,18 +99,26 @@ createAIMemory() {
         return ((distIdx * 5) + oppIdx) * 3 + healthIdx;
     }
 
-    closeAITransition(opponent, difficulty, dist, nextStateIdx, nextLegalMask) {
+    closeAITransition(opponent, nextStateIdx = -1, nextLegalMask = null, terminalResult = null) {
         if (!this.aiLearning || !this.aiLearning.pendingTransition || this.aiLearning.closedThisDecision) return;
         const pt = this.aiLearning.pendingTransition;
         const damageDealt = pt.opponentHealth - opponent.health;
         const damageTaken = pt.cpuHealth - this.health;
-        const reward = Math.max(-1, Math.min(1, (damageDealt - damageTaken) / (ATTACKS.special ? ATTACKS.special.damage : 14)));
+        const exchangeReward = Math.max(-1, Math.min(1, (damageDealt - damageTaken) / (ATTACKS.special ? ATTACKS.special.damage : 14)));
+        const terminalBonus = terminalResult === null ? 0 : (terminalResult === false ? 1 : -1);
+        const reward = terminalResult === null
+            ? exchangeReward
+            : Math.max(-2, Math.min(2, exchangeReward + terminalBonus));
         const table = this.aiLearning.table;
         const config = { alpha: 0.15, gamma: 0.80 };
-        updateAIQValue(table, pt.stateIdx, pt.actionIdx, reward, nextStateIdx !== undefined ? nextStateIdx : -1,
-            nextLegalMask || null, config);
+        updateAIQValue(table, pt.stateIdx, pt.actionIdx, reward,
+            terminalResult === null ? nextStateIdx : -1,
+            terminalResult === null ? nextLegalMask : null, config);
         this.aiLearning.updates++;
         this.aiLearning.closedThisDecision = true;
+        this.aiLearning.pendingTransition = null;
+        this.aiLearning.pendingActionIdx = -1;
+        this.aiLearning.pendingStateIdx = -1;
     }
 
     applyStyle(styleKey) {
@@ -477,15 +485,7 @@ if (this.aiDecisionTimer <= 0) {
             this.aiDecisionTimer = difficulty.decisionMin + Math.floor(randomSimulation() * difficulty.decisionSpread);
             const rand = randomSimulation();
 
-            if (this.aiLearning && this.aiLearning.pendingTransition && !this.aiLearning.closedThisDecision) {
-                this.closeAITransition(opponent, difficulty, dist, null, null);
-            }
-
-            const isNeutral = dist > 110 || !((this.x < opponent.x && this.x <= AI_TACTICS.wallMargin) || (this.x > opponent.x && this.x >= WIDTH - AI_TACTICS.wallMargin));
-            let candidates = null;
-            if (this.aiLearning && isNeutral) {
-                candidates = getAIDecisionCandidates({ dist, punchReady: this.attackCooldown <= 0 && canPunch, kickReady: this.attackCooldown <= 0 && canKick, retreatBlocked: (this.x < opponent.x && nearLeftWall) || (this.x > opponent.x && nearRightWall), opponentBlockBias: this.aiMemory.block / 100, difficulty });
-            }
+            const decisionMeta = {};
 
             this.aiAction = chooseAIAction({
                 dist,
@@ -523,15 +523,26 @@ if (this.aiDecisionTimer <= 0) {
                 previousDecision: this.aiPreviousDecisionAction,
                 difficulty,
                 rand,
-                aiLearningState: this.aiLearning && isNeutral ? this.encodeLearningState(dist, opponent, difficulty) : undefined,
-                aiLearningTable: this.aiLearning && isNeutral ? this.aiLearning.table : undefined
+                aiLearningState: this.aiLearning ? this.encodeLearningState(dist, opponent, difficulty) : undefined,
+                aiLearningTable: this.aiLearning ? this.aiLearning.table : undefined,
+                decisionMeta
             });
+            const actionMap = { approach: 0, retreat: 1, block: 2, jump: 3, idle: 4, punch: 5, kick: 6 };
+            const candidates = decisionMeta.source === 'neutral' ? decisionMeta.candidates : null;
+            const nextStateIdx = candidates ? this.encodeLearningState(dist, opponent, difficulty) : -1;
+            const nextLegalMask = candidates ? new Array(7).fill(false) : null;
+            if (candidates) candidates.forEach(([action]) => {
+                const actionIndex = actionMap[action];
+                if (actionIndex !== undefined) nextLegalMask[actionIndex] = true;
+            });
+            if (this.aiLearning && this.aiLearning.pendingTransition && !this.aiLearning.closedThisDecision) {
+                this.closeAITransition(opponent, nextStateIdx, nextLegalMask, null);
+            }
             this.aiPreviousDecisionAction = this.aiAction;
 
-            if (this.aiLearning && candidates && candidates.length > 0) {
-                const stateIdx = this.encodeLearningState(dist, opponent, difficulty);
-                const actionMap = { approach: 0, retreat: 1, block: 2, jump: 3, idle: 4, punch: 5, kick: 6 };
-                const actionIdx = actionMap[this.aiAction];
+            const actionIdx = actionMap[this.aiAction];
+            if (this.aiLearning && candidates && candidates.length > 0 && actionIdx !== undefined) {
+                const stateIdx = nextStateIdx;
                 const legalMask = new Array(7).fill(false);
                 candidates.forEach(([a]) => { const idx = actionMap[a]; if (idx !== undefined) legalMask[idx] = true; });
                 this.aiLearning.pendingTransition = { stateIdx, actionIdx, legalMask, cpuHealth: this.health, opponentHealth: opponent.health };

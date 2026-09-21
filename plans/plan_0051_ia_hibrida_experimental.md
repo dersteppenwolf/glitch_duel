@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-09-20
 **Ambito:** IA de CPU, simulacion determinista, configuracion, pruebas y documentacion
-**Estado:** completado (sombra round-local; influencia desactivada)
+**Estado:** completado (influencia neutral `0.10` activa)
 
 Este ExecPlan se mantiene conforme a `PLANS.md`.
 
@@ -32,8 +32,8 @@ Queda fuera de alcance:
 - [x] 2026-09-20: definido un diseno minimo compatible y sus gates.
 - [x] 2026-09-20: caracterizado un defecto neutral reproducible en `tests/game.test.js` (linea ~5457).
 - [x] 2026-09-20: evaluado ajuste rule-based. El defecto se resuelve reduciendo approachMid en 0.15 y aumentando retreatMid en 0.15. No se necesita influencia aprendida para corregirlo.
-- [x] 2026-09-20: descartada la influencia Q para corregir el defecto. El caso se resuelve con pesos estaticos y no justifica cambiar el balance.
-- [x] 2026-09-21: implementada la sombra round-local acotada para validar lifecycle y determinismo, manteniendo `influence = 0` y sin alterar decisiones del runtime.
+- [x] 2026-09-20: descartada la influencia Q como solucion necesaria para el defecto inicial. El caso se resuelve con pesos estaticos y no justifica cambiar ese balance.
+- [x] 2026-09-21: implementada la integracion round-local completa: metadata neutral/protected, bootstrap legal, cierre terminal idempotente e influencia `0.10`.
 
 ## Contexto actual
 
@@ -57,7 +57,7 @@ La caracterizacion confirma un defecto neutral reproducible:
 - **Solucion rule-based simple viable:** mover 0.15 de `approachMid` a `retreatMid` en config.js invierte la proporcion a favor de retreat (~1.7x retreat sobre approach). Esto no requiere Q-learning.
 - **Prueba:** `plan0051 neutral defect: CPU over-approaches in mid range, under-uses retreat` en tests/game.test.js.
 
-**Conclusion:** El defecto pertenece al selector neutral y es reproducible, pero **se resuelve con un ajuste estatico de pesos sin aprendizaje**. Segun el plan, si una regla o peso contextual resuelve el caso sin regresiones, el plan debe cerrarse sin Q-learning.
+**Conclusion del Hito 0:** El defecto pertenece al selector neutral y es reproducible, pero **se resuelve con un ajuste estatico de pesos sin aprendizaje**. Esto cerro la necesidad de usar Q para ese caso concreto; la autorizacion posterior permitio completar el learner round-local para otros patrones neutrales.
 
 ### Correcciones a la propuesta inicial
 
@@ -92,7 +92,7 @@ Esta es la unica fase ejecutable mientras el plan siga bloqueado. Registrar al m
 - Defecto esperado y criterio cuantitativo de mejora.
 - Corpus sembrado minimo por dificultad y metricas que no pueden empeorar al promover influencia Q.
 
-Antes de continuar, demostrar que el defecto pertenece al selector neutral y no a legalidad, hitboxes, una prioridad tactica o una mecanica inexistente. Evaluar primero un ajuste estatico pequeno. Si una regla o peso contextual resuelve el caso sin regresiones, cerrar este plan sin Q-learning. Si no lo resuelve, actualizar este documento con las dimensiones minimas de estado y acciones que el caso exige; no incorporar por defecto todas las dimensiones candidatas.
+Antes de continuar, demostrar que el defecto pertenece al selector neutral y no a legalidad, hitboxes, una prioridad tactica o una mecanica inexistente. Evaluar primero un ajuste estatico pequeno. Si una regla o peso contextual resuelve el caso sin regresiones, no usar Q como solucion necesaria de ese defecto; una promocion posterior requiere autorizacion explicita y las mismas dimensiones minimas.
 
 Salida verificable: una prueba de caracterizacion que pasa con el comportamiento actual y documenta el defecto, seguida de una prueba de aceptacion inicialmente fallida. La cantidad de visitas y el cambio minimo esperado deben quedar fijados en esa prueba.
 
@@ -121,13 +121,13 @@ Configuracion inicial del prototipo, aislada de `DIFFICULTIES` hasta demostrar u
 - Q acotado a `[-1, 1]`.
 - Recompensa de intercambio: `clamp((damageDealt - damageTaken) / ATTACKS.special.damage, -1, 1)`.
 - Recompensa terminal adicional: `+1` si gana CPU, `-1` si pierde, `0` si empata.
-- Multiplicador aprendido futuro: `clamp(1 + influence * Q, 0.5, 1.5)`. `influence` permanece en `0` durante prototipo y sombra.
+- Multiplicador promovido: `clamp(1 + influence * Q, 0.5, 1.5)`, con `influence = 0.10` despues de la penalizacion de repeticion y antes de la seleccion acumulada.
 
 Los valores son parametros de prototipo, no afirmaciones de balance. No se agregan bonus por posicion, energia, bloqueo, whiff, parry o acciones inexistentes. El dano bloqueado cuenta segun el dano real aplicado.
 
 Salida verificable: pruebas unitarias de cardinalidad seleccionada, fronteras, formula Q, terminal sin bootstrap, clamps, finitud, candidatos ilegales ausentes y Q cero sin cambio de pesos. Si el experimento no supera estas pruebas o el caso no visita estados repetidos suficientes, retirar el prototipo y conservar solo la caracterizacion que aporte valor. Promover helpers a `src/ai.js` unicamente al iniciar sombra autorizada.
 
-### Hito 2. Aprendizaje en sombra round-local
+### Hito 2. Aprendizaje round-local
 
 Solo si el Hito 1 es estable y existe autorizacion explicita para integrar el experimento sin cambiar aun decisiones, promover los helpers a `src/ai.js` y agregar a cada Fighter CPU un estado acotado:
 
@@ -152,7 +152,7 @@ Una transicion representa una decision neutral completa, no un tick. El pipeline
 
 La decision necesita metadata minima que distinga `protected` de `neutral`. Extraer un helper interno que retorne `{ source: 'protected', action }` o `{ source: 'neutral', candidates }`; `chooseAIAction()` finaliza el segundo caso con los pesos actuales y sigue devolviendo una accion para sus consumidores existentes. `Fighter.updateAI()` usa la representacion interna para cerrar la transicion antes de ponderar y seleccionar el nuevo pool. No inferir el origen comparando strings porque `punch`, `kick`, `block` y `retreat` pueden provenir de ambos tramos.
 
-Durante sombra, Q se actualiza pero no modifica candidatos ni pesos. La tabla se crea con el Fighter y se descarta al crear el siguiente Fighter. `resetTrainingFighters()` debe limpiarla explicitamente para no heredar el lifecycle distinto de `aiMemory`. Cambiar el comportamiento de Training entre `normal`, `idle` o `block`, rellenar salud, cambiar trial o reiniciar/alcanzar KO en Training cancela la transicion pendiente sin recompensa y limpia la tabla. Training con CPU `idle` o `block` no abre transiciones normales.
+La tabla se crea con el Fighter y se descarta al crear el siguiente Fighter. `resetTrainingFighters()` la limpia explicitamente para no heredar el lifecycle distinto de `aiMemory`. Cambiar el comportamiento de Training entre `normal`, `idle` o `block`, rellenar salud, cambiar trial o reiniciar/alcanzar KO en Training cancela la transicion pendiente sin recompensa y limpia la tabla. Training con CPU `idle` o `block` no abre transiciones normales.
 
 Si una accion neutral almacenada se sustituye por otra politica sin una decision nueva, cancelar la transicion sin actualizarla antes del rewrite. Esto se limita a `retreat -> block` por pared y `retreat -> pressure/block` por presion tardia. El `jump -> idle` que completa el comando one-shot, los cambios normales de `state` al ejecutar punch/kick y `aiAction -> idle` al recibir un golpe no son cancelaciones: el golpe conserva la transicion durante hit-stun para aplicar dano en la siguiente decision protegida o dano mas bonus terminal si produce KO.
 
@@ -162,7 +162,7 @@ Salida verificable: una traza de estados, acciones, recompensas, conteo y checks
 
 ### Hito 3. Influencia neutral acotada
 
-Solo promover sombra si el escenario del Hito 0 muestra aprendizaje estable y atribuible, y existe autorizacion explicita para revisar el contrato rule-based. Aplicar el multiplicador Q despues del peso base y de la penalizacion de repeticion, y antes de la seleccion acumulada. Reutilizar el unico `rand` de accion existente; no implementar epsilon-greedy ni sorteos de empate.
+La promocion fue autorizada despues de la auditoria del runtime. Aplicar el multiplicador Q despues del peso base y de la penalizacion de repeticion, y antes de la seleccion acumulada. Reutilizar el unico `rand` de accion existente; no implementar epsilon-greedy ni sorteos de empate.
 
 Evaluar `influence` en el conjunto finito `[0.10, 0.20, 0.30]` y elegir el menor valor que satisfaga la prueba del defecto sin romper controles; si ninguno sirve, descartar la promocion. Los pesos base, la cadencia y todas las probabilidades tacticas de `DIFFICULTIES` siguen siendo autoritativos. `alpha`, `gamma` e `influence` son iguales por dificultad; se acepta explicitamente que Hard realiza mas updates por tiempo real debido a su cadencia menor, mientras Easy conserva una adaptacion mas lenta y errores mas visibles.
 
@@ -175,7 +175,7 @@ Invariantes:
 - Una repeticion neutral sigue siendo posible.
 - Se mantienen exactamente dos muestras RNG por nueva decision y cero muestras para actualizar Q.
 
-Activar esta fase cambia trazas sembradas. Cambiar `DUEL_RULES_VERSION` de `gd-50` a `gd-51`, actualizar las trazas esperadas y probar round-trip de desafios Versus/Arcade nuevos, rechazo de `gd-50` y tabla vacia al iniciar cada desafio. Sombra sin influencia no cambia la version.
+Activar esta fase cambia trazas sembradas. `DUEL_RULES_VERSION` cambio de `gd-50` a `gd-51`; los desafios Versus/Arcade nuevos hacen round-trip con `gd-51`, rechazan `gd-50` y empiezan con tabla Q vacia.
 
 Salida verificable: el escenario objetivo mejora en la visita declarada, las probabilidades permanecen acotadas y los controles tacticos, de dificultad y determinismo no cambian.
 
@@ -226,9 +226,9 @@ Desde `C:\opt\personal\glitch_duel`:
 
 4. Tras autorizacion explicita, promover los helpers e implementar sombra del Hito 2. Exito: Q cambia de forma esperada, pero accion, salud, energia, posiciones, timer y RNG coinciden con baseline.
 
-5. Revisar el gate de promocion y obtener autorizacion explicita para revisar el contrato rule-based. Si cualquiera falla, retirar el codigo de runtime en sombra que no tenga valor de produccion y cerrar el plan con el resultado negativo.
+5. Revisar el gate de promocion y obtener autorizacion explicita para revisar el contrato rule-based. **Completado:** la autorizacion se recibio despues de la auditoria de integracion.
 
-6. Implementar influencia del Hito 3, subir version de reglas y actualizar documentacion. Exito: cambia solo el selector neutral en el escenario aprobado.
+6. Implementar influencia del Hito 3, subir version de reglas y actualizar documentacion. **Completado:** `0.10` cambia solo el selector neutral y `gd-51` invalida desafios `gd-50`.
 
 7. Ejecutar nuevamente validacion completa y smoke tecnico servido con:
 
@@ -243,7 +243,7 @@ Desde `C:\opt\personal\glitch_duel`:
 - El codificador retorna exclusivamente indices `0..stateCount-1` en todas las fronteras; `stateCount <= 45`.
 - La tabla no supera 315 celdas finitas, usa solo dimensiones justificadas por el Hito 0 y no crece.
 - La ecuacion Q coincide con casos calculados manualmente para recompensa positiva, negativa, terminal y clamp.
-- Q cero conserva exactamente los pesos neutrales actuales.
+- Q cero conserva exactamente los pesos neutrales actuales; la influencia promovida solo cambia pesos despues de que existan actualizaciones observadas.
 - La actualizacion no consume RNG.
 
 ### Atribucion y lifecycle
@@ -261,7 +261,7 @@ Desde `C:\opt\personal\glitch_duel`:
 
 ### Legalidad y prioridades
 
-- Con tablas llenas de valores extremos, whiff punish, antiaereo, defensa viva, crouch, bait, Especial, counter, vida baja, esquinas, presion tardia, anti-turtle y ataques aereos devuelven el mismo resultado que el baseline.
+- Con tablas llenas de valores extremos, whiff punish, antiaereo, defensa viva, crouch, bait, Especial, counter, vida baja, esquinas, presion tardia, anti-turtle y ataques aereos devuelven el mismo resultado que el baseline; solo el pool neutral puede cambiar.
 - Cooldown, rango real, suelo/aire y paredes eliminan candidatos antes de aplicar Q.
 - No aparecen acciones nuevas ni CPU GLITCH CANCEL.
 - La rama close-wall no consulta Q.
@@ -326,28 +326,28 @@ Pruebas, sintaxis y generacion de tablas vacias son idempotentes. La tabla vive 
 - Decision: no agregar un reaction delay separado.
   Justificacion: la cadencia por dificultad ya expresa entre aproximadamente 117 y 583 ms y esta integrada al fixed-step.
   Fecha/autor: 2026-09-20, OpenCode.
-- Decision: mantener el learner round-local en sombra con `influence = 0`.
-  Justificacion: permite validar actualizaciones, lifecycle y determinismo sin cambiar acciones, balance, cadencia ni prioridades protegidas de la CPU.
+- Decision: activar influencia neutral round-local en `0.10`.
+  Justificacion: la autorizacion explicita permite completar el contrato Q; el multiplicador opera solo sobre candidatos legales neutrales despues de la penalizacion de repeticion y conserva prioridades, cadencia y RNG.
   Fecha/autor: 2026-09-21, OpenCode.
 
 ## Resultados y retrospectiva
 
-**Estado final:** Completado con aprendizaje Q round-local en sombra; la influencia sobre decisiones permanece desactivada (`0`).
+**Estado final:** Completado con aprendizaje Q round-local activo y acotado a neutral; la influencia es `0.10`.
 
-El Hito 0 confirmo un defecto neutral reproducible (CPU sobre-usa `approach` vs `retreat` en rango mid sin kick ~1.8:1), pero el defecto se resuelve con un ajuste rule-based simple: reducir `approachMid` en 0.15 y aumentar `retreatMid` en 0.15 en `config.js`. Segun los criterios del plan, la influencia Q no se promovio; la continuacion implemento un learner de sombra para validar lifecycle y determinismo sin modificar decisiones.
+El Hito 0 confirmo un defecto neutral reproducible (CPU sobre-usa `approach` vs `retreat` en rango mid sin kick ~1.8:1), pero el defecto se resuelve con un ajuste rule-based simple: reducir `approachMid` en 0.15 y aumentar `retreatMid` en 0.15 en `config.js`. La autorizacion posterior permitio promover el learner round-local para adaptar otros patrones neutrales sin tocar prioridades protegidas.
 
 **Evidencia generada:**
 - Prueba `plan0051 neutral defect: CPU over-approaches in mid range, under-uses retreat` en `tests/game.test.js:5457` que documenta el defecto, su proporcion exacta, determinismo con seed, y verificacion de que un ajuste de pesos lo corrige.
 - Validacion inicial: 196/196 tests pasan, sintaxis de todos los `src/*.js` correcta.
-- Continuacion validada: 208/208 tests pasan, sintaxis de todos los `src/*.js` correcta y `git diff --check` sin errores.
+- Continuacion validada: 209/209 tests pasan, sintaxis de todos los `src/*.js` correcta y `git diff --check` sin errores.
 
 **Lecciones:**
 - El selector neutral ponderado ya funciona como capa de utilidad minima. La subutilizacion de `retreat` en mid range sin kick es un comportamiento esperado de las formulas actuales, no un defecto del modelo.
-- La sombra Q round-local queda como experimento tecnico sin influencia de producto: permite validar tabla, atribucion, lifecycle y determinismo sin cambiar el balance actual. Si en el futuro surge un patron que no pueda resolverse con pesos estaticos, la promocion requiere un gate nuevo y autorizacion explicita.
+- El learner Q queda activo como adaptacion round-local acotada: aprende por decisiones neutrales, usa bootstrap solo sobre acciones neutrales legales y se descarta con cada Fighter. No persiste entre rounds, partidas o desafios.
 
 ## Notas de revision
 
 - 2026-09-20: plan inicial basado en la propuesta Utility AI + Q-learning y contrastado con runtime, pruebas, backlog y planes de IA vigentes. Se redujo el alcance a pesos neutrales, aprendizaje round-local y despliegue por gates.
 - 2026-09-20: revision tecnica aclaro doble gate, pipeline Q, bootstrap, rewrites, cierre terminal, Training, version `gd-51` y reduccion de dimensiones segun evidencia.
 - 2026-09-20: Hito 0 completado. Defecto neutral reproducible encontrado (approach ~1.8x retreat en mid range sin kick). Se resuelve con ajuste estatico de pesos; la influencia Q no se promueve.
-- 2026-09-21: continuacion integrada en sombra round-local. Se corrigio la constante de influencia ausente; `AI_LEARNING_INFLUENCE = 0` mantiene el selector neutral identico mientras la tabla se actualiza y se descarta por Fighter.
+- 2026-09-21: integracion completa promovida. Se corrigio la atribucion neutral/protected, se conecto `nextState`/`nextLegalMask`, se centralizo el cierre terminal, se activo `AI_LEARNING_INFLUENCE = 0.10`, se subio la version a `gd-51` y se actualizaron los contratos de cache y desafios.

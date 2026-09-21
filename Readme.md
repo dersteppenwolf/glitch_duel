@@ -218,7 +218,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Grounded anti-air responses forecast a short window from observed motion and strike only when the actual hitbox connects. Whiff pursuit checks travel time, CPU recovery, and a difficulty-tuned safety margin; an expired opportunity is abandoned without another roll. Corner escapes jump toward the center, corner pressure stays probabilistic, and a brief post-hit pause preserves live defense. All timing stays in the fixed simulation and all adaptation uses the existing round-local pattern memory.
 - Visual CPU rivals: `NULL POINTER`, `LAG SPIKE`, `MERGE CONFLICT`, and `BOSS 500`. Rival selection changes presentation only; difficulty remains responsible for CPU behavior.
 - Neutral CPU decisions use legal weighted options and halve the previous decision's weight without forbidding repetition. Protected tactics and close-wall priorities remain first-match. One previous decision lives with the Fighter, with no cross-round memory and exactly two simulation RNG samples per new decision. Bait retreat has a configured distance limit; approach stops at reachable kick spacing until the next decision.
-- The CPU also maintains an experimental round-local Q-learning table in shadow mode. It observes only legal neutral decisions, updates from real health deltas, is discarded with each Fighter, and currently uses influence `0`, so it does not change actions, difficulty tuning, RNG consumption, or protected tactical priorities.
+- The CPU uses a bounded round-local Q-learning table only for legal neutral decisions. It updates from real health deltas, is discarded with each Fighter, and applies influence `0.10` after the existing repeat penalty. Protected tactics, difficulty tuning, two-draw RNG cadence, and legal-action filtering remain authoritative.
 
 ### UI/UX
 
@@ -290,7 +290,7 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Combat uses bounded fixed 60 Hz simulation steps driven by `requestAnimationFrame(timestamp)`, so movement, cooldowns, combo windows, hit-stun, hit-stop, AI timing, and the round timer do not depend on render rate.
 - Render-only effects remain tied to drawing; combat simulation does not catch up after pause or a hidden page.
 - AI is separated in `src/ai.js`.
-- The experimental AI learner is bounded to 45 states and 315 `Float32Array` cells; it runs only at CPU decision boundaries and is never persisted or included in challenge links.
+- The round-local AI learner is bounded to 45 states and 315 `Float32Array` cells; it runs only at CPU decision boundaries and is never persisted or included in challenge links.
 - Fighter rendering is separated in `src/fighter_render.js`.
 - i18n is separated in `src/i18n.js`.
 - Unit tests use `node:test` with DOM/canvas/audio mocks.
@@ -518,7 +518,7 @@ The tests cover, among other points:
 - Hitboxes and blocked damage.
 - Reduced motion.
 - Separated AI and deterministic decisions.
-- Round-local AI learner helpers, zero-influence shadow updates, bounded table lifecycle, legal-action masking, and 30/60/120 FPS equivalence.
+- Round-local AI learner helpers, neutral/protected attribution, legal-state bootstrap, bounded lifecycle, legal-action masking, active influence, and 30/60/120 FPS equivalence.
 - Arenas, fallback, and background rendering.
 - Detected language, manual change, and persistence.
 - Pause, help, stats, rounds, timer, and game over.
@@ -580,4 +580,4 @@ Test limitations:
 | i18n | Spanish/English with autodetection and persistence. |
 | Input architecture | Canonical actions, persistent keyboard remapping, standard gamepad input, and source-safe lifecycle cleanup. |
 | Technical architecture | AI/render/i18n split and tests with `node:test`. |
-| Experimental AI shadow | Round-local 45-state/315-cell Q table with influence `0`; no persistent or player-facing adaptation. |
+| Round-local AI learner | 45-state/315-cell Q table with influence `0.10` in neutral decisions; no cross-round persistence or player-facing controls. |
