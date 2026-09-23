@@ -180,6 +180,85 @@ const NES_PULSE_NARROW = createPulseWave(0.125);
 
 // Harmonic progressions: each value is [rootIdxOffset, chordQuality]
 // 0 = minor, 1 = major, 2 = sus4
+const DRUM_PATTERNS = [
+    // A: rock clasico
+    { kicks: [0, 8], snares: [4, 12], hatEach: 2, hatOpen: [] },
+    // B: four-on-the-floor variado
+    { kicks: [0, 4, 8, 12], snares: [2, 6, 10, 14], hatEach: 2, hatOpen: [] },
+    // C: half-time feel
+    { kicks: [0, 3, 8, 11], snares: [4, 12], hatEach: 2, hatOpen: [7, 15] },
+    // D: contratiempos
+    { kicks: [0, 6, 8, 14], snares: [2, 10], hatEach: 2, hatOpen: [] },
+    // E: double-time hihat
+    { kicks: [0, 8], snares: [4, 12], hatEach: 1, hatOpen: [3, 7, 11, 15] },
+    // F: balada (poco kick, mucho hat)
+    { kicks: [0, 8], snares: [4, 12], hatEach: 1, hatOpen: [] }
+];
+
+let currentDrumPatternIndex = 0;
+let drumPatternChangeCounter = 0;
+
+function pickDrumPattern(barIndex, isBreakdown) {
+    if (isBreakdown) return 4;
+    const section = Math.floor(barIndex / 8) % 3;
+    if (barIndex === 0 || drumPatternChangeCounter >= 8) {
+        drumPatternChangeCounter = 0;
+        const pool = section === 2 ? [4] : [0, 1, 2, 3, 4, 5];
+        currentDrumPatternIndex = pool[Math.floor(Math.random() * pool.length)];
+    }
+    drumPatternChangeCounter++;
+    return currentDrumPatternIndex;
+}
+
+function scheduleDrumCrash(time) {
+    if (!audioCtx || musicVolume() <= 0) return;
+    time = Math.max(0, time);
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * 0.15;
+    const noise = audioCtx.createBufferSource();
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.3, audioCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.02));
+    noise.buffer = buf;
+    const ng = audioCtx.createGain();
+    ng.gain.setValueAtTime(Math.min(0.2, vol), time);
+    ng.gain.exponentialRampToValueAtTime(0.0001, time + 0.25);
+    const nf = audioCtx.createBiquadFilter();
+    nf.type = 'highpass';
+    nf.frequency.value = 3000;
+    noise.connect(ng).connect(nf).connect(musicMasterGain);
+    noise.start(time); noise.stop(time + 0.3);
+}
+
+function scheduleDrumFill(time, beatSec) {
+    if (!audioCtx || musicVolume() <= 0) return;
+    time = Math.max(0, time);
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * 0.2;
+    const count = 4;
+    for (let i = 0; i < count; i++) {
+        const ft = time + (i * beatSec) / count;
+        const noise = audioCtx.createBufferSource();
+        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.06, audioCtx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let j = 0; j < d.length; j++) d[j] = (Math.random() * 2 - 1) * Math.exp(-j / (audioCtx.sampleRate * 0.008));
+        noise.buffer = buf;
+        const ng = audioCtx.createGain();
+        ng.gain.setValueAtTime(Math.min(0.15, vol * (1 - i / count)), ft);
+        ng.gain.exponentialRampToValueAtTime(0.0001, ft + 0.04);
+        const nf = audioCtx.createBiquadFilter();
+        nf.type = 'bandpass';
+        nf.frequency.value = 2000 + i * 800;
+        noise.connect(ng).connect(nf).connect(musicMasterGain);
+        noise.start(ft); noise.stop(ft + 0.05);
+    }
+}
+
+function scheduleCrashOnNewSection(barIndex, beatSec) {
+    const section = Math.floor(barIndex / 8) % 3;
+    if (barIndex > 0 && barIndex % 8 === 0) {
+        scheduleDrumCrash(beatSec * 16 * (barIndex - 1) + beatSec * 16);
+    }
+}
+
 const HARMONY = {
     1: { // A minor (Am) — rootIdx 2
         chords: [{ rootOff: 0, qual: 0 }, { rootOff: 0, qual: 0 }, { rootOff: 5, qual: 0 }, { rootOff: 7, qual: 1 }]
@@ -197,7 +276,8 @@ function getChordRoot(intensity, barIndex) {
     return prog.chords[barIndex % prog.chords.length];
 }
 
-// Walking bass: 4 notes per bar that walk toward the next chord root
+// Walking bass: 4 notes per bar that walk toward the next chord root.
+// Rhythm varies by intensity.
 function buildWalkingBass(intensity, barIndex) {
     const pool = MUSIC_CONFIG.notePool;
     const rootIdx = intensity >= 3 ? 4 : 2;
@@ -206,7 +286,26 @@ function buildWalkingBass(intensity, barIndex) {
     const nextChord = getChordRoot(intensity, barIndex + 1);
     const nextRoot = pool[rootIdx + nextChord.rootOff];
     const third = chord.qual === 1 ? 4 : 3;
-    return [rootNote, pool[rootIdx + chord.rootOff + 2], pool[rootIdx + chord.rootOff + third], nextRoot];
+    const walking = [rootNote, pool[rootIdx + chord.rootOff + 2], pool[rootIdx + chord.rootOff + third], nextRoot];
+    const rhythm = { 'noteIndices': [0, 1, 2, 3], 'durations': [1, 1, 1, 1] };
+    if (intensity === 1) {
+        rhythm.noteIndices = [0, 2, 1, 3];
+        // 2 blancas: [nota * 2 beats, nota * 2 beats]
+        if (barIndex % 4 < 2) {
+            rhythm.noteIndices = [0, 3];
+            rhythm.durations = [2, 2];
+        }
+    } else if (intensity === 2) {
+        if (Math.floor(barIndex / 8) % 3 === 2) {
+            rhythm.noteIndices = [0, 1, 2];
+            rhythm.durations = [1, 0.5, 0.5];
+        }
+    } else if (intensity === 3) {
+        // 8 corcheas: triplete de aproximación
+        rhythm.noteIndices = [0, 0, 1, 1, 2, 2, 3, 3];
+        rhythm.durations = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
+    }
+    return { notes: rhythm.noteIndices.map(i => walking[i]), durations: rhythm.durations };
 }
 
 function scheduleDrumKick(time, gain = 0.5, humanMs = 0) {
@@ -497,6 +596,8 @@ function buildMusicPattern(intensity, barIndex) {
     const isBreakdown = section === 2;
     const isMelodySection = section === 0;
     const walkingBass = buildWalkingBass(intensity, barIndex);
+    const drumIdx = pickDrumPattern(barIndex, isBreakdown);
+    const dp = DRUM_PATTERNS[drumIdx] || DRUM_PATTERNS[0];
 
     function humanizeMs(beat) {
         return (Math.random() - 0.5) * HUMANIZE.jitter * 1000;
@@ -506,26 +607,44 @@ function buildMusicPattern(intensity, barIndex) {
         return (beat % 2 === 1) ? HUMANIZE.swing * 1000 : 0;
     }
 
+    const h = (beat) => swingMs(beat) + humanizeMs(beat);
+
     const bassForBeat = (beat) => {
-        const bassIdx = Math.floor(beat / 4) % 4;
-        const note = walkingBass[bassIdx];
-        if (!Number.isFinite(note)) return null;
-        if (isBreakdown && beat > 8) return null;
-        return { note, gain: 0.45 + Math.random() * 0.08, dur: beatSec * 0.9, humanMs: humanizeMs(beat) };
+        let acc = 0;
+        for (let di = 0; di < walkingBass.durations.length; di++) {
+            const end = acc + walkingBass.durations[di];
+            if (beat >= acc && beat < end) {
+                const note = walkingBass.notes[di];
+                if (!Number.isFinite(note)) return null;
+                if (isBreakdown && beat > 8) return null;
+                const dur = Math.min(beatSec * walkingBass.durations[di], beatSec * 0.95);
+                return { note, gain: 0.45 + Math.random() * 0.08, dur, humanMs: humanizeMs(beat) };
+            }
+            acc = end;
+        }
+        return null;
     };
+
+    function beatInPattern(beat) {
+        for (const b of dp.kicks) { if (b === beat) return { type: 'kick', gain: 0.4 + Math.random() * 0.12, humanMs: h(beat) }; }
+        for (const b of dp.snares) { if (b === beat) return { type: 'snare', gain: 0.3 + Math.random() * 0.1, humanMs: h(beat) }; }
+        if (dp.hatEach > 0 && beat % dp.hatEach === 0) return { type: 'hat', gain: 0.1 + Math.random() * 0.06, humanMs: h(beat) };
+        return null;
+    }
+
+    const contraChord = getChordRoot(intensity, barIndex);
 
     const patterns = {
         1: {
             drums: ({ beat }) => {
+                if (beat === 15) return null;
                 if (isBreakdown) {
-                    if (beat % 4 === 0) return { type: 'kick', gain: 0.4, humanMs: swingMs(beat) + humanizeMs(beat) };
-                    if (beat % 4 === 2) return { type: 'hat', gain: 0.1, humanMs: swingMs(beat) + humanizeMs(beat) };
+                    if (beat % 4 === 0) return { type: 'kick', gain: 0.35, humanMs: h(beat) };
+                    if (beat % 4 === 2) return { type: 'hat', gain: 0.1, humanMs: h(beat) };
                     return null;
                 }
-                if (beat % 4 === 0) return { type: 'kick', gain: 0.35 + Math.random() * 0.15, humanMs: swingMs(beat) + humanizeMs(beat) };
-                if (beat % 8 === 6) return { type: 'snare', gain: 0.25 + Math.random() * 0.1, humanMs: swingMs(beat) + humanizeMs(beat) };
-                if (beat % 4 === 2) return { type: 'hat', gain: 0.1 + Math.random() * 0.08, humanMs: swingMs(beat) + humanizeMs(beat) };
-                return null;
+                if (dp.snares.length === 0 && beat % 8 === 4) return { type: 'snare', gain: 0.2, humanMs: h(beat) };
+                return beatInPattern(beat);
             },
             bass: bassForBeat,
             melody: ({ beat }) => {
@@ -534,19 +653,23 @@ function buildMusicPattern(intensity, barIndex) {
                 return { note: pool[rootIdx + 4], gain: accentGain(beat, 0.3) + Math.random() * 0.05, dur: beatSec * 1.8, humanMs: humanizeMs(beat) };
             },
             glitch: () => null,
-            pad: ({ beat }) => (isMelodySection && beat === 0) ? { gain: 0.06 } : null
+            pad: () => null,
+            contra: ({ beat }) => {
+                if (!isMelodySection) return null;
+                if (beat % 4 !== 1) return null;
+                const arp = [pool[rootIdx + contraChord.rootOff], pool[rootIdx + contraChord.rootOff + 2], pool[rootIdx + contraChord.rootOff + (contraChord.qual === 1 ? 4 : 3)], pool[rootIdx + contraChord.rootOff + 7]];
+                return { note: arp[Math.floor(beat / 4) % 4], gain: 0.15, dur: beatSec * 0.35 };
+            },
+            fill: ({ beat }) => (beat === 15 && !isBreakdown) ? { fill: true } : null
         },
         2: {
             drums: ({ beat }) => {
                 if (isBreakdown) {
-                    if (beat % 2 === 0) return { type: 'kick', gain: 0.4, humanMs: swingMs(beat) + humanizeMs(beat) };
-                    if (beat % 4 === 1) return { type: 'snare', gain: 0.2, humanMs: swingMs(beat) + humanizeMs(beat) };
+                    if (beat % 2 === 0) return { type: 'kick', gain: 0.4, humanMs: h(beat) };
+                    if (beat % 4 === 1) return { type: 'snare', gain: 0.2, humanMs: h(beat) };
                     return null;
                 }
-                if (beat % 4 === 0) return { type: 'kick', gain: 0.4 + Math.random() * 0.15, humanMs: swingMs(beat) + humanizeMs(beat) };
-                if (beat % 4 === 2) return { type: 'snare', gain: 0.3 + Math.random() * 0.12, humanMs: swingMs(beat) + humanizeMs(beat) };
-                if (beat % 2 === 1) return { type: 'hat', gain: 0.12 + Math.random() * 0.08, humanMs: swingMs(beat) + humanizeMs(beat) };
-                return null;
+                return beatInPattern(beat);
             },
             bass: bassForBeat,
             melody: ({ beat }) => {
@@ -559,20 +682,26 @@ function buildMusicPattern(intensity, barIndex) {
                 if (beat % 12 !== 0) return null;
                 return { note: pool[(beat + Math.floor(beat / 12)) % pool.length], gain: 0.18 + Math.random() * 0.06, dur: beatSec * 0.4, humanMs: humanizeMs(beat) };
             },
-            pad: ({ beat }) => (beat === 0) ? { gain: 0.07 } : null
+            pad: ({ beat }) => (beat === 0 && !isBreakdown) ? { gain: 0.07 } : null,
+            contra: ({ beat }) => {
+                if (section !== 1) return null;
+                if (beat % 2 !== 1) return null;
+                const arp = [pool[rootIdx + contraChord.rootOff], pool[rootIdx + contraChord.rootOff + 2], pool[rootIdx + contraChord.rootOff + (contraChord.qual === 1 ? 4 : 3)], pool[rootIdx + contraChord.rootOff + 7]];
+                return { note: arp[Math.floor(beat / 2) % 4], gain: 0.18, dur: beatSec * 0.3 };
+            },
+            fill: ({ beat }) => (beat === 15 && !isBreakdown) ? { fill: true } : null
         },
         3: {
             drums: ({ beat }) => {
                 if (isBreakdown) {
-                    if (beat % 2 === 0) return { type: 'kick', gain: 0.45, humanMs: swingMs(beat) + humanizeMs(beat) };
-                    if (beat % 4 === 3) return { type: 'snare', gain: 0.3, humanMs: swingMs(beat) + humanizeMs(beat) };
+                    if (beat % 2 === 0) return { type: 'kick', gain: 0.45, humanMs: h(beat) };
+                    if (beat % 4 === 3) return { type: 'snare', gain: 0.3, humanMs: h(beat) };
                     return null;
                 }
-                if (beat % 4 === 0 || beat % 8 === 6) return { type: 'kick', gain: 0.45 + Math.random() * 0.15, humanMs: swingMs(beat) + humanizeMs(beat) };
-                if (beat % 4 === 2) return { type: 'kick', gain: 0.25 + Math.random() * 0.12, humanMs: swingMs(beat) + humanizeMs(beat) };
-                if (beat % 4 === 3 || beat % 8 === 5) return { type: 'snare', gain: 0.35 + Math.random() * 0.12, humanMs: swingMs(beat) + humanizeMs(beat) };
-                if (beat % 2 === 1) return { type: 'hat', gain: 0.15 + Math.random() * 0.08, humanMs: swingMs(beat) + humanizeMs(beat) };
-                return { type: 'hat', gain: 0.08 + Math.random() * 0.06, humanMs: swingMs(beat) + humanizeMs(beat) };
+                if (beat === 15) return null;
+                const d = beatInPattern(beat);
+                if (d && d.type === 'kick') d.gain *= 1.15;
+                return d;
             },
             bass: bassForBeat,
             melody: ({ beat }) => {
@@ -585,7 +714,13 @@ function buildMusicPattern(intensity, barIndex) {
                 if (beat % 6 !== 0) return null;
                 return { note: pool[(beat + Math.floor(beat / 6) * 3) % pool.length], gain: 0.22 + Math.random() * 0.08, dur: beatSec * 0.25, humanMs: humanizeMs(beat) };
             },
-            pad: ({ beat }) => (beat === 0) ? { gain: 0.1 } : null
+            pad: ({ beat }) => (beat === 0) ? { gain: 0.1 } : null,
+            contra: ({ beat }) => {
+                if (beat % 2 !== 1) return null;
+                const arp = [pool[rootIdx + contraChord.rootOff], pool[rootIdx + contraChord.rootOff + 2], pool[rootIdx + contraChord.rootOff + (contraChord.qual === 1 ? 4 : 3)], pool[rootIdx + contraChord.rootOff + 7]];
+                return { note: arp[Math.floor(beat / 2) % 4], gain: 0.2, dur: beatSec * 0.3 };
+            },
+            fill: ({ beat }) => (beat === 15 && section !== 2) ? { fill: true } : null
         }
     };
     return patterns[intensity] || patterns[1];
@@ -596,7 +731,9 @@ function scheduleMusicBar(pattern, barStart, beatSec) {
     const beats = 16;
     const melodyPhrase = buildMelodyPhrase(musicIntensity || 1, musicBarIndex);
     if (!melodyPhrase || melodyPhrase.length === 0) return;
+    const section = Math.floor(musicBarIndex / 8) % 3;
     let padScheduled = false;
+    let fillScheduled = false;
     for (let b = 0; b < beats; b++) {
         const beat = { beat: b, total: beats };
         const t = Math.max(0.01, barStart + b * beatSec);
@@ -620,12 +757,22 @@ function scheduleMusicBar(pattern, barStart, beatSec) {
         if (bass && Number.isFinite(bass.note)) scheduleBassNote(bass.note, Math.max(0, t + (bass.humanMs || 0) / 1000), bass.dur, bass.gain);
         const mel = pattern.melody(beat);
         if (mel) { const melNote = melodyPhrase[Math.floor(b * melodyPhrase.length / beats) % melodyPhrase.length]; if (Number.isFinite(melNote)) scheduleMelodyNote(melNote, Math.max(0, t + (mel.humanMs || 0) / 1000), mel.dur, mel.gain); }
+        const contra = pattern.contra ? pattern.contra(beat) : null;
+        if (contra && Number.isFinite(contra.note)) scheduleMelodyNote(contra.note, Math.max(0, t + (contra.humanMs || 0) / 1000), contra.dur, contra.gain);
         const gl = pattern.glitch(beat);
         if (gl && Number.isFinite(gl.note)) scheduleGlitchNote(gl.note, Math.max(0, t + (gl.humanMs || 0) / 1000), gl.dur, gl.gain);
         if (!padScheduled && pattern.pad && pattern.pad(beat)) {
             schedulePadNote(t, pattern.pad(beat).gain);
             padScheduled = true;
         }
+        const fill = pattern.fill ? pattern.fill(beat) : null;
+        if (fill && fill.fill && !fillScheduled) {
+            scheduleDrumFill(t, beatSec);
+            fillScheduled = true;
+        }
+    }
+    if (musicIntensity >= 3 && musicBarIndex > 0 && musicBarIndex % 8 === 0) {
+        scheduleDrumCrash(Math.max(0.01, barStart));
     }
 }
 
