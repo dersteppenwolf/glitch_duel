@@ -292,13 +292,14 @@ function buildMelodyPhrase(intensity, barIndex) {
 
 function scheduleBassNote(note, time, duration, gain = 0.5) {
     if (!audioCtx || musicVolume() <= 0) return;
+    time = Math.max(0, time);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     o.type = 'triangle';
-    if (Math.random() < 0.12) {
+    if (time > 0.05 && Math.random() < 0.12) {
         const ghost = midiToFreq(note + (Math.random() < 0.5 ? 1 : -1));
-        o.frequency.setValueAtTime(ghost, time - 0.045);
+        o.frequency.setValueAtTime(ghost, Math.max(0.01, time - 0.045));
         o.frequency.linearRampToValueAtTime(midiToFreq(note), time);
     } else {
         o.frequency.setValueAtTime(midiToFreq(note), time);
@@ -309,11 +310,12 @@ function scheduleBassNote(note, time, duration, gain = 0.5) {
     g.gain.linearRampToValueAtTime(0.0001, time + duration);
     const dist = createWaveShaper(0.6);
     o.connect(g).connect(dist).connect(musicMasterGain);
-    o.start(time - 0.045); o.stop(time + duration + 0.05);
+    o.start(time); o.stop(time + duration + 0.05);
 }
 
 function scheduleMelodyNote(note, time, duration, gain = 0.4) {
     if (!audioCtx || musicVolume() <= 0) return;
+    time = Math.max(0, time);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
     const appogg = Math.random() < 0.2;
     if (appogg) {
@@ -344,6 +346,7 @@ function scheduleMelodyNote(note, time, duration, gain = 0.4) {
 
 function scheduleGlitchNote(note, time, duration, gain = 0.2) {
     if (!audioCtx || musicVolume() <= 0) return;
+    time = Math.max(0, time);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
@@ -372,6 +375,7 @@ function scheduleGlitchNote(note, time, duration, gain = 0.2) {
 
 function schedulePadNote(time, gain = 0.08) {
     if (!audioCtx || musicVolume() <= 0) return;
+    time = Math.max(0, time);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
     const base = MUSIC_CONFIG.notePool[2];
     const fifth = base + 7;
@@ -412,6 +416,7 @@ function musicVolume() {
 
 function scheduleMusicNode(type, note, startTime, duration, gain) {
     if (!audioCtx || musicVolume() <= 0 || musicPaused) return null;
+    startTime = Math.max(0, startTime);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
@@ -536,7 +541,7 @@ function scheduleMusicBar(pattern, barStart, beatSec) {
     let padScheduled = false;
     for (let b = 0; b < beats; b++) {
         const beat = { beat: b, total: beats };
-        const t = barStart + b * beatSec;
+        const t = Math.max(0.01, barStart + b * beatSec);
         const drum = pattern.drums(beat);
         if (drum && drum.type === 'kick') {
             scheduleDrumKick(t, drum.gain, drum.humanMs || 0);
