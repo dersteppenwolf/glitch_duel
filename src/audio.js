@@ -1078,7 +1078,6 @@ function stopMusic() {
     musicBarIndex = 0;
     musicEffects = { lowpass: null, bitcrush: null, stutterTimer: null };
     stopPadNotes();
-    stopChorusLFO();
 }
 
 function setMusicIntensity(level) {
