@@ -286,24 +286,9 @@ function scheduleMelodyNote(note, time, duration, gain = 0.4) {
     g.gain.setValueAtTime(0, time);
     g.gain.linearRampToValueAtTime(Math.min(0.3, vol), time + 0.006);
     g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
-    const chorusDelay = audioCtx.createDelay(0.05);
-    const chorusMod = audioCtx.createGain();
-    chorusDelay.delayTime.value = 0.012;
-    chorusMod.gain.value = 0;
-    const mod = audioCtx.createOscillator();
-    mod.type = 'sine';
-    mod.frequency.value = 2.4;
-    const modGain = audioCtx.createGain();
-    modGain.gain.value = 0.006;
-    mod.connect(modGain);
-    modGain.connect(chorusDelay.delayTime);
-    mod.start();
     o.connect(g).connect(musicMasterGain);
-    g.connect(chorusDelay);
-    chorusDelay.connect(chorusMod).connect(musicMasterGain);
+    g.connect(musicDelay);
     o.start(time); o.stop(time + duration + 0.05);
-    chorusMod.gain.setValueAtTime(0.12, time);
-    chorusMod.gain.linearRampToValueAtTime(0.0001, time + duration);
 }
 
 function scheduleGlitchNote(note, time, duration, gain = 0.2) {
@@ -339,31 +324,17 @@ function schedulePadNote(time, gain = 0.08) {
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
     const base = MUSIC_CONFIG.notePool[2];
     const fifth = base + 7;
-    const rates = [base, fifth];
-    const oscs = [];
-    for (const r of rates) {
+    for (const r of [base, fifth]) {
         const o = audioCtx.createOscillator();
         const g = audioCtx.createGain();
         o.type = 'sine';
         o.frequency.value = midiToFreq(r);
         g.gain.setValueAtTime(0, time);
         g.gain.linearRampToValueAtTime(Math.min(0.12, vol * 0.4), time + 0.4);
-        const chorusDelay = audioCtx.createDelay(0.05);
-        chorusDelay.delayTime.value = 0.018;
-        const mod = audioCtx.createOscillator();
-        mod.type = 'sine';
-        mod.frequency.value = 1.8;
-        const modGain = audioCtx.createGain();
-        modGain.gain.value = 0.005;
-        mod.connect(modGain);
-        modGain.connect(chorusDelay.delayTime);
-        mod.start();
         o.connect(g).connect(musicMasterGain);
-        g.connect(chorusDelay);
-        chorusDelay.connect(audioCtx.createGain()).connect(musicMasterGain);
+        g.connect(musicDelay);
         o.start(time);
-        musicPadOscillators.push({ o, g, mod, modGain, chorusDelay });
-        oscs.push(o);
+        musicPadOscillators.push({ o, g });
     }
 }
 
@@ -371,9 +342,6 @@ function stopPadNotes() {
     for (const entry of musicPadOscillators) {
         try { entry.o.stop(); } catch (_) {}
         try { entry.g.disconnect(); } catch (_) {}
-        try { entry.mod.stop(); } catch (_) {}
-        try { entry.modGain.disconnect(); } catch (_) {}
-        try { entry.chorusDelay.disconnect(); } catch (_) {}
     }
     musicPadOscillators = [];
 }
