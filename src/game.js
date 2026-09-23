@@ -2077,6 +2077,10 @@ function startRound() {
     roundTimeMs = ROUND_TIME_MS;
 playRoundStartSound();
     setMusicIntensity(1);
+    if (gameMode !== 'arcade') {
+        const styles = getMusicStyleList();
+        setMusicStyle(styles[Math.floor(Math.random() * styles.length)]);
+    }
     startMusic();
     resetCombatMetrics();
     if (gameMode === 'training') resetTraining();
@@ -2095,7 +2099,8 @@ function startArcadeFight() {
 
     selectedDifficulty = fight.difficulty;
     selectedArena = fight.arena;
-    selectedRival = fight.rival;
+selectedRival = fight.rival;
+    if (fight.music) setMusicStyle(fight.music);
     activeTrialId = 'free';
     trialState = null;
     trialTick = 0;

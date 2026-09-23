@@ -106,11 +106,11 @@ const CPU_RIVALS = {
     boss500: { labelKey: 'rivalBoss500', introKey: 'rivalBoss500Intro', accentColor: '#dc2626', detail: 'boss' }
 };
 const ARCADE_RUN_FIGHTS = [
-    { rival: 'nullPointer', arena: 'notebook', difficulty: 'easy' },
-    { rival: 'lagSpike', arena: 'cafeteria', difficulty: 'normal' },
-    { rival: 'mergeConflict', arena: 'remoteMeeting', difficulty: 'normal' },
-    { rival: 'lagSpike', arena: 'serverDown', difficulty: 'hard' },
-    { rival: 'boss500', arena: 'geekConvention', difficulty: 'hard' }
+    { rival: 'nullPointer', arena: 'notebook', difficulty: 'easy', music: 'baroquePunk' },
+    { rival: 'lagSpike', arena: 'cafeteria', difficulty: 'normal', music: 'default' },
+    { rival: 'mergeConflict', arena: 'remoteMeeting', difficulty: 'normal', music: 'synthKarate' },
+    { rival: 'lagSpike', arena: 'serverDown', difficulty: 'hard', music: 'default' },
+    { rival: 'boss500', arena: 'geekConvention', difficulty: 'hard', music: 'baroquePunk' }
 ];
 const DIFFICULTIES = {
     easy: {

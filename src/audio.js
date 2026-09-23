@@ -5,6 +5,8 @@ const audioVolumes = loadAudioVolumes();
 // Music system state
 let musicState = null;
 let musicIntensity = 0;
+let musicStyle = 'default';
+let nextMusicStyle = null;
 let musicPaused = false;
 let musicNextBar = 0;
 let musicBarIndex = 0;
@@ -259,6 +261,20 @@ function scheduleCrashOnNewSection(barIndex, beatSec) {
     }
 }
 
+const MUSIC_STYLES = {
+    default: { label: 'Defecto', bpm: 120, noteOffset: 0, rootIdx: 2, char: 'normal' },
+    baroquePunk: { label: 'Barroco Punk', bpm: 140, noteOffset: 0, rootIdx: 2, char: 'baroque' },
+    synthKarate: { label: 'Synth Karate', bpm: 130, noteOffset: 3, rootIdx: 2, char: 'synth' }
+};
+
+function setMusicStyle(style) {
+    if (MUSIC_STYLES[style]) { musicStyle = style; }
+}
+
+function getMusicStyleName() { return musicStyle; }
+
+function getMusicStyleList() { return Object.keys(MUSIC_STYLES); }
+
 const HARMONY = {
     1: { // A minor (Am) — rootIdx 2
         chords: [{ rootOff: 0, qual: 0 }, { rootOff: 0, qual: 0 }, { rootOff: 5, qual: 0 }, { rootOff: 7, qual: 1 }]
@@ -410,48 +426,101 @@ function createWaveShaper(amount) {
 
 function buildMelodyPhrase(intensity, barIndex) {
     const pool = MUSIC_CONFIG.notePool;
-    const rootIdx = intensity >= 3 ? 4 : 2;
+    const style = MUSIC_STYLES[musicStyle] || MUSIC_STYLES.default;
+    const rootIdx = (intensity >= 3 ? 4 : 2) + style.noteOffset;
     const section = Math.floor(barIndex / 8) % 3;
-    if (!melodyPhrases[intensity]) melodyPhrases[intensity] = {};
+    if (!melodyPhrases[musicStyle]) melodyPhrases[musicStyle] = {};
+    const sk = `${musicStyle}_${intensity}`;
+    if (!melodyPhrases[musicStyle][sk]) melodyPhrases[musicStyle][sk] = {};
     const key = `${intensity}_${section}`;
-    if (!melodyPhrases[intensity][key]) {
+    if (!melodyPhrases[musicStyle][sk][key]) {
         const p = pool;
         const r = rootIdx;
         const melodies = {
-            // Intensidad 1 — A menor, melodía tipo Ninja Gaiden lenta
-            1: [
-                // Sección A (compases 1-4): tema estable
-                [p[r+4], p[r+4], p[r+7], p[r+5],  p[r+4], p[r+8], p[r+7], p[r+5],
-                 p[r+4], p[r+4], p[r+7], p[r+9],  p[r+7], p[r+8], p[r+7], p[r+5]],
-                // Sección B: respuesta más aguda
-                [p[r+7], p[r+8], p[r+9], p[r+7],  p[r+8], p[r+9], p[r+11], p[r+7],
-                 p[r+6], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+5], p[r+4], p[r+2]],
-                // Sección C: breakdown — solo notas largas
-                [p[r+4], p[r+4], p[r+2], p[r+2],  p[r+5], p[r+5], p[r+4], p[r+4],
-                 p[r+2], p[r+2], p[r+0], p[r+0],  p[r+4], p[r+5], p[r+7], p[r+5]],
-            ],
-            // Intensidad 2 — más movimiento, arpegios
-            2: [
-                [p[r+4], p[r+6], p[r+7], p[r+6],  p[r+4], p[r+6], p[r+7], p[r+9],
-                 p[r+7], p[r+6], p[r+4], p[r+2],  p[r+4], p[r+6], p[r+7], p[r+6]],
-                [p[r+7], p[r+9], p[r+11], p[r+9],  p[r+7], p[r+6], p[r+7], p[r+9],
-                 p[r+6], p[r+7], p[r+9], p[r+6],  p[r+4], p[r+2], p[r+4], p[r+2]],
-                [p[r+4], p[r+5], p[r+7], p[r+5],  p[r+4], p[r+2], p[r+0], p[r+2],
-                 p[r+4], p[r+5], p[r+7], p[r+9],  p[r+7], p[r+5], p[r+4], p[r+2]],
-            ],
-            // Intensidad 3 — rápida, estilo Contra, B menor
-            3: [
-                [p[r+4], p[r+7], p[r+4], p[r+7],  p[r+5], p[r+4], p[r+5], p[r+7],
-                 p[r+4], p[r+7], p[r+4], p[r+7],  p[r+9], p[r+7], p[r+5], p[r+4]],
-                [p[r+7], p[r+9], p[r+7], p[r+9],  p[r+11], p[r+9], p[r+7], p[r+6],
-                 p[r+5], p[r+4], p[r+5], p[r+7],  p[r+4], p[r+5], p[r+7], p[r+9]],
-                [p[r+4], p[r+4], p[r+5], p[r+5],  p[r+7], p[r+7], p[r+8], p[r+8],
-                 p[r+7], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+5], p[r+7], p[r+5]],
-            ],
+            default: {
+                1: [
+                    [p[r+4], p[r+4], p[r+7], p[r+5],  p[r+4], p[r+8], p[r+7], p[r+5],
+                     p[r+4], p[r+4], p[r+7], p[r+9],  p[r+7], p[r+8], p[r+7], p[r+5]],
+                    [p[r+7], p[r+8], p[r+9], p[r+7],  p[r+8], p[r+9], p[r+11], p[r+7],
+                     p[r+6], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+5], p[r+4], p[r+2]],
+                    [p[r+4], p[r+4], p[r+2], p[r+2],  p[r+5], p[r+5], p[r+4], p[r+4],
+                     p[r+2], p[r+2], p[r+0], p[r+0],  p[r+4], p[r+5], p[r+7], p[r+5]],
+                ],
+                2: [
+                    [p[r+4], p[r+6], p[r+7], p[r+6],  p[r+4], p[r+6], p[r+7], p[r+9],
+                     p[r+7], p[r+6], p[r+4], p[r+2],  p[r+4], p[r+6], p[r+7], p[r+6]],
+                    [p[r+7], p[r+9], p[r+11], p[r+9],  p[r+7], p[r+6], p[r+7], p[r+9],
+                     p[r+6], p[r+7], p[r+9], p[r+6],  p[r+4], p[r+2], p[r+4], p[r+2]],
+                    [p[r+4], p[r+5], p[r+7], p[r+5],  p[r+4], p[r+2], p[r+0], p[r+2],
+                     p[r+4], p[r+5], p[r+7], p[r+9],  p[r+7], p[r+5], p[r+4], p[r+2]],
+                ],
+                3: [
+                    [p[r+4], p[r+7], p[r+4], p[r+7],  p[r+5], p[r+4], p[r+5], p[r+7],
+                     p[r+4], p[r+7], p[r+4], p[r+7],  p[r+9], p[r+7], p[r+5], p[r+4]],
+                    [p[r+7], p[r+9], p[r+7], p[r+9],  p[r+11], p[r+9], p[r+7], p[r+6],
+                     p[r+5], p[r+4], p[r+5], p[r+7],  p[r+4], p[r+5], p[r+7], p[r+9]],
+                    [p[r+4], p[r+4], p[r+5], p[r+5],  p[r+7], p[r+7], p[r+8], p[r+8],
+                     p[r+7], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+5], p[r+7], p[r+5]],
+                ]
+            },
+            baroquePunk: {
+                1: [
+                    [p[r+4], p[r+7], p[r+5], p[r+7],  p[r+4], p[r+5], p[r+4], p[r+2],
+                     p[r+4], p[r+0], p[r+2], p[r+4],  p[r+5], p[r+7], p[r+5], p[r+4]],
+                    [p[r+7], p[r+6], p[r+7], p[r+9],  p[r+7], p[r+5], p[r+4], p[r+5],
+                     p[r+7], p[r+6], p[r+7], p[r+9],  p[r+11], p[r+9], p[r+7], p[r+5]],
+                    [p[r+2], p[r+2], p[r+4], p[r+4],  p[r+2], p[r+0], p[r+2], p[r+4],
+                     p[r+5], p[r+5], p[r+4], p[r+2],  p[r+0], p[r+0], p[r+2], p[r+4]],
+                ],
+                2: [
+                    [p[r+4], p[r+7], p[r+8], p[r+7],  p[r+5], p[r+8], p[r+7], p[r+5],
+                     p[r+4], p[r+7], p[r+8], p[r+7],  p[r+9], p[r+7], p[r+5], p[r+4]],
+                    [p[r+7], p[r+11], p[r+9], p[r+7],  p[r+6], p[r+7], p[r+9], p[r+11],
+                     p[r+7], p[r+6], p[r+5], p[r+4],  p[r+5], p[r+7], p[r+6], p[r+4]],
+                    [p[r+4], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+5], p[r+4], p[r+2],
+                     p[r+0], p[r+2], p[r+4], p[r+5],  p[r+7], p[r+5], p[r+4], p[r+2]],
+                ],
+                3: [
+                    [p[r+4], p[r+7], p[r+4], p[r+7],  p[r+9], p[r+7], p[r+5], p[r+4],
+                     p[r+5], p[r+7], p[r+5], p[r+4],  p[r+2], p[r+4], p[r+2], p[r+0]],
+                    [p[r+7], p[r+9], p[r+11], p[r+9],  p[r+7], p[r+6], p[r+7], p[r+9],
+                     p[r+4], p[r+5], p[r+7], p[r+9],  p[r+7], p[r+5], p[r+4], p[r+2]],
+                    [p[r+4], p[r+2], p[r+4], p[r+5],  p[r+7], p[r+5], p[r+4], p[r+2],
+                     p[r+4], p[r+5], p[r+7], p[r+9],  p[r+7], p[r+5], p[r+4], p[r+2]],
+                ]
+            },
+            synthKarate: {
+                1: [
+                    [p[r+4], p[r+4], p[r+7], p[r+7],  p[r+5], p[r+5], p[r+4], p[r+4],
+                     p[r+2], p[r+2], p[r+4], p[r+4],  p[r+7], p[r+7], p[r+5], p[r+4]],
+                    [p[r+7], p[r+9], p[r+7], p[r+5],  p[r+7], p[r+9], p[r+11], p[r+9],
+                     p[r+7], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+5], p[r+7], p[r+5]],
+                    [p[r+4], p[r+2], p[r+0], p[r+2],  p[r+4], p[r+2], p[r+4], p[r+5],
+                     p[r+7], p[r+5], p[r+4], p[r+2],  p[r+0], p[r+2], p[r+4], p[r+2]],
+                ],
+                2: [
+                    [p[r+4], p[r+7], p[r+8], p[r+7],  p[r+4], p[r+7], p[r+8], p[r+7],
+                     p[r+5], p[r+8], p[r+7], p[r+5],  p[r+4], p[r+2], p[r+4], p[r+2]],
+                    [p[r+7], p[r+9], p[r+11], p[r+9],  p[r+7], p[r+9], p[r+7], p[r+5],
+                     p[r+7], p[r+9], p[r+7], p[r+5],  p[r+4], p[r+5], p[r+7], p[r+5]],
+                    [p[r+4], p[r+5], p[r+7], p[r+5],  p[r+4], p[r+2], p[r+4], p[r+5],
+                     p[r+4], p[r+2], p[r+0], p[r+2],  p[r+4], p[r+5], p[r+7], p[r+5]],
+                ],
+                3: [
+                    [p[r+4], p[r+7], p[r+9], p[r+7],  p[r+5], p[r+4], p[r+5], p[r+7],
+                     p[r+4], p[r+7], p[r+9], p[r+7],  p[r+8], p[r+7], p[r+5], p[r+4]],
+                    [p[r+7], p[r+9], p[r+11], p[r+9],  p[r+7], p[r+6], p[r+5], p[r+7],
+                     p[r+4], p[r+5], p[r+7], p[r+9],  p[r+7], p[r+5], p[r+4], p[r+2]],
+                    [p[r+4], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+5], p[r+7], p[r+9],
+                     p[r+7], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+2], p[r+0], p[r+2]],
+                ]
+            }
         };
-        melodyPhrases[intensity][key] = (melodies[intensity] || melodies[1])[section % 3];
+        const styleMelodies = melodies[musicStyle] || melodies.default;
+        const styleInt = styleMelodies[intensity] || styleMelodies[1] || styleMelodies[Object.keys(styleMelodies)[0]];
+        melodyPhrases[musicStyle][sk][key] = styleInt[section % 3];
     }
-    return melodyPhrases[intensity][key];
+    return melodyPhrases[musicStyle][sk][key];
 }
 
 function scheduleBassNote(note, time, duration, gain = 0.5) {
@@ -482,20 +551,43 @@ function scheduleMelodyNote(note, time, duration, gain = 0.4) {
     if (!Number.isFinite(note) || !Number.isFinite(gain) || gain <= 0) return;
     time = Math.max(0, time);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
-    const pw = (musicIntensity >= 3 && NES_PULSE_NARROW) ? NES_PULSE_NARROW : (NES_PULSE_WIDE || null);
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    if (pw) o.setPeriodicWave(pw);
-    else o.type = 'square';
-    o.frequency.setValueAtTime(midiToFreq(note), time);
-    g.gain.setValueAtTime(0, time);
-    g.gain.linearRampToValueAtTime(Math.min(0.3, vol), time + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
-    const clipper = audioCtx.createWaveShaper();
-    const curve = new Float32Array(256);
-    for (let i = 0; i < 256; i++) { const x = (i / 256) * 2 - 1; curve[i] = Math.max(-0.8, Math.min(0.8, x * 1.4)); }
-    clipper.curve = curve;
-    o.connect(g).connect(clipper).connect(musicMasterGain);
+    if (musicStyle === 'synthKarate') {
+        o.type = 'sawtooth';
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(3000, time);
+        filter.frequency.linearRampToValueAtTime(800, time + duration * 0.5);
+        filter.frequency.linearRampToValueAtTime(1500, time + duration);
+        o.frequency.setValueAtTime(midiToFreq(note), time);
+        g.gain.setValueAtTime(0, time);
+        g.gain.linearRampToValueAtTime(Math.min(0.25, vol * 0.7), time + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        o.connect(g).connect(filter).connect(musicMasterGain);
+    } else if (musicStyle === 'baroquePunk') {
+        const pw = NES_PULSE_NARROW || null;
+        if (pw) o.setPeriodicWave(pw);
+        else o.type = 'square';
+        o.frequency.setValueAtTime(midiToFreq(note), time);
+        g.gain.setValueAtTime(0, time);
+        g.gain.linearRampToValueAtTime(Math.min(0.3, vol), time + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        o.connect(g).connect(musicMasterGain);
+    } else {
+        const pw = (musicIntensity >= 3 && NES_PULSE_NARROW) ? NES_PULSE_NARROW : (NES_PULSE_WIDE || null);
+        if (pw) o.setPeriodicWave(pw);
+        else o.type = 'square';
+        o.frequency.setValueAtTime(midiToFreq(note), time);
+        g.gain.setValueAtTime(0, time);
+        g.gain.linearRampToValueAtTime(Math.min(0.3, vol), time + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        const clipper = audioCtx.createWaveShaper();
+        const curve = new Float32Array(256);
+        for (let i = 0; i < 256; i++) { const x = (i / 256) * 2 - 1; curve[i] = Math.max(-0.8, Math.min(0.8, x * 1.4)); }
+        clipper.curve = curve;
+        o.connect(g).connect(clipper).connect(musicMasterGain);
+    }
     o.start(time); o.stop(time + duration + 0.05);
 }
 
@@ -547,6 +639,11 @@ function schedulePadNote(time, gain = 0.08) {
         o.start(time);
         musicPadOscillators.push({ o, g });
     }
+}
+
+function getEffectiveBpm() {
+    const s = MUSIC_STYLES[musicStyle];
+    return (s && s.bpm) ? s.bpm : MUSIC_CONFIG.bpm;
 }
 
 function stopPadNotes() {
@@ -789,7 +886,8 @@ function tickMusic() {
     if (musicPaused || !audioCtx || musicVolume() <= 0 || !musicMasterGain) return;
     const now = audioCtx.currentTime;
     if (now < musicNextBar) return;
-    const beatSec = 60000 / MUSIC_CONFIG.bpm / 1000;
+    const bpm = getEffectiveBpm();
+    const beatSec = 60000 / bpm / 1000;
     const pattern = buildMusicPattern(musicIntensity || 1, musicBarIndex);
     scheduleMusicBar(pattern, musicNextBar, beatSec);
     musicNextBar += beatSec * 16;
