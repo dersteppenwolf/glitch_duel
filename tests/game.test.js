@@ -79,6 +79,28 @@ function createMockAudioContext(audioEvents = [], options = {}) {
                 disconnect() { audioEvents.push({ event: 'disconnect', type: 'gain' }); }
             };
         }
+
+        createBiquadFilter() {
+            const filter = { type: '', frequency: parameter('filterFreq'), Q: parameter('filterQ'), gain: parameter('filterGain'), connect() { return this; }, disconnect() {} };
+            return filter;
+        }
+
+        createWaveShaper() {
+            return { curve: null, connect() { return this; }, disconnect() {} };
+        }
+
+        createDelay(maxTime) {
+            return { delayTime: parameter('delayTime'), connect() { return this; }, disconnect() {} };
+        }
+
+        createBuffer(channels, length, sampleRate) {
+            const buf = { getChannelData(ch) { const arr = new Float64Array(length); return arr; }, sampleRate, length, numberOfChannels: channels };
+            return buf;
+        }
+
+        createBufferSource() {
+            return { buffer: null, connect() { return this; }, disconnect() {}, start(t) { audioEvents.push({ event: 'noiseStart', time: t }); }, stop(t) { audioEvents.push({ event: 'noiseStop', time: t }); } };
+        }
     };
 }
 
