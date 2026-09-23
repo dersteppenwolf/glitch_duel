@@ -1703,6 +1703,16 @@ function getSpecialActionStateText(fighter = player1) {
     return t(keys[getSpecialActionState(fighter)]);
 }
 
+function getMusicIntensityFromHealth() {
+    if (!player1 || !player2) return 1;
+    const p1 = player1.health / player1.displayHealth || 1;
+    const p2 = player2.health / 100;
+    const low = Math.min(p1, p2);
+    if (low <= 0.30) return 3;
+    if (low <= 0.70) return 2;
+    return 1;
+}
+
 function updateCombatStatusThresholds() {
     if (gameState !== 'playing' || !player1) return;
 
@@ -2066,6 +2076,8 @@ function startRound() {
     roundTimerFrames = ROUND_TIMER_FRAMES;
     roundTimeMs = ROUND_TIME_MS;
 playRoundStartSound();
+    setMusicIntensity(1);
+    startMusic();
     resetCombatMetrics();
     if (gameMode === 'training') resetTraining();
     vsIntroTimer = VS_INTRO_FRAMES;
@@ -2248,6 +2260,7 @@ function refillTraining(type) {
 }
 
 function showMainMenu() {
+    stopMusic();
     clearResultPresentation();
     arenaReaction = null;
     restoreArcadeMenuSelection();
@@ -2321,6 +2334,7 @@ function pauseGame(silent = false) {
     if (gameState !== 'playing') return;
 
     if (!silent) playUISound('pause');
+    stopMusic();
     clearActiveInput();
     if (player1) player1.clearComboSequence();
     if (player2) player2.clearComboSequence();
@@ -2336,6 +2350,8 @@ function resumeGame() {
     if (gameState !== 'paused') return;
 
     playUISound('resume');
+    setMusicIntensity(getMusicIntensityFromHealth());
+    startMusic();
     clearActiveInput();
     resetSimulationClock();
     gameState = 'playing';
@@ -2424,6 +2440,7 @@ function update() {
         return;
     }
 
+setMusicIntensity(getMusicIntensityFromHealth());
     updateRoundTimer();
     updateCombatStatusThresholds();
 }
@@ -2568,6 +2585,7 @@ function triggerSpecialFeedback(fighter) {
     };
     specialFlash.signature = getCombatSignature(fighter);
     addCombatText(fighter.x, fighter.y - 140, t('specialImpact'), color, 'special');
+    musicStutter(60);
 }
 
 function updateHealthAnimations() {
@@ -2586,6 +2604,7 @@ function updateHealthAnimations() {
 function triggerImpactFeedback(x, y, direction, blocked = false, accentColor = null, attacker = null) {
     const kind = blocked ? 'block' : getCombatFeedbackKind(attacker && attacker.lastAttackType);
     const feedback = COMBAT_FEEDBACK[kind];
+    if (!blocked && (kind === 'special' || kind === 'combo')) musicCriticalHitLP();
     const signature = getCombatSignature(attacker);
     screenShake = reducedMotionEnabled ? 0 : Math.max(screenShake, feedback.shake);
     hitStopFrames = reducedMotionEnabled ? 0 : Math.max(hitStopFrames, feedback.stop);
@@ -2707,6 +2726,7 @@ function finishMatch(playerWon) {
     if (player2) player2.clearComboSequence();
 const record = createMatchHistoryRecord(playerWon);
     gameState = 'gameOver';
+    musicPitchDrop();
     playRoundEndSound(playerWon);
     showStatusMessage(t('ko'), 180);
     recordMatchResult(playerWon);
@@ -2815,6 +2835,7 @@ function advanceSimulation(deltaMs) {
         simulationAccumulator = 0;
     }
 
+tickMusic();
     if (debugMetrics.active) {
         debugMetrics.stepsPerFrame += steps;
         if (steps > 1) debugMetrics.multiStepFrames++;

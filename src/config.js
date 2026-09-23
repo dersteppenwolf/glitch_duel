@@ -45,7 +45,18 @@ const IMPACT_PHRASES = {
     block: ['¡BLOCK!', '*ping*', 'CHIP', '403 FORBIDDEN', 'FIREWALL', 'ACCESS DENIED']
 };
 // Reserve mix headroom when both fighters' layers overlap at full volume.
-const AUDIO_CONFIG = { combat: 0.65, ui: 0.55, mixGain: 0.75, maxVoices: 24, attackSeconds: 0.004, floorGain: 0.0001 };
+const AUDIO_CONFIG = { combat: 0.65, ui: 0.55, music: 0.50, mixGain: 0.75, maxVoices: 32, attackSeconds: 0.004, floorGain: 0.0001 };
+const MUSIC_CONFIG = {
+    layers: { drums: 0.35, bass: 0.30, melody: 0.25, glitch: 0.20 },
+    bpm: 120,
+    crossfadeSeconds: 0.25,
+    intensity: { low: 1, medium: 2, high: 3 },
+    healthThresholds: { medium: 70, high: 30 },
+    stutterMs: { min: 16, max: 80 },
+    criticalLpSeconds: 0.9,
+    pitchDropSeconds: 0.6,
+    notePool: [55, 57, 59, 60, 62, 64, 65, 67] // A2/A#2/B2/C3/D3/E3/F3/G3 midi
+};
 const TRAINING_POSITIONS = {
     mid: [350, 650],
     close: [440, 560],

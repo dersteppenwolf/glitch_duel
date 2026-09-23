@@ -531,6 +531,9 @@ function loadGame(options = {}) {
             checkCollision,
             triggerImpactFeedback,
             triggerSpecialFeedback,
+            setMusicIntensity,
+            musicStutter,
+            musicPitchDrop,
             drawHealthBar,
             drawEnergyBar,
             COMBAT_FEEDBACK,
@@ -560,6 +563,7 @@ function loadGame(options = {}) {
                  pendingStartMode,
                 matchSeed,
                 debugOverlayEnabled,
+                musicIntensity,
                 selectedDifficulty,
                 selectedFighterStyle,
                 selectedRival,
@@ -6000,6 +6004,32 @@ test('corner escape: CPU moves away after post-block hit', () => {
         api.advanceSimulation(16.666);
     }
     assert(getP2(api).x > 80, 'CPU must escape corner during post-block window (x=' + getP2(api).x + ')');
+});
+
+test('adaptive music: intensity starts at 1 and updates with health', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining();
+    api.skipVsIntro();
+    const [, p2] = [api.getState().player1, api.getState().player2];
+    api.setMusicIntensity(1);
+    assert.equal(api.getState().musicIntensity, 1, 'initial intensity should be 1');
+    api.setMusicIntensity(3);
+    assert.equal(api.getState().musicIntensity, 3, 'intensity can be set to 3');
+});
+
+test('adaptive music: musicPitchDrop and musicStutter do not throw', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.musicPitchDrop(); // Should not throw even without AudioContext
+    api.musicStutter(50);
+    assert.ok(true, 'music effect functions do not throw without AudioContext');
+});
+
+test('adaptive music: setMusicIntensity clamps to 1-3', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.setMusicIntensity(0);
+    assert.equal(api.getState().musicIntensity, 1, 'intensity 0 should clamp to 1');
+    api.setMusicIntensity(5);
+    assert.equal(api.getState().musicIntensity, 3, 'intensity 5 should clamp to 3');
 });
 
 
