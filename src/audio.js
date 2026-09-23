@@ -171,7 +171,7 @@ function accentGain(beat, baseGain) {
 
 function scheduleDrumKick(time, gain = 0.5, humanMs = 0) {
     if (!audioCtx || musicVolume() <= 0) return;
-    time += humanMs;
+    time = Math.max(0, time + humanMs / 1000);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
     const sine = audioCtx.createOscillator();
     const sg = audioCtx.createGain();
@@ -200,7 +200,7 @@ function scheduleDrumKick(time, gain = 0.5, humanMs = 0) {
 
 function scheduleDrumSnare(time, gain = 0.4, humanMs = 0) {
     if (!audioCtx || musicVolume() <= 0) return;
-    time += humanMs;
+    time = Math.max(0, time + humanMs / 1000);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
     const sine = audioCtx.createOscillator();
     const sg = audioCtx.createGain();
@@ -230,7 +230,7 @@ function scheduleDrumSnare(time, gain = 0.4, humanMs = 0) {
 
 function scheduleDrumHat(time, gain = 0.25, humanMs = 0, closed = true) {
     if (!audioCtx || musicVolume() <= 0) return;
-    time += humanMs;
+    time = Math.max(0, time + humanMs / 1000);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
     const noise = audioCtx.createBufferSource();
     const dur = closed ? 0.04 : 0.12;
@@ -554,11 +554,11 @@ function scheduleMusicBar(pattern, barStart, beatSec) {
         else if (drum && drum.type === 'snare') scheduleDrumSnare(t, drum.gain, drum.humanMs || 0);
         else if (drum && drum.type === 'hat') scheduleDrumHat(t, drum.gain, drum.humanMs || 0);
         const bass = pattern.bass(beat);
-        if (bass) scheduleBassNote(bass.note, t + (bass.humanMs || 0) / 1000, bass.dur, bass.gain);
+        if (bass) scheduleBassNote(bass.note, Math.max(0, t + (bass.humanMs || 0) / 1000), bass.dur, bass.gain);
         const mel = pattern.melody(beat);
-        if (mel) scheduleMelodyNote(melodyPhrase[Math.floor(b * melodyPhrase.length / beats) % melodyPhrase.length], t + (mel.humanMs || 0) / 1000, mel.dur, mel.gain);
+        if (mel) scheduleMelodyNote(melodyPhrase[Math.floor(b * melodyPhrase.length / beats) % melodyPhrase.length], Math.max(0, t + (mel.humanMs || 0) / 1000), mel.dur, mel.gain);
         const gl = pattern.glitch(beat);
-        if (gl) scheduleGlitchNote(gl.note, t + (gl.humanMs || 0) / 1000, gl.dur, gl.gain);
+        if (gl) scheduleGlitchNote(gl.note, Math.max(0, t + (gl.humanMs || 0) / 1000), gl.dur, gl.gain);
         if (!padScheduled && pattern.pad && pattern.pad(beat)) {
             schedulePadNote(t, pattern.pad(beat).gain);
             padScheduled = true;
