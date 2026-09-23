@@ -262,9 +262,9 @@ function scheduleCrashOnNewSection(barIndex, beatSec) {
 }
 
 const MUSIC_STYLES = {
-    default: { label: 'Defecto', bpm: 120, noteOffset: 0, rootIdx: 2, char: 'normal' },
-    baroquePunk: { label: 'Barroco Punk', bpm: 140, noteOffset: 0, rootIdx: 2, char: 'baroque' },
-    synthKarate: { label: 'Synth Karate', bpm: 130, noteOffset: 3, rootIdx: 2, char: 'synth' }
+    default: { label: 'Defecto', bpm: 130, noteOffset: 0, rootIdx: 2, char: 'normal' },
+    baroquePunk: { label: 'Barroco Punk', bpm: 150, noteOffset: 0, rootIdx: 2, char: 'baroque' },
+    synthKarate: { label: 'Synth Karate', bpm: 140, noteOffset: 3, rootIdx: 2, char: 'synth' }
 };
 
 function setMusicStyle(style) {
@@ -621,13 +621,55 @@ function scheduleGlitchNote(note, time, duration, gain = 0.2) {
     o.start(time); o.stop(time + duration + 0.05);
 }
 
-function schedulePadNote(time, gain = 0.08) {
+function schedulePluckedString(note, time, duration, gain = 0.15) {
+    if (!audioCtx || musicVolume() <= 0) return;
+    if (!Number.isFinite(note) || !Number.isFinite(gain) || gain <= 0) return;
+    time = Math.max(0, time);
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(midiToFreq(note), time);
+    const o2 = audioCtx.createOscillator();
+    const g2 = audioCtx.createGain();
+    o2.type = 'sine';
+    o2.frequency.setValueAtTime(midiToFreq(note) * 2, time);
+    g2.gain.setValueAtTime(0, time);
+    g2.gain.linearRampToValueAtTime(Math.min(0.1, vol * 0.3), time + 0.003);
+    g2.gain.exponentialRampToValueAtTime(0.0001, time + Math.min(duration, 0.12));
+    g.gain.setValueAtTime(0, time);
+    g.gain.linearRampToValueAtTime(Math.min(0.2, vol), time + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + Math.min(duration, 0.15));
+    o.connect(g).connect(musicMasterGain);
+    o2.connect(g2).connect(musicMasterGain);
+    o.start(time); o.stop(time + 0.2);
+    o2.start(time); o2.stop(time + 0.15);
+}
+
+function scheduleMelodicPerc(time, gain = 0.12) {
+    if (!audioCtx || musicVolume() <= 0) return;
+    time = Math.max(0, time);
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(400, time);
+    o.frequency.exponentialRampToValueAtTime(80, time + 0.06);
+    g.gain.setValueAtTime(0, time);
+    g.gain.linearRampToValueAtTime(Math.min(0.15, vol), time + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.12);
+    o.connect(g).connect(musicMasterGain);
+    o.start(time); o.stop(time + 0.15);
+}
+
+function schedulePadDouble(time, gain = 0.12) {
     if (!audioCtx || musicVolume() <= 0) return;
     time = Math.max(0, time);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
     const base = MUSIC_CONFIG.notePool[2];
     const fifth = base + 7;
-    for (const r of [base, fifth]) {
+    const oct = base + 12;
+    for (const r of [base, fifth, oct]) {
         const o = audioCtx.createOscillator();
         const g = audioCtx.createGain();
         o.type = 'sine';
@@ -751,6 +793,11 @@ function buildMusicPattern(intensity, barIndex) {
             },
             glitch: () => null,
             pad: () => null,
+            string: ({ beat }) => {
+                if (section === 1 && beat % 3 === 2) return { note: pool[rootIdx + 4], gain: 0.12, dur: 0.15 };
+                return null;
+            },
+            percussion: () => null,
             contra: ({ beat }) => {
                 if (!isMelodySection) return null;
                 if (beat % 4 !== 1) return null;
@@ -779,7 +826,15 @@ function buildMusicPattern(intensity, barIndex) {
                 if (beat % 12 !== 0) return null;
                 return { note: pool[(beat + Math.floor(beat / 12)) % pool.length], gain: 0.18 + Math.random() * 0.06, dur: beatSec * 0.4, humanMs: humanizeMs(beat) };
             },
-            pad: ({ beat }) => (beat === 0 && !isBreakdown) ? { gain: 0.07 } : null,
+            pad: ({ beat }) => (beat === 0 && !isBreakdown) ? { gain: 0.12 } : null,
+            string: ({ beat }) => {
+                if (section === 1 && (beat === 1 || beat === 9)) return { note: pool[rootIdx + 4], gain: 0.14, dur: 0.15 };
+                return null;
+            },
+            percussion: ({ beat }) => {
+                if (section === 0 && (beat === 5 || beat === 13)) return { gain: 0.1 };
+                return null;
+            },
             contra: ({ beat }) => {
                 if (section !== 1) return null;
                 if (beat % 2 !== 1) return null;
@@ -811,7 +866,15 @@ function buildMusicPattern(intensity, barIndex) {
                 if (beat % 6 !== 0) return null;
                 return { note: pool[(beat + Math.floor(beat / 6) * 3) % pool.length], gain: 0.22 + Math.random() * 0.08, dur: beatSec * 0.25, humanMs: humanizeMs(beat) };
             },
-            pad: ({ beat }) => (beat === 0) ? { gain: 0.1 } : null,
+            pad: ({ beat }) => (beat === 0) ? { gain: 0.14 } : null,
+            string: ({ beat }) => {
+                if (beat % 3 === 2) return { note: pool[rootIdx + 4 + (Math.floor(beat / 3) % 3)], gain: 0.16, dur: 0.12 };
+                return null;
+            },
+            percussion: ({ beat }) => {
+                if (beat % 8 === 5 || beat % 8 === 13) return { gain: 0.12 };
+                return null;
+            },
             contra: ({ beat }) => {
                 if (beat % 2 !== 1) return null;
                 const arp = [pool[rootIdx + contraChord.rootOff], pool[rootIdx + contraChord.rootOff + 2], pool[rootIdx + contraChord.rootOff + (contraChord.qual === 1 ? 4 : 3)], pool[rootIdx + contraChord.rootOff + 7]];
@@ -858,8 +921,12 @@ function scheduleMusicBar(pattern, barStart, beatSec) {
         if (contra && Number.isFinite(contra.note)) scheduleMelodyNote(contra.note, Math.max(0, t + (contra.humanMs || 0) / 1000), contra.dur, contra.gain);
         const gl = pattern.glitch(beat);
         if (gl && Number.isFinite(gl.note)) scheduleGlitchNote(gl.note, Math.max(0, t + (gl.humanMs || 0) / 1000), gl.dur, gl.gain);
+        const str = pattern.string ? pattern.string(beat) : null;
+        if (str && Number.isFinite(str.note)) schedulePluckedString(str.note, Math.max(0, t + (str.humanMs || 0) / 1000), str.dur, str.gain);
+        const perc = pattern.percussion ? pattern.percussion(beat) : null;
+        if (perc) scheduleMelodicPerc(t, perc.gain);
         if (!padScheduled && pattern.pad && pattern.pad(beat)) {
-            schedulePadNote(t, pattern.pad(beat).gain);
+            schedulePadDouble(t, pattern.pad(beat).gain);
             padScheduled = true;
         }
         const fill = pattern.fill ? pattern.fill(beat) : null;
