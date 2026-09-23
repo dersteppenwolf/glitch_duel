@@ -79,8 +79,10 @@ function initAudio() {
 }
 
 function initMusicBus() {
-    if (!audioCtx || musicMasterGain) return;
+    if (!audioCtx) return;
+    if (musicMasterGain) return;
     musicMasterGain = audioCtx.createGain();
+    if (!musicChorusLFO) {
     musicMasterGain.gain.value = 0.85;
     musicMasterFilter = audioCtx.createBiquadFilter();
     musicMasterFilter.type = 'lowshelf';
@@ -102,8 +104,9 @@ function initMusicBus() {
     musicChorusLFO.frequency.value = 1.2;
     musicChorusGain = audioCtx.createGain();
     musicChorusGain.gain.value = 0.008;
-    musicChorusLFO.connect(musicChorusGain);
-    musicChorusLFO.start();
+        musicChorusLFO.connect(musicChorusGain);
+        musicChorusLFO.start();
+    }
 }
 
 function loadAudioVolumes() {
@@ -346,6 +349,15 @@ function stopPadNotes() {
     musicPadOscillators = [];
 }
 
+function stopChorusLFO() {
+    if (musicChorusLFO) {
+        try { musicChorusLFO.stop(); } catch (_) {}
+        try { musicChorusGain.disconnect(); } catch (_) {}
+        musicChorusLFO = null;
+        musicChorusGain = null;
+    }
+}
+
 function musicVolume() {
     return audioVolumes.music !== undefined ? audioVolumes.music : AUDIO_CONFIG.music;
 }
@@ -488,6 +500,7 @@ function stopMusic() {
     musicBarIndex = 0;
     musicEffects = { lowpass: null, bitcrush: null, stutterTimer: null };
     stopPadNotes();
+    stopChorusLFO();
 }
 
 function setMusicIntensity(level) {
