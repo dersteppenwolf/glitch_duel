@@ -197,19 +197,11 @@ const DRUM_PATTERNS = [
     { kicks: [0, 8], snares: [4, 12], hatEach: 1, hatOpen: [] }
 ];
 
-let currentDrumPatternIndex = 0;
-let drumPatternChangeCounter = 0;
-
 function pickDrumPattern(barIndex, isBreakdown) {
-    if (isBreakdown) return 4;
     const section = Math.floor(barIndex / 8) % 3;
-    if (barIndex === 0 || drumPatternChangeCounter >= 8) {
-        drumPatternChangeCounter = 0;
-        const pool = section === 2 ? [4] : [0, 1, 2, 3, 4, 5];
-        currentDrumPatternIndex = pool[Math.floor(Math.random() * pool.length)];
-    }
-    drumPatternChangeCounter++;
-    return currentDrumPatternIndex;
+    if (isBreakdown || section === 2) return 4;
+    if (section === 0) return 0;
+    return 2;
 }
 
 function scheduleDrumCrash(time) {
@@ -262,12 +254,12 @@ function scheduleCrashOnNewSection(barIndex, beatSec) {
 }
 
 const MUSIC_STYLES = {
-    bitDuel: { label: 'Bit Duel', bpm: 130, noteOffset: 0, rootIdx: 2, char: 'default' },
-    baroqueBash: { label: 'Baroque Bash', bpm: 150, noteOffset: 0, rootIdx: 2, char: 'baroque' },
-    neonFury: { label: 'Neon Fury', bpm: 140, noteOffset: 3, rootIdx: 2, char: 'synth' },
-    glitchAssault: { label: 'Glitch Assault', bpm: 180, noteOffset: 0, rootIdx: 2, char: 'metal' },
-    retroGroove: { label: 'Retro Groove', bpm: 115, noteOffset: 0, rootIdx: 2, char: 'funk' },
-    voidReach: { label: 'Void Reach', bpm: 80, noteOffset: 0, rootIdx: 2, char: 'ambient' }
+    bitDuel: { label: 'Bit Duel', bpm: 145, noteOffset: 0, rootIdx: 2, char: 'default' },
+    baroqueBash: { label: 'Baroque Bash', bpm: 165, noteOffset: 0, rootIdx: 2, char: 'baroque' },
+    neonFury: { label: 'Neon Fury', bpm: 155, noteOffset: 3, rootIdx: 2, char: 'synth' },
+    glitchAssault: { label: 'Glitch Assault', bpm: 200, noteOffset: 0, rootIdx: 2, char: 'metal' },
+    retroGroove: { label: 'Retro Groove', bpm: 125, noteOffset: 0, rootIdx: 2, char: 'funk' },
+    voidReach: { label: 'Void Reach', bpm: 90, noteOffset: 0, rootIdx: 2, char: 'ambient' }
 };
 
 function setMusicStyle(style) {
@@ -382,6 +374,21 @@ function scheduleDrumSnare(time, gain = 0.4, humanMs = 0) {
     nf.type = 'bandpass';
     nf.frequency.value = 4000;
     nf.Q.value = 0.6;
+    if (Math.random() < 0.3) {
+        const noise2 = audioCtx.createBufferSource();
+        const buf2 = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.08, audioCtx.sampleRate);
+        const d2 = buf2.getChannelData(0);
+        for (let i = 0; i < d2.length; i++) d2[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.005));
+        noise2.buffer = buf2;
+        const ng2 = audioCtx.createGain();
+        ng2.gain.setValueAtTime(Math.min(0.15, vol * 0.3), time);
+        ng2.gain.exponentialRampToValueAtTime(0.0001, time + 0.06);
+        const nf2 = audioCtx.createBiquadFilter();
+        nf2.type = 'highpass';
+        nf2.frequency.value = 8000;
+        noise2.connect(ng2).connect(nf2).connect(musicMasterGain);
+        noise2.start(time); noise2.stop(time + 0.07);
+    }
     sine.connect(sg).connect(musicMasterGain);
     noise.connect(ng).connect(nf).connect(musicMasterGain);
     sine.start(time); sine.stop(time + 0.2);
@@ -612,26 +619,52 @@ function scheduleBassNote(note, time, duration, gain = 0.5) {
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     o.type = 'triangle';
-    if (time > 0.05 && Math.random() < 0.12) {
-        const ghost = midiToFreq(note + (Math.random() < 0.5 ? 1 : -1));
-        o.frequency.setValueAtTime(ghost, Math.max(0.01, time - 0.045));
-        o.frequency.linearRampToValueAtTime(midiToFreq(note), time);
-    } else {
-        o.frequency.setValueAtTime(midiToFreq(note), time);
-    }
+    o.frequency.setValueAtTime(midiToFreq(note), time);
+    const o2 = audioCtx.createOscillator();
+    const g2 = audioCtx.createGain();
+    o2.type = 'triangle';
+    o2.frequency.setValueAtTime(midiToFreq(note - 12), time);
+    g2.gain.setValueAtTime(0, time);
+    g2.gain.linearRampToValueAtTime(Math.min(0.15, vol * 0.35), time + 0.035);
+    g2.gain.setValueAtTime(Math.min(0.15, vol * 0.35), time + duration - 0.03);
+    g2.gain.linearRampToValueAtTime(0.0001, time + duration);
     g.gain.setValueAtTime(0, time);
     g.gain.linearRampToValueAtTime(Math.min(0.3, vol * 0.5), time + 0.035);
     g.gain.setValueAtTime(Math.min(0.3, vol * 0.5), time + duration - 0.03);
     g.gain.linearRampToValueAtTime(0.0001, time + duration);
+    if (musicIntensity >= 3) {
+        const o5 = audioCtx.createOscillator();
+        const g5 = audioCtx.createGain();
+        o5.type = 'sine';
+        o5.frequency.setValueAtTime(midiToFreq(note + 7), time);
+        g5.gain.setValueAtTime(0, time);
+        g5.gain.linearRampToValueAtTime(Math.min(0.08, vol * 0.2), time + 0.035);
+        g5.gain.linearRampToValueAtTime(0.0001, time + duration - 0.02);
+        o5.connect(g5).connect(musicMasterGain);
+        o5.start(time); o5.stop(time + duration + 0.05);
+    }
     o.connect(g).connect(musicMasterGain);
+    o2.connect(g2).connect(musicMasterGain);
     o.start(time); o.stop(time + duration + 0.05);
+    o2.start(time); o2.stop(time + duration + 0.05);
 }
 
-function scheduleMelodyNote(note, time, duration, gain = 0.4) {
+function scheduleMelodyNote(note, time, duration, gain = 0.4, harmonyInterval = 0) {
     if (!audioCtx || musicVolume() <= 0) return;
     if (!Number.isFinite(note) || !Number.isFinite(gain) || gain <= 0) return;
     time = Math.max(0, time);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
+    if (harmonyInterval !== 0) {
+        const ho = audioCtx.createOscillator();
+        const hg = audioCtx.createGain();
+        ho.type = 'triangle';
+        ho.frequency.setValueAtTime(midiToFreq(note + harmonyInterval), time);
+        hg.gain.setValueAtTime(0, time);
+        hg.gain.linearRampToValueAtTime(Math.min(0.12, vol * 0.4), time + 0.006);
+        hg.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        ho.connect(hg).connect(musicMasterGain);
+        ho.start(time); ho.stop(time + duration + 0.05);
+    }
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     const styleChar = (MUSIC_STYLES[musicStyle] || {}).char;
@@ -653,11 +686,19 @@ function scheduleMelodyNote(note, time, duration, gain = 0.4) {
         g.gain.setValueAtTime(0, time);
         g.gain.linearRampToValueAtTime(Math.min(0.35, vol), time + 0.003);
         g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        const po = audioCtx.createOscillator();
+        const pg = audioCtx.createGain();
+        po.type = 'square';
+        po.frequency.setValueAtTime(midiToFreq(note + 7), time);
+        pg.gain.setValueAtTime(0, time);
+        pg.gain.linearRampToValueAtTime(Math.min(0.2, vol * 0.55), time + 0.003);
+        pg.gain.exponentialRampToValueAtTime(0.0001, time + duration);
         const clipper = audioCtx.createWaveShaper();
         const curve = new Float32Array(256);
         for (let i = 0; i < 256; i++) { const x = (i / 256) * 2 - 1; curve[i] = Math.max(-0.6, Math.min(0.6, x * 1.8)); }
         clipper.curve = curve;
         o.connect(g).connect(clipper).connect(musicMasterGain);
+        po.connect(pg).connect(clipper);
     } else if (styleChar === 'funk') {
         o.type = 'triangle';
         o.frequency.setValueAtTime(midiToFreq(note), time);
@@ -913,9 +954,9 @@ function buildMusicPattern(intensity, barIndex) {
                 if (!isMelodySection) return null;
                 if (beat % 4 !== 1) return null;
                 const arp = [pool[rootIdx + contraChord.rootOff], pool[rootIdx + contraChord.rootOff + 2], pool[rootIdx + contraChord.rootOff + (contraChord.qual === 1 ? 4 : 3)], pool[rootIdx + contraChord.rootOff + 7]];
-                return { note: arp[Math.floor(beat / 4) % 4], gain: 0.15, dur: beatSec * 0.35 };
+                return { note: arp[Math.floor(beat / 4) % 4], gain: 0.15, dur: beatSec * 0.35, harmony: 3 };
             },
-            fill: ({ beat }) => (beat === 15 && !isBreakdown) ? { fill: true } : null
+            fill: ({ beat }) => (barIndex % 8 === 7 && (beat === 14 || beat === 15) && !isBreakdown) ? { fill: true } : null
         },
         2: {
             drums: ({ beat }) => {
@@ -950,9 +991,9 @@ function buildMusicPattern(intensity, barIndex) {
                 if (section !== 1) return null;
                 if (beat % 2 !== 1) return null;
                 const arp = [pool[rootIdx + contraChord.rootOff], pool[rootIdx + contraChord.rootOff + 2], pool[rootIdx + contraChord.rootOff + (contraChord.qual === 1 ? 4 : 3)], pool[rootIdx + contraChord.rootOff + 7]];
-                return { note: arp[Math.floor(beat / 2) % 4], gain: 0.18, dur: beatSec * 0.3 };
+                return { note: arp[Math.floor(beat / 2) % 4], gain: 0.18, dur: beatSec * 0.3, harmony: 4 };
             },
-            fill: ({ beat }) => (beat === 15 && !isBreakdown) ? { fill: true } : null
+            fill: ({ beat }) => (barIndex % 8 === 7 && (beat === 14 || beat === 15) && !isBreakdown) ? { fill: true } : null
         },
         3: {
             drums: ({ beat }) => {
@@ -989,9 +1030,9 @@ function buildMusicPattern(intensity, barIndex) {
             contra: ({ beat }) => {
                 if (beat % 2 !== 1) return null;
                 const arp = [pool[rootIdx + contraChord.rootOff], pool[rootIdx + contraChord.rootOff + 2], pool[rootIdx + contraChord.rootOff + (contraChord.qual === 1 ? 4 : 3)], pool[rootIdx + contraChord.rootOff + 7]];
-                return { note: arp[Math.floor(beat / 2) % 4], gain: 0.2, dur: beatSec * 0.3 };
+                return { note: arp[Math.floor(beat / 2) % 4], gain: 0.2, dur: beatSec * 0.3, harmony: 3 };
             },
-            fill: ({ beat }) => (beat === 15 && section !== 2) ? { fill: true } : null
+            fill: ({ beat }) => (barIndex % 8 === 7 && (beat === 14 || beat === 15) && section !== 2) ? { fill: true } : null
         }
     };
     return patterns[intensity] || patterns[1];
@@ -1029,7 +1070,7 @@ function scheduleMusicBar(pattern, barStart, beatSec) {
         const mel = pattern.melody(beat);
         if (mel) { const melNote = melodyPhrase[Math.floor(b * melodyPhrase.length / beats) % melodyPhrase.length]; if (Number.isFinite(melNote)) scheduleMelodyNote(melNote, Math.max(0, t + (mel.humanMs || 0) / 1000), mel.dur, mel.gain); }
         const contra = pattern.contra ? pattern.contra(beat) : null;
-        if (contra && Number.isFinite(contra.note)) scheduleMelodyNote(contra.note, Math.max(0, t + (contra.humanMs || 0) / 1000), contra.dur, contra.gain);
+        if (contra && Number.isFinite(contra.note)) scheduleMelodyNote(contra.note, Math.max(0, t + (contra.humanMs || 0) / 1000), contra.dur, contra.gain, contra.harmony || 0);
         const gl = pattern.glitch(beat);
         if (gl && Number.isFinite(gl.note)) scheduleGlitchNote(gl.note, Math.max(0, t + (gl.humanMs || 0) / 1000), gl.dur, gl.gain);
         const str = pattern.string ? pattern.string(beat) : null;
