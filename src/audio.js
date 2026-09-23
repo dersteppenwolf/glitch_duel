@@ -155,18 +155,58 @@ function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
 
 const HUMANIZE = { jitter: 0.006, swing: 0.005, ghost: 0.2 };
 
-function humanTime(time, beat) {
-    const swing = (beat % 2 === 1) ? (Math.random() - 0.5) * HUMANIZE.swing : 0;
-    const jitter = (Math.random() - 0.5) * HUMANIZE.jitter;
-    return time + Math.max(-0.01, Math.min(0.01, swing + jitter));
-}
-
 const MELODY_ACCENT = { downbeat: 1.2, upbeat: 0.85 };
 
 function accentGain(beat, baseGain) {
     if (beat % 4 === 0) return baseGain * MELODY_ACCENT.downbeat;
     if (beat % 2 === 1) return baseGain * MELODY_ACCENT.upbeat;
     return baseGain;
+}
+
+// NES-style pulse wave with adjustable duty cycle
+function createPulseWave(duty) {
+    if (!audioCtx) return null;
+    const real = new Float32Array(2);
+    const imag = new Float32Array(2);
+    real[0] = 0;
+    imag[0] = 0;
+    real[1] = 0;
+    imag[1] = 2 * Math.sin(Math.PI * duty) / Math.PI;
+    return audioCtx.createPeriodicWave(real, imag, { disableNormalization: true });
+}
+
+const NES_PULSE_WIDE = createPulseWave(0.25);
+const NES_PULSE_NARROW = createPulseWave(0.125);
+
+// Harmonic progressions: each value is [rootIdxOffset, chordQuality]
+// 0 = minor, 1 = major, 2 = sus4
+const HARMONY = {
+    1: { // A minor (Am) — rootIdx 2
+        chords: [{ rootOff: 0, qual: 0 }, { rootOff: 0, qual: 0 }, { rootOff: 5, qual: 0 }, { rootOff: 7, qual: 1 }]
+    },
+    2: {
+        chords: [{ rootOff: 0, qual: 0 }, { rootOff: 3, qual: 1 }, { rootOff: 5, qual: 0 }, { rootOff: 7, qual: 1 }]
+    },
+    3: { // B minor — rootIdx 4
+        chords: [{ rootOff: 0, qual: 0 }, { rootOff: 2, qual: 1 }, { rootOff: 5, qual: 0 }, { rootOff: 7, qual: 0 }]
+    }
+};
+
+function getChordRoot(intensity, barIndex) {
+    const prog = HARMONY[intensity] || HARMONY[1];
+    return prog.chords[barIndex % prog.chords.length];
+}
+
+// Walking bass: 4 notes per bar that walk toward the next chord root
+function buildWalkingBass(intensity, barIndex) {
+    const pool = MUSIC_CONFIG.notePool;
+    const rootIdx = intensity >= 3 ? 4 : 2;
+    const chord = getChordRoot(intensity, barIndex);
+    const rootNote = pool[rootIdx + chord.rootOff];
+    const nextChord = getChordRoot(intensity, barIndex + 1);
+    const nextRoot = pool[rootIdx + nextChord.rootOff];
+    const third = chord.qual === 1 ? 4 : 3;
+    return [rootNote, pool[rootIdx + chord.rootOff + 2], pool[rootIdx + chord.rootOff + third], nextRoot];
 }
 
 function scheduleDrumKick(time, gain = 0.5, humanMs = 0) {
@@ -272,26 +312,47 @@ function createWaveShaper(amount) {
 function buildMelodyPhrase(intensity, barIndex) {
     const pool = MUSIC_CONFIG.notePool;
     const rootIdx = intensity >= 3 ? 4 : 2;
-    if (!melodyPhrases[intensity]) {
-        const phrases = {
+    const section = Math.floor(barIndex / 8) % 3;
+    if (!melodyPhrases[intensity]) melodyPhrases[intensity] = {};
+    const key = `${intensity}_${section}`;
+    if (!melodyPhrases[intensity][key]) {
+        const p = pool;
+        const r = rootIdx;
+        const melodies = {
+            // Intensidad 1 — A menor, melodía tipo Ninja Gaiden lenta
             1: [
-                [pool[rootIdx + 4], pool[rootIdx + 4], pool[rootIdx + 5], pool[rootIdx + 4]],
-                [pool[rootIdx + 7], pool[rootIdx + 5], pool[rootIdx + 4], pool[rootIdx + 2]]
+                // Sección A (compases 1-4): tema estable
+                [p[r+4], p[r+4], p[r+7], p[r+5],  p[r+4], p[r+8], p[r+7], p[r+5],
+                 p[r+4], p[r+4], p[r+7], p[r+9],  p[r+7], p[r+8], p[r+7], p[r+5]],
+                // Sección B: respuesta más aguda
+                [p[r+7], p[r+8], p[r+9], p[r+7],  p[r+8], p[r+9], p[r+11], p[r+7],
+                 p[r+6], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+5], p[r+4], p[r+2]],
+                // Sección C: breakdown — solo notas largas
+                [p[r+4], p[r+4], p[r+2], p[r+2],  p[r+5], p[r+5], p[r+4], p[r+4],
+                 p[r+2], p[r+2], p[r+0], p[r+0],  p[r+4], p[r+5], p[r+7], p[r+5]],
             ],
+            // Intensidad 2 — más movimiento, arpegios
             2: [
-                [pool[rootIdx + 4], pool[rootIdx + 6], pool[rootIdx + 5], pool[rootIdx + 4], pool[rootIdx + 3], pool[rootIdx + 5], pool[rootIdx + 4], pool[rootIdx + 2]],
-                [pool[rootIdx + 7], pool[rootIdx + 6], pool[rootIdx + 5], pool[rootIdx + 7], pool[rootIdx + 4], pool[rootIdx + 5], pool[rootIdx + 4], pool[rootIdx + 2]]
+                [p[r+4], p[r+6], p[r+7], p[r+6],  p[r+4], p[r+6], p[r+7], p[r+9],
+                 p[r+7], p[r+6], p[r+4], p[r+2],  p[r+4], p[r+6], p[r+7], p[r+6]],
+                [p[r+7], p[r+9], p[r+11], p[r+9],  p[r+7], p[r+6], p[r+7], p[r+9],
+                 p[r+6], p[r+7], p[r+9], p[r+6],  p[r+4], p[r+2], p[r+4], p[r+2]],
+                [p[r+4], p[r+5], p[r+7], p[r+5],  p[r+4], p[r+2], p[r+0], p[r+2],
+                 p[r+4], p[r+5], p[r+7], p[r+9],  p[r+7], p[r+5], p[r+4], p[r+2]],
             ],
+            // Intensidad 3 — rápida, estilo Contra, B menor
             3: [
-                [pool[rootIdx + 4], pool[rootIdx + 5], pool[rootIdx + 7], pool[rootIdx + 5], pool[rootIdx + 4], pool[rootIdx + 3], pool[rootIdx + 4], pool[rootIdx + 6],
-                 pool[rootIdx + 7], pool[rootIdx + 8], pool[rootIdx + 7], pool[rootIdx + 5], pool[rootIdx + 4], pool[rootIdx + 2], pool[rootIdx + 1], pool[rootIdx + 2]]
-            ]
+                [p[r+4], p[r+7], p[r+4], p[r+7],  p[r+5], p[r+4], p[r+5], p[r+7],
+                 p[r+4], p[r+7], p[r+4], p[r+7],  p[r+9], p[r+7], p[r+5], p[r+4]],
+                [p[r+7], p[r+9], p[r+7], p[r+9],  p[r+11], p[r+9], p[r+7], p[r+6],
+                 p[r+5], p[r+4], p[r+5], p[r+7],  p[r+4], p[r+5], p[r+7], p[r+9]],
+                [p[r+4], p[r+4], p[r+5], p[r+5],  p[r+7], p[r+7], p[r+8], p[r+8],
+                 p[r+7], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+5], p[r+7], p[r+5]],
+            ],
         };
-        melodyPhrases[intensity] = phrases[intensity] || phrases[1];
+        melodyPhrases[intensity][key] = (melodies[intensity] || melodies[1])[section % 3];
     }
-    const phraseArr = melodyPhrases[intensity];
-    if (!phraseArr || phraseArr.length === 0) return [pool[rootIdx + 4]];
-    return phraseArr[barIndex % phraseArr.length];
+    return melodyPhrases[intensity][key];
 }
 
 function scheduleBassNote(note, time, duration, gain = 0.5) {
@@ -310,11 +371,10 @@ function scheduleBassNote(note, time, duration, gain = 0.5) {
         o.frequency.setValueAtTime(midiToFreq(note), time);
     }
     g.gain.setValueAtTime(0, time);
-    g.gain.linearRampToValueAtTime(Math.min(0.35, vol * 0.6), time + 0.025);
-    g.gain.setValueAtTime(Math.min(0.35, vol * 0.6), time + duration - 0.04);
+    g.gain.linearRampToValueAtTime(Math.min(0.3, vol * 0.5), time + 0.035);
+    g.gain.setValueAtTime(Math.min(0.3, vol * 0.5), time + duration - 0.03);
     g.gain.linearRampToValueAtTime(0.0001, time + duration);
-    const dist = createWaveShaper(0.6);
-    o.connect(g).connect(dist).connect(musicMasterGain);
+    o.connect(g).connect(musicMasterGain);
     o.start(time); o.stop(time + duration + 0.05);
 }
 
@@ -323,31 +383,21 @@ function scheduleMelodyNote(note, time, duration, gain = 0.4) {
     if (!Number.isFinite(note) || !Number.isFinite(gain) || gain <= 0) return;
     time = Math.max(0, time);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
-    const appogg = Math.random() < 0.2;
-    if (appogg) {
-        const graceDuration = 0.03;
-        const graceNote = note + (Math.random() < 0.5 ? 8 : -2);
-        const og = audioCtx.createOscillator();
-        const gg = audioCtx.createGain();
-        og.type = 'triangle';
-        og.frequency.setValueAtTime(midiToFreq(graceNote), time);
-        gg.gain.setValueAtTime(0, time);
-        gg.gain.linearRampToValueAtTime(Math.min(0.2, vol * 0.6), time + 0.003);
-        gg.gain.linearRampToValueAtTime(0.0001, time + graceDuration);
-        og.connect(gg).connect(musicMasterGain);
-        gg.connect(musicDelay);
-        og.start(time); og.stop(time + graceDuration + 0.01);
-    }
+    const pw = (musicIntensity >= 3 && NES_PULSE_NARROW) ? NES_PULSE_NARROW : (NES_PULSE_WIDE || null);
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    o.type = 'triangle';
-    o.frequency.setValueAtTime(midiToFreq(note), appogg ? time + 0.03 : time);
+    if (pw) o.setPeriodicWave(pw);
+    else o.type = 'square';
+    o.frequency.setValueAtTime(midiToFreq(note), time);
     g.gain.setValueAtTime(0, time);
-    g.gain.linearRampToValueAtTime(Math.min(0.3, vol), time + 0.006);
+    g.gain.linearRampToValueAtTime(Math.min(0.3, vol), time + 0.005);
     g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
-    o.connect(g).connect(musicMasterGain);
-    g.connect(musicDelay);
-    o.start(appogg ? time + 0.03 : time); o.stop(time + duration + 0.05);
+    const clipper = audioCtx.createWaveShaper();
+    const curve = new Float32Array(256);
+    for (let i = 0; i < 256; i++) { const x = (i / 256) * 2 - 1; curve[i] = Math.max(-0.8, Math.min(0.8, x * 1.4)); }
+    clipper.curve = curve;
+    o.connect(g).connect(clipper).connect(musicMasterGain);
+    o.start(time); o.stop(time + duration + 0.05);
 }
 
 function scheduleGlitchNote(note, time, duration, gain = 0.2) {
@@ -443,10 +493,10 @@ function buildMusicPattern(intensity, barIndex) {
     const beatSec = beatMs / 1000;
     const pool = MUSIC_CONFIG.notePool;
     const rootIdx = intensity >= 3 ? 4 : 2;
-    const breathEvery = 8;
-    const breakdownEvery = 16;
-    const breathActive = barIndex > 0 && barIndex % breathEvery === 0;
-    const breakdownActive = barIndex > 0 && barIndex % breakdownEvery === 0;
+    const section = Math.floor(barIndex / 8) % 3;
+    const isBreakdown = section === 2;
+    const isMelodySection = section === 0;
+    const walkingBass = buildWalkingBass(intensity, barIndex);
 
     function humanizeMs(beat) {
         return (Math.random() - 0.5) * HUMANIZE.jitter * 1000;
@@ -456,86 +506,86 @@ function buildMusicPattern(intensity, barIndex) {
         return (beat % 2 === 1) ? HUMANIZE.swing * 1000 : 0;
     }
 
+    const bassForBeat = (beat) => {
+        const bassIdx = Math.floor(beat / 4) % 4;
+        const note = walkingBass[bassIdx];
+        if (!Number.isFinite(note)) return null;
+        if (isBreakdown && beat > 8) return null;
+        return { note, gain: 0.45 + Math.random() * 0.08, dur: beatSec * 0.9, humanMs: humanizeMs(beat) };
+    };
+
     const patterns = {
         1: {
             drums: ({ beat }) => {
-                if (breakdownActive && beat > 2 && beat < 14) return null;
-                if (breathActive && (beat === 8 || beat === 9)) return null;
+                if (isBreakdown) {
+                    if (beat % 4 === 0) return { type: 'kick', gain: 0.4, humanMs: swingMs(beat) + humanizeMs(beat) };
+                    if (beat % 4 === 2) return { type: 'hat', gain: 0.1, humanMs: swingMs(beat) + humanizeMs(beat) };
+                    return null;
+                }
                 if (beat % 4 === 0) return { type: 'kick', gain: 0.35 + Math.random() * 0.15, humanMs: swingMs(beat) + humanizeMs(beat) };
                 if (beat % 8 === 6) return { type: 'snare', gain: 0.25 + Math.random() * 0.1, humanMs: swingMs(beat) + humanizeMs(beat) };
                 if (beat % 4 === 2) return { type: 'hat', gain: 0.1 + Math.random() * 0.08, humanMs: swingMs(beat) + humanizeMs(beat) };
-                if (beat % 4 === 3 && Math.random() < 0.15) return { type: 'snare', gain: 0.08 + Math.random() * 0.05, humanMs: swingMs(beat) + humanizeMs(beat) };
                 return null;
             },
-            bass: ({ beat }) => {
-                if (breathActive && beat > 6 && beat < 12) return null;
-                if (beat % 8 === 0) return { note: pool[rootIdx], gain: 0.4 + Math.random() * 0.1, dur: beatSec * 4, humanMs: humanizeMs(beat) };
-                return null;
-            },
+            bass: bassForBeat,
             melody: ({ beat }) => {
-                if (breathActive && beat > 4) return null;
+                if (isBreakdown) return null;
                 if (beat % 8 !== 0) return null;
-                return { note: pool[rootIdx + 4], gain: accentGain(beat, 0.3) + Math.random() * 0.05, dur: beatSec * 2, humanMs: humanizeMs(beat) };
+                return { note: pool[rootIdx + 4], gain: accentGain(beat, 0.3) + Math.random() * 0.05, dur: beatSec * 1.8, humanMs: humanizeMs(beat) };
             },
             glitch: () => null,
-            pad: () => null
+            pad: ({ beat }) => (isMelodySection && beat === 0) ? { gain: 0.06 } : null
         },
         2: {
             drums: ({ beat }) => {
-                if (breakdownActive && (beat < 2 || beat > 13)) return null;
-                if (breathActive && (beat === 7 || beat === 11)) return { type: 'hat', gain: 0.1, humanMs: swingMs(beat) + humanizeMs(beat) };
+                if (isBreakdown) {
+                    if (beat % 2 === 0) return { type: 'kick', gain: 0.4, humanMs: swingMs(beat) + humanizeMs(beat) };
+                    if (beat % 4 === 1) return { type: 'snare', gain: 0.2, humanMs: swingMs(beat) + humanizeMs(beat) };
+                    return null;
+                }
                 if (beat % 4 === 0) return { type: 'kick', gain: 0.4 + Math.random() * 0.15, humanMs: swingMs(beat) + humanizeMs(beat) };
                 if (beat % 4 === 2) return { type: 'snare', gain: 0.3 + Math.random() * 0.12, humanMs: swingMs(beat) + humanizeMs(beat) };
-                if ((beat === 1 || beat === 3 || beat === 9 || beat === 11)) return { type: 'hat', gain: 0.12 + Math.random() * 0.08, humanMs: swingMs(beat) + humanizeMs(beat) };
-                if (beat % 4 === 3 && Math.random() < 0.3) return { type: 'snare', gain: 0.08 + Math.random() * 0.06, humanMs: swingMs(beat) + humanizeMs(beat) };
+                if (beat % 2 === 1) return { type: 'hat', gain: 0.12 + Math.random() * 0.08, humanMs: swingMs(beat) + humanizeMs(beat) };
                 return null;
             },
-            bass: ({ beat }) => {
-                if (breathActive && beat > 6 && beat < 12) return null;
-                const pats = [
-                    { note: pool[rootIdx], gain: 0.45, dur: beatSec * 4 },
-                    { note: pool[rootIdx - 2], gain: 0.45, dur: beatSec * 4 }
-                ];
-                const n = pats[Math.floor(beat / 8) % pats.length];
-                return { ...n, gain: n.gain + Math.random() * 0.08, humanMs: humanizeMs(beat) };
-            },
+            bass: bassForBeat,
             melody: ({ beat }) => {
-                if (breathActive && beat > 6) return null;
+                if (isBreakdown) return null;
                 if (beat % 4 !== 0) return null;
-                return { note: pool[rootIdx + 3 + (Math.floor(beat / 8) % 3)], gain: accentGain(beat, 0.35) + Math.random() * 0.05, dur: beatSec * 1.5, humanMs: humanizeMs(beat) };
+                return { note: pool[rootIdx + 3 + (Math.floor(barIndex / 8) % 3)], gain: accentGain(beat, 0.35) + Math.random() * 0.05, dur: beatSec * 1.5, humanMs: humanizeMs(beat) };
             },
             glitch: ({ beat }) => {
+                if (isBreakdown) return null;
                 if (beat % 12 !== 0) return null;
-                return { note: pool[(beat + Math.floor(beat / 12)) % pool.length], gain: 0.15 + Math.random() * 0.08, dur: beatSec * 0.5, humanMs: humanizeMs(beat) };
+                return { note: pool[(beat + Math.floor(beat / 12)) % pool.length], gain: 0.18 + Math.random() * 0.06, dur: beatSec * 0.4, humanMs: humanizeMs(beat) };
             },
-            pad: () => ({ gain: 0.07 })
+            pad: ({ beat }) => (beat === 0) ? { gain: 0.07 } : null
         },
         3: {
             drums: ({ beat }) => {
-                if (breakdownActive && (beat < 2 || beat > 13)) return null;
-                if (breathActive && beat === 7) return null;
+                if (isBreakdown) {
+                    if (beat % 2 === 0) return { type: 'kick', gain: 0.45, humanMs: swingMs(beat) + humanizeMs(beat) };
+                    if (beat % 4 === 3) return { type: 'snare', gain: 0.3, humanMs: swingMs(beat) + humanizeMs(beat) };
+                    return null;
+                }
                 if (beat % 4 === 0 || beat % 8 === 6) return { type: 'kick', gain: 0.45 + Math.random() * 0.15, humanMs: swingMs(beat) + humanizeMs(beat) };
                 if (beat % 4 === 2) return { type: 'kick', gain: 0.25 + Math.random() * 0.12, humanMs: swingMs(beat) + humanizeMs(beat) };
                 if (beat % 4 === 3 || beat % 8 === 5) return { type: 'snare', gain: 0.35 + Math.random() * 0.12, humanMs: swingMs(beat) + humanizeMs(beat) };
                 if (beat % 2 === 1) return { type: 'hat', gain: 0.15 + Math.random() * 0.08, humanMs: swingMs(beat) + humanizeMs(beat) };
-                if (beat % 4 === 1 && Math.random() < 0.25) return { type: 'snare', gain: 0.08 + Math.random() * 0.05, humanMs: swingMs(beat) + humanizeMs(beat) };
                 return { type: 'hat', gain: 0.08 + Math.random() * 0.06, humanMs: swingMs(beat) + humanizeMs(beat) };
             },
-            bass: ({ beat }) => {
-                if (breathActive && (beat === 6 || beat === 7)) return null;
-                const notes = [pool[rootIdx], pool[rootIdx - 1], pool[rootIdx - 2], pool[rootIdx - 3]];
-                return { note: notes[beat % 4], gain: 0.45 + Math.random() * 0.12, dur: beatSec * 1.5, humanMs: humanizeMs(beat) };
-            },
+            bass: bassForBeat,
             melody: ({ beat }) => {
-                if (breathActive && beat > 5 && beat < 10) return null;
+                if (isBreakdown) return null;
                 if (beat % 2 !== 0) return null;
                 return { note: pool[rootIdx + 4 + (Math.floor(beat / 2) % 4)], gain: accentGain(beat, 0.4) + Math.random() * 0.06, dur: beatSec * 0.8, humanMs: humanizeMs(beat) };
             },
             glitch: ({ beat }) => {
+                if (isBreakdown) return null;
                 if (beat % 6 !== 0) return null;
-                return { note: pool[(beat + Math.floor(beat / 6) * 3) % pool.length], gain: 0.2 + Math.random() * 0.08, dur: beatSec * 0.3, humanMs: humanizeMs(beat) };
+                return { note: pool[(beat + Math.floor(beat / 6) * 3) % pool.length], gain: 0.22 + Math.random() * 0.08, dur: beatSec * 0.25, humanMs: humanizeMs(beat) };
             },
-            pad: () => ({ gain: 0.1 })
+            pad: ({ beat }) => (beat === 0) ? { gain: 0.1 } : null
         }
     };
     return patterns[intensity] || patterns[1];
@@ -545,6 +595,7 @@ function scheduleMusicBar(pattern, barStart, beatSec) {
     if (!audioCtx || musicPaused) return;
     const beats = 16;
     const melodyPhrase = buildMelodyPhrase(musicIntensity || 1, musicBarIndex);
+    if (!melodyPhrase || melodyPhrase.length === 0) return;
     let padScheduled = false;
     for (let b = 0; b < beats; b++) {
         const beat = { beat: b, total: beats };
