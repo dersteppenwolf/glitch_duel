@@ -5958,4 +5958,48 @@ test('scenario: player blocking repeatedly triggers anti-turtle', () => {
     assert(pressureAction, 'CPU should use pressure actions against repeated blocking');
 });
 
+test('corner escape: CPU moves from wall after consecutiveCornerHits >= 3', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    setupScenario(api, { p1x: 480, p2x: 55, seed: 42 });
+    const p2 = getP2(api);
+    p2.consecutiveCornerHits = 3;
+    p2.aiDecisionTimer = 0;
+    for (let i = 0; i < 50; i++) {
+        const cpu = getP2(api);
+        cpu.aiDecisionTimer = 0;
+        api.advanceSimulation(16.666);
+    }
+    assert(getP2(api).x > 80, 'CPU must move away from wall (x=' + getP2(api).x + ')');
+});
+
+test('corner escape: CPU with energy escapes corner', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    setupScenario(api, { p1x: 200, p2x: 55, seed: 7 });
+    const p2 = getP2(api);
+    p2.energy = 100;
+    p2.consecutiveCornerHits = 3;
+    p2.aiDecisionTimer = 0;
+    for (let i = 0; i < 50; i++) {
+        const cpu = getP2(api);
+        cpu.aiDecisionTimer = 0;
+        api.advanceSimulation(16.666);
+    }
+    assert(getP2(api).x > 80, 'CPU must escape corner with energy (x=' + getP2(api).x + ')');
+});
+
+test('corner escape: CPU moves away after post-block hit', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    setupScenario(api, { p1x: 480, p2x: 55, seed: 1 });
+    const p2 = getP2(api);
+    p2.lastBlockedAttackFrame = 1;
+    p2.consecutiveCornerHits = 2;
+    p2.aiDecisionTimer = 0;
+    for (let i = 0; i < 50; i++) {
+        const cpu = getP2(api);
+        cpu.aiDecisionTimer = 0;
+        api.advanceSimulation(16.666);
+    }
+    assert(getP2(api).x > 80, 'CPU must escape corner during post-block window (x=' + getP2(api).x + ')');
+});
+
 

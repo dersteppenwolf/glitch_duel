@@ -42,7 +42,9 @@ function chooseAIAction({
 aiLearningState,
     aiLearningTable,
     decisionMeta,
-    adaptivePressure = 0
+    adaptivePressure = 0,
+    consecutiveCornerHits = 0,
+    lastBlockedFrame = -99
 }) {
 const protectedAction = (action) => {
         if (decisionMeta) {
@@ -74,6 +76,21 @@ const protectedAction = (action) => {
             zoneAttackBias * (difficulty.zoneBlockBonus ?? 0)
     );
 
+const framesSinceBlock = matchElapsedFrames - lastBlockedFrame;
+    const forcedEscapeHits = consecutiveCornerHits >= 3;
+    const cornerEscapeNow = cpuCorneredByWall && (
+        forcedEscapeHits ||
+        (framesSinceBlock <= 15 && framesSinceBlock >= 0)
+    );
+
+    // Escape prioritario post-bloqueo o tras N golpes consecutivos
+    if (cornerEscapeNow && onGround && canAttack) {
+        if (specialReady && dist <= ATTACKS.special.range) return protectedAction('special');
+        if (kickReady && dist <= ATTACKS.kick.range) return protectedAction('kick');
+        if (punchReady && dist <= ATTACKS.punch.range) return protectedAction('punch');
+        return protectedAction(rand < (difficulty.cornerJump ?? 0.45) ? 'jump' : 'escape');
+    }
+
     // Hesitation never disables a live grounded defensive response.
     if (postHitPause) return protectedAction(opponentAttacking && onGround && dist < 170 ? 'block' : 'idle');
 
@@ -83,6 +100,17 @@ const protectedAction = (action) => {
         if (canAirPunch) return protectedAction('airPunch');
         if (canAirKick) return protectedAction('airKick');
         return protectedAction('idle');
+    }
+
+    // En esquina, el whiff punish tiene prioridad sobre blockear
+    if (cpuCorneredByWall && opponentWhiffed && opponentRecovery > 0 && rand < (difficulty.whiffPunishChance ?? 0)) {
+        if (opponentRecovery > (difficulty.punishSafetyFrames ?? 0)) {
+            if (kickReady && dist <= ATTACKS.kick.range) return protectedAction('kick');
+            if (punchReady && dist <= ATTACKS.punch.range) return protectedAction('punch');
+            if (kickReady && dist > ATTACKS.punch.range) return protectedAction('kick');
+            if (punchReady) return protectedAction('punch');
+            if (whiffIntercept) return protectedAction('punish');
+        }
     }
 
     if (opponentWhiffed && opponentRecovery > 0 && rand < (difficulty.whiffPunishChance ?? 0)) {
@@ -129,9 +157,14 @@ const protectedAction = (action) => {
         }
     }
 
-if (cornerState === 'corner-escape-window' && !opponentAttacking && opponentAttackBias <= 0.5 &&
-        repeatedAttackBias <= 0.5 && canAttack && dist < AI_TACTICS.cornerPressureRange &&
-        rand < (difficulty.cornerEscapeChance ?? 0)) return protectedAction('escape');
+if (cornerState === 'corner-escape-window' && canAttack && dist < AI_TACTICS.cornerPressureRange) {
+        const escapeChance = Math.min(0.90, (difficulty.cornerEscapeChance ?? 0) * 2.0 + 0.20 +
+            (opponentAttackBias > 0.5 ? 0.15 : 0) + (repeatedAttackBias > 0.5 ? 0.10 : 0));
+        if (rand < escapeChance) {
+            if (specialReady && dist <= ATTACKS.special.range) return protectedAction('special');
+            return protectedAction('escape');
+        }
+    }
 
     if (latePressure && !opponentAttacking) {
         return protectedAction(chooseAIPressureAction(dist, punchReady, kickReady));
@@ -156,10 +189,16 @@ if (cornerState === 'corner-escape-window' && !opponentAttacking && opponentAtta
 
     // Keep close-wall defense first-match; variation only chooses neutral options.
 if (cornerState === 'cornered-under-pressure') {
-        if (onGround && opponentAttacking) return protectedAction('block');
+        if (onGround && opponentAttacking) {
+            if (specialReady && dist <= ATTACKS.special.range && rand < 0.50) return protectedAction('special');
+            if (repeatedAttackBias > 0.5 && counterTimer > 0 && kickReady && dist <= ATTACKS.kick.range && rand < difficulty.counterChance) return protectedAction('kick');
+            if (repeatedAttackBias > 0.5 && counterTimer > 0 && punchReady && dist <= ATTACKS.punch.range && rand < difficulty.counterChance) return protectedAction('punch');
+            return protectedAction('block');
+        }
         if (kickReady && dist > ATTACKS.punch.range && rand < difficulty.kickClose) return protectedAction('kick');
         if (punchReady && rand < difficulty.punchClose) return protectedAction('punch');
         if (kickReady && rand < difficulty.kickClose) return protectedAction('kick');
+        if (consecutiveCornerHits >= 2 && rand < (difficulty.cornerJump ?? 0.45)) return protectedAction('jump');
         return protectedAction('block');
     }
 

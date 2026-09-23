@@ -43,6 +43,8 @@ this.glitchCancelEnabled = false;
         this.glitchCancelUsed = false;
         this.glitchCancelFeedbackFrames = 0;
         this.adaptivePressure = 0;
+        this.consecutiveCornerHits = 0;
+        this.lastBlockedAttackFrame = -20;
         this.aiCounterTimer = 0;
         this.aiPostHitTimer = 0;
         this.aiEscapeDirection = 0;
@@ -527,6 +529,8 @@ this.aiAction = chooseAIAction({
                 difficulty,
                 rand,
                 adaptivePressure: this.adaptivePressure,
+                consecutiveCornerHits: this.consecutiveCornerHits,
+                lastBlockedFrame: this.lastBlockedAttackFrame,
                 aiLearningState: this.aiLearning ? this.encodeLearningState(dist, opponent, difficulty) : undefined,
                 aiLearningTable: this.aiLearning ? this.aiLearning.table : undefined,
                 decisionMeta
@@ -775,6 +779,10 @@ if (latePressure && this.onGround && this.aiAction === 'retreat') {
             this.onGround = true;
             this.airAttackUsed = false;
         }
+        if (!this.isPlayer1 && this.consecutiveCornerHits > 0) {
+            const stillNearWall = this.x <= AI_TACTICS.wallMargin + 30 || this.x >= WIDTH - AI_TACTICS.wallMargin - 30;
+            if (!stillNearWall) this.consecutiveCornerHits = 0;
+        }
     }
 
     getHurtBoxForPosture(posture = 'standing') {
@@ -949,7 +957,7 @@ if (outcome === 'whiff') triggerWhiffFeedback(attackBox, this.accentColor);
         this.clearComboSequence();
         this.endGlitchCancelSequence();
 
-        if (this.state === 'block') {
+if (this.state === 'block') {
             const healthBefore = this.health;
             damage = Math.floor(damage * BLOCK_DAMAGE_MULTIPLIER);
             this.health = Math.max(0, this.health - damage);
@@ -959,6 +967,10 @@ if (outcome === 'whiff') triggerWhiffFeedback(attackBox, this.accentColor);
                 const difficulty = getDifficultyConfig();
                 this.aiCounterTimer = difficulty.counterWindow ?? 14;
                 this.aiDecisionTimer = 0;
+                this.lastBlockedAttackFrame = matchElapsedFrames;
+                const nearWall = this.x <= AI_TACTICS.wallMargin || this.x >= WIDTH - AI_TACTICS.wallMargin;
+                if (nearWall) this.consecutiveCornerHits++;
+                else this.consecutiveCornerHits = 0;
             }
             addCombatText(this.x, this.y - 80, getImpactPhrase(attacker.lastAttackType, true), '#33f', 'block');
             showStatusMessage(t('blockStatus'), 28);
@@ -981,11 +993,14 @@ const healthBefore = this.health;
         triggerImpactFeedback(this.x, this.y - 55, impactDirection, false, attacker.accentColor, attacker);
         playImpactSound(attacker.lastAttackType);
 
-        if (!this.isPlayer1) {
+if (!this.isPlayer1) {
             this.aiDecisionTimer = 0;
             this.aiAction = 'idle';
             this.aiEscapeDirection = 0;
             this.aiPostHitTimer = getDifficultyConfig().postHitPauseFrames;
+            const nearWall = this.x <= AI_TACTICS.wallMargin || this.x >= WIDTH - AI_TACTICS.wallMargin;
+            if (nearWall) this.consecutiveCornerHits++;
+            else this.consecutiveCornerHits = 0;
         }
 
         const contextual = contactHighlight && combatCaptionFrames === 0;
