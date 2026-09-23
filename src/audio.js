@@ -262,9 +262,12 @@ function scheduleCrashOnNewSection(barIndex, beatSec) {
 }
 
 const MUSIC_STYLES = {
-    default: { label: 'Defecto', bpm: 130, noteOffset: 0, rootIdx: 2, char: 'normal' },
-    baroquePunk: { label: 'Barroco Punk', bpm: 150, noteOffset: 0, rootIdx: 2, char: 'baroque' },
-    synthKarate: { label: 'Synth Karate', bpm: 140, noteOffset: 3, rootIdx: 2, char: 'synth' }
+    bitDuel: { label: 'Bit Duel', bpm: 130, noteOffset: 0, rootIdx: 2, char: 'default' },
+    baroqueBash: { label: 'Baroque Bash', bpm: 150, noteOffset: 0, rootIdx: 2, char: 'baroque' },
+    neonFury: { label: 'Neon Fury', bpm: 140, noteOffset: 3, rootIdx: 2, char: 'synth' },
+    glitchAssault: { label: 'Glitch Assault', bpm: 180, noteOffset: 0, rootIdx: 2, char: 'metal' },
+    retroGroove: { label: 'Retro Groove', bpm: 115, noteOffset: 0, rootIdx: 2, char: 'funk' },
+    voidReach: { label: 'Void Reach', bpm: 80, noteOffset: 0, rootIdx: 2, char: 'ambient' }
 };
 
 function setMusicStyle(style) {
@@ -489,7 +492,85 @@ function buildMelodyPhrase(intensity, barIndex) {
                      p[r+4], p[r+5], p[r+7], p[r+9],  p[r+7], p[r+5], p[r+4], p[r+2]],
                 ]
             },
-            synthKarate: {
+            glitchAssault: {
+                1: [
+                    [p[r+4], p[r+4], p[r+7], p[r+7],  p[r+5], p[r+5], p[r+4], p[r+4],
+                     p[r+7], p[r+7], p[r+5], p[r+5],  p[r+4], p[r+4], p[r+2], p[r+2]],
+                    [p[r+7], p[r+9], p[r+7], p[r+5],  p[r+7], p[r+9], p[r+11], p[r+9],
+                     p[r+7], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+5], p[r+7], p[r+5]],
+                    [p[r+4], p[r+4], p[r+2], p[r+2],  p[r+0], p[r+0], p[r+2], p[r+2],
+                     p[r+4], p[r+5], p[r+7], p[r+9],  p[r+7], p[r+5], p[r+4], p[r+2]],
+                ],
+                2: [
+                    [p[r+4], p[r+7], p[r+8], p[r+7],  p[r+5], p[r+7], p[r+8], p[r+7],
+                     p[r+4], p[r+7], p[r+8], p[r+7],  p[r+9], p[r+7], p[r+5], p[r+4]],
+                    [p[r+7], p[r+9], p[r+11], p[r+9],  p[r+7], p[r+6], p[r+5], p[r+4],
+                     p[r+5], p[r+7], p[r+9], p[r+7],  p[r+5], p[r+4], p[r+2], p[r+0]],
+                    [p[r+4], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+5], p[r+4], p[r+2],
+                     p[r+0], p[r+2], p[r+4], p[r+5],  p[r+7], p[r+5], p[r+4], p[r+2]],
+                ],
+                3: [
+                    [p[r+4], p[r+7], p[r+4], p[r+7],  p[r+9], p[r+7], p[r+5], p[r+4],
+                     p[r+5], p[r+7], p[r+5], p[r+4],  p[r+2], p[r+4], p[r+2], p[r+0]],
+                    [p[r+7], p[r+9], p[r+11], p[r+9],  p[r+7], p[r+6], p[r+7], p[r+9],
+                     p[r+4], p[r+5], p[r+7], p[r+9],  p[r+7], p[r+5], p[r+4], p[r+2]],
+                    [p[r+4], p[r+2], p[r+4], p[r+5],  p[r+7], p[r+5], p[r+4], p[r+2],
+                     p[r+4], p[r+5], p[r+7], p[r+9],  p[r+7], p[r+5], p[r+4], p[r+2]],
+                ]
+            },
+            retroGroove: {
+                1: [
+                    [p[r+4], p[r+4], p[r+2], p[r+2],  p[r+4], p[r+4], p[r+7], p[r+7],
+                     p[r+5], p[r+5], p[r+4], p[r+4],  p[r+2], p[r+2], p[r+0], p[r+0]],
+                    [p[r+7], p[r+7], p[r+9], p[r+9],  p[r+7], p[r+7], p[r+5], p[r+5],
+                     p[r+4], p[r+4], p[r+5], p[r+5],  p[r+7], p[r+7], p[r+5], p[r+5]],
+                    [p[r+4], p[r+4], p[r+2], p[r+2],  p[r+0], p[r+0], p[r+2], p[r+2],
+                     p[r+4], p[r+4], p[r+5], p[r+5],  p[r+7], p[r+7], p[r+5], p[r+5]],
+                ],
+                2: [
+                    [p[r+4], p[r+6], p[r+4], p[r+6],  p[r+7], p[r+6], p[r+4], p[r+2],
+                     p[r+4], p[r+6], p[r+4], p[r+6],  p[r+7], p[r+9], p[r+7], p[r+6]],
+                    [p[r+7], p[r+9], p[r+7], p[r+9],  p[r+11], p[r+9], p[r+7], p[r+6],
+                     p[r+7], p[r+6], p[r+4], p[r+2],  p[r+4], p[r+6], p[r+7], p[r+6]],
+                    [p[r+4], p[r+4], p[r+2], p[r+2],  p[r+4], p[r+4], p[r+5], p[r+5],
+                     p[r+7], p[r+7], p[r+5], p[r+5],  p[r+4], p[r+4], p[r+2], p[r+2]],
+                ],
+                3: [
+                    [p[r+4], p[r+7], p[r+4], p[r+7],  p[r+5], p[r+4], p[r+5], p[r+7],
+                     p[r+4], p[r+7], p[r+4], p[r+7],  p[r+9], p[r+7], p[r+5], p[r+4]],
+                    [p[r+7], p[r+9], p[r+7], p[r+9],  p[r+11], p[r+9], p[r+7], p[r+6],
+                     p[r+5], p[r+4], p[r+5], p[r+7],  p[r+4], p[r+5], p[r+7], p[r+9]],
+                    [p[r+4], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+5], p[r+7], p[r+9],
+                     p[r+7], p[r+5], p[r+4], p[r+2],  p[r+4], p[r+2], p[r+0], p[r+2]],
+                ]
+            },
+            voidReach: {
+                1: [
+                    [p[r+4], p[r+4], p[r+4], p[r+4],  p[r+4], p[r+4], p[r+4], p[r+4],
+                     p[r+2], p[r+2], p[r+2], p[r+2],  p[r+4], p[r+4], p[r+4], p[r+4]],
+                    [p[r+7], p[r+7], p[r+7], p[r+7],  p[r+5], p[r+5], p[r+5], p[r+5],
+                     p[r+4], p[r+4], p[r+4], p[r+4],  p[r+2], p[r+2], p[r+2], p[r+2]],
+                    [p[r+0], p[r+0], p[r+0], p[r+0],  p[r+2], p[r+2], p[r+2], p[r+2],
+                     p[r+4], p[r+4], p[r+4], p[r+4],  p[r+5], p[r+5], p[r+5], p[r+5]],
+                ],
+                2: [
+                    [p[r+4], p[r+4], p[r+6], p[r+6],  p[r+7], p[r+7], p[r+6], p[r+6],
+                     p[r+4], p[r+4], p[r+6], p[r+6],  p[r+7], p[r+7], p[r+9], p[r+9]],
+                    [p[r+7], p[r+7], p[r+9], p[r+9],  p[r+7], p[r+7], p[r+6], p[r+6],
+                     p[r+5], p[r+5], p[r+4], p[r+4],  p[r+2], p[r+2], p[r+0], p[r+0]],
+                    [p[r+4], p[r+4], p[r+2], p[r+2],  p[r+0], p[r+0], p[r+2], p[r+2],
+                     p[r+4], p[r+4], p[r+5], p[r+5],  p[r+7], p[r+7], p[r+5], p[r+5]],
+                ],
+                3: [
+                    [p[r+4], p[r+4], p[r+6], p[r+6],  p[r+7], p[r+7], p[r+9], p[r+9],
+                     p[r+7], p[r+7], p[r+6], p[r+6],  p[r+4], p[r+4], p[r+2], p[r+2]],
+                    [p[r+7], p[r+7], p[r+9], p[r+9],  p[r+11], p[r+11], p[r+9], p[r+9],
+                     p[r+7], p[r+7], p[r+6], p[r+6],  p[r+4], p[r+4], p[r+2], p[r+2]],
+                    [p[r+4], p[r+4], p[r+5], p[r+5],  p[r+7], p[r+7], p[r+9], p[r+9],
+                     p[r+7], p[r+7], p[r+5], p[r+5],  p[r+4], p[r+4], p[r+2], p[r+2]],
+                ]
+            },
+            neonFury: {
                 1: [
                     [p[r+4], p[r+4], p[r+7], p[r+7],  p[r+5], p[r+5], p[r+4], p[r+4],
                      p[r+2], p[r+2], p[r+4], p[r+4],  p[r+7], p[r+7], p[r+5], p[r+4]],
@@ -553,7 +634,8 @@ function scheduleMelodyNote(note, time, duration, gain = 0.4) {
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    if (musicStyle === 'synthKarate') {
+    const styleChar = (MUSIC_STYLES[musicStyle] || {}).char;
+    if (styleChar === 'synth') {
         o.type = 'sawtooth';
         const filter = audioCtx.createBiquadFilter();
         filter.type = 'lowpass';
@@ -565,7 +647,36 @@ function scheduleMelodyNote(note, time, duration, gain = 0.4) {
         g.gain.linearRampToValueAtTime(Math.min(0.25, vol * 0.7), time + 0.01);
         g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
         o.connect(g).connect(filter).connect(musicMasterGain);
-    } else if (musicStyle === 'baroquePunk') {
+    } else if (styleChar === 'metal') {
+        o.type = 'square';
+        o.frequency.setValueAtTime(midiToFreq(note), time);
+        g.gain.setValueAtTime(0, time);
+        g.gain.linearRampToValueAtTime(Math.min(0.35, vol), time + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        const clipper = audioCtx.createWaveShaper();
+        const curve = new Float32Array(256);
+        for (let i = 0; i < 256; i++) { const x = (i / 256) * 2 - 1; curve[i] = Math.max(-0.6, Math.min(0.6, x * 1.8)); }
+        clipper.curve = curve;
+        o.connect(g).connect(clipper).connect(musicMasterGain);
+    } else if (styleChar === 'funk') {
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(midiToFreq(note), time);
+        g.gain.setValueAtTime(0, time);
+        g.gain.linearRampToValueAtTime(Math.min(0.28, vol), time + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        o.connect(g).connect(musicMasterGain);
+    } else if (styleChar === 'ambient') {
+        const o1 = audioCtx.createOscillator();
+        const o2 = audioCtx.createOscillator();
+        const g1 = audioCtx.createGain();
+        const g2 = audioCtx.createGain();
+        o1.type = 'sine'; o1.frequency.setValueAtTime(midiToFreq(note), time);
+        o2.type = 'triangle'; o2.frequency.setValueAtTime(midiToFreq(note - 12), time);
+        g1.gain.setValueAtTime(0, time); g1.gain.linearRampToValueAtTime(Math.min(0.15, vol * 0.5), time + 0.02); g1.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        g2.gain.setValueAtTime(0, time); g2.gain.linearRampToValueAtTime(Math.min(0.1, vol * 0.3), time + 0.02); g2.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        o1.connect(g1).connect(musicMasterGain); o2.connect(g2).connect(musicMasterGain);
+        o1.start(time); o1.stop(time + duration + 0.05); o2.start(time); o2.stop(time + duration + 0.05);
+    } else if (styleChar === 'baroque') {
         const pw = NES_PULSE_NARROW || null;
         if (pw) o.setPeriodicWave(pw);
         else o.type = 'square';

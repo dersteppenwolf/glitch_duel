@@ -28,6 +28,7 @@ let roundTimerFrames = ROUND_TIMER_FRAMES;
 let roundTimeMs = ROUND_TIME_MS;
 let selectedArena = 'notebook';
 let selectedFighterStyle = 'balanced';
+let selectedMusicStyle = '';
 let selectedRival = 'nullPointer';
 let stats = loadStats();
 let matchHistory = loadMatchHistory();
@@ -2078,8 +2079,12 @@ function startRound() {
 playRoundStartSound();
     setMusicIntensity(1);
     if (gameMode !== 'arcade') {
-        const styles = getMusicStyleList();
-        setMusicStyle(styles[Math.floor(Math.random() * styles.length)]);
+        if (selectedMusicStyle && getMusicStyleList().includes(selectedMusicStyle)) {
+            setMusicStyle(selectedMusicStyle);
+        } else {
+            const styles = getMusicStyleList();
+            setMusicStyle(styles[Math.floor(Math.random() * styles.length)]);
+        }
     }
     startMusic();
     resetCombatMetrics();
@@ -3493,6 +3498,11 @@ function setupMainMenu() {
     document.getElementById('rival-select').addEventListener('change', (e) => {
         playUISound('select');
         setRival(e.target.value);
+    });
+    document.getElementById('music-select').addEventListener('change', (e) => {
+        playUISound('select');
+        selectedMusicStyle = e.target.value;
+        try { window.localStorage.setItem('glitchDuelMusicStyle', e.target.value); } catch (_) {}
     });
     document.getElementById('reduce-motion-toggle').addEventListener('change', (e) => {
         playUISound('select');
