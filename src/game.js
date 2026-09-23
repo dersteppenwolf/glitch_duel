@@ -56,6 +56,7 @@ let trialAnnouncementCacheKey = null;
 let trainingTrialUiCacheKey = null;
 let matchSeed = 0;
 let matchElapsedFrames = 0;
+let combatMetrics = null;
 let debugOverlayEnabled = getDebugQueryEnabled();
 let debugFrameCount = 0;
 let debugStepCount = 0;
@@ -100,6 +101,104 @@ const STYLE_DESCRIPTION_KEYS = {
     heavy: 'styleHeavyDescription',
     technical: 'styleTechnicalDescription'
 };
+
+function createCombatMetrics() {
+    return {
+        cpuAttacksTotal: 0,
+        cpuAttacksHit: 0,
+        cpuAttacksBlocked: 0,
+        cpuAttacksWhiffed: 0,
+        cpuAntiAirsAttempted: 0,
+        cpuAntiAirsHit: 0,
+        cpuPunishesAttempted: 0,
+        cpuPunishesHit: 0,
+        cpuSpecialsUsed: 0,
+        cpuSpecialsHit: 0,
+        playerCombosLanded: 0,
+        playerAirAttacksTotal: 0,
+        playerSpecialDamage: 0,
+        cpuComboDamage: 0,
+        cpuNormalDamage: 0,
+        cpuSpecialDamage: 0,
+        firstHitFrame: -1,
+        roundDurationFrames: 0,
+        _cpuLastSeq: -1
+    };
+}
+
+function resetCombatMetrics() {
+    combatMetrics = createCombatMetrics();
+}
+
+function recordCPUStepMetrics() {
+    if (!debugOverlayEnabled || !combatMetrics || !player2) return;
+    const seq = player2.attackSequence;
+    const lastSeen = combatMetrics._cpuLastSeq || -1;
+    if (seq !== lastSeen) {
+        combatMetrics._cpuLastSeq = seq;
+        if (seq > lastSeen && player2.lastAttackType) {
+            combatMetrics.cpuAttacksTotal++;
+            const outcome = player2.lastAttackOutcome;
+            if (outcome === 'hit') combatMetrics.cpuAttacksHit++;
+            else if (outcome === 'blocked') combatMetrics.cpuAttacksBlocked++;
+            else if (outcome === 'whiff') combatMetrics.cpuAttacksWhiffed++;
+            if (player2.prevDecision === 'antiAir') {
+                combatMetrics.cpuAntiAirsAttempted++;
+                if (outcome === 'hit') combatMetrics.cpuAntiAirsHit++;
+            } else if (player2.prevDecision === 'punish') {
+                combatMetrics.cpuPunishesAttempted++;
+                if (outcome === 'hit') combatMetrics.cpuPunishesHit++;
+            }
+            if (player2.lastAttackType === 'special') {
+                combatMetrics.cpuSpecialsUsed++;
+                if (outcome === 'hit') combatMetrics.cpuSpecialsHit++;
+            }
+        }
+    }
+}
+
+function recordCombatMetricDamage(attackerIsCPU, type, damage) {
+    if (!debugOverlayEnabled || !combatMetrics || !damage) return;
+    if (combatMetrics.firstHitFrame === -1) combatMetrics.firstHitFrame = matchElapsedFrames;
+    if (type === 'special') {
+        if (attackerIsCPU) combatMetrics.cpuSpecialDamage += damage;
+        else combatMetrics.playerSpecialDamage += damage;
+    } else if (['comboPunch', 'comboKick', 'backKick'].includes(type)) {
+        if (attackerIsCPU) combatMetrics.cpuComboDamage += damage;
+        else combatMetrics.playerCombosLanded++;
+    } else if (attackerIsCPU) {
+        combatMetrics.cpuNormalDamage += damage;
+    }
+}
+
+function recordPlayerAirAttackMetric() {
+    if (debugOverlayEnabled && combatMetrics) combatMetrics.playerAirAttacksTotal++;
+}
+
+function getCombatMetricsSummary() {
+    if (!combatMetrics || combatMetrics.cpuAttacksTotal === 0) return null;
+    const m = combatMetrics;
+    const hitRate = (m.cpuAttacksHit / m.cpuAttacksTotal * 100).toFixed(1);
+    const whiffRate = (m.cpuAttacksWhiffed / m.cpuAttacksTotal * 100).toFixed(1);
+    const antiAirRate = m.cpuAntiAirsAttempted > 0
+        ? (m.cpuAntiAirsHit / m.cpuAntiAirsAttempted * 100).toFixed(1) : 'n/a';
+    const punishRate = m.cpuPunishesAttempted > 0
+        ? (m.cpuPunishesHit / m.cpuPunishesAttempted * 100).toFixed(1) : 'n/a';
+    return {
+        hitRate, whiffRate, antiAirRate, punishRate,
+        cpuAttacksTotal: m.cpuAttacksTotal,
+        cpuSpecialsHit: m.cpuSpecialsHit,
+        cpuSpecialsUsed: m.cpuSpecialsUsed,
+        cpuNormalDamage: m.cpuNormalDamage,
+        cpuComboDamage: m.cpuComboDamage,
+        cpuSpecialDamage: m.cpuSpecialDamage,
+        playerSpecialDamage: m.playerSpecialDamage,
+        playerAirAttacksTotal: m.playerAirAttacksTotal,
+        playerCombosLanded: m.playerCombosLanded,
+        firstHitFrame: m.firstHitFrame,
+        roundDurationFrames: m.roundDurationFrames
+    };
+}
 
 function createDebugMetrics() {
     return {
@@ -1966,6 +2065,8 @@ function startRound() {
     announcementPriority = 0;
     roundTimerFrames = ROUND_TIMER_FRAMES;
     roundTimeMs = ROUND_TIME_MS;
+playRoundStartSound();
+    resetCombatMetrics();
     if (gameMode === 'training') resetTraining();
     vsIntroTimer = VS_INTRO_FRAMES;
     resetSimulationClock();
@@ -2330,6 +2431,8 @@ function update() {
 function finishRound(playerWon) {
     if (gameState !== 'playing') return;
 
+    if (debugOverlayEnabled && combatMetrics) combatMetrics.roundDurationFrames = matchElapsedFrames;
+
     if (player2 && player1 && player2.aiLearning && player2.aiLearning.pendingTransition && !player2.aiLearning.closedThisDecision) {
         player2.closeAITransition(player1, -1, null, playerWon);
     }
@@ -2571,8 +2674,14 @@ function drawDebugOverlay() {
     });
     ctx.fillStyle = '#111';
     ctx.fillText(`debug ${data.gameState} fps:${data.fps} ticks:${data.ticks} seed:${data.seed}`, 12, HEIGHT - 26);
-    const metrics = data.metrics;
+const metrics = data.metrics;
     ctx.fillText(`p95 frame:${metrics.p95FrameWorkMs === null ? 'n/a' : metrics.p95FrameWorkMs.toFixed(2)}ms raf:${metrics.p95RafMs === null ? 'n/a' : metrics.p95RafMs.toFixed(2)}ms dpr:${metrics.deviceDpr}/${metrics.effectiveDpr} drop:${Math.round(metrics.frameClampDiscardMs + metrics.accumulatorCapDiscardMs + metrics.stepCapDiscardMs)}ms`, 12, HEIGHT - 12);
+    const cm = getCombatMetricsSummary();
+    if (cm) {
+        ctx.fillText(`CPU atk:${cm.cpuAttacksTotal} hit:${cm.hitRate}% whiff:${cm.whiffRate}% antiAir:${cm.antiAirRate}% punish:${cm.punishRate}%`, 12, HEIGHT - 52);
+        ctx.fillText(`CPU dmg norm:${cm.cpuNormalDamage} combo:${cm.cpuComboDamage} special:${cm.cpuSpecialDamage} P1 special:${cm.playerSpecialDamage}`, 12, HEIGHT - 66);
+        ctx.fillText(`P1 combos:${cm.playerCombosLanded} air:${cm.playerAirAttacksTotal} firstHit:${cm.firstHitFrame} round:${cm.roundDurationFrames}f`, 12, HEIGHT - 80);
+    }
     ctx.restore();
 }
 
@@ -2596,8 +2705,9 @@ function finishMatch(playerWon) {
 
     if (player1) player1.clearComboSequence();
     if (player2) player2.clearComboSequence();
-    const record = createMatchHistoryRecord(playerWon);
+const record = createMatchHistoryRecord(playerWon);
     gameState = 'gameOver';
+    playRoundEndSound(playerWon);
     showStatusMessage(t('ko'), 180);
     recordMatchResult(playerWon);
     appendMatchHistory(record);

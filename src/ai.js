@@ -39,17 +39,24 @@ function chooseAIAction({
     previousDecision = '',
     difficulty,
     rand,
-    aiLearningState,
+aiLearningState,
     aiLearningTable,
-    decisionMeta
+    decisionMeta,
+    adaptivePressure = 0
 }) {
-    const protectedAction = (action) => {
+const protectedAction = (action) => {
         if (decisionMeta) {
             decisionMeta.source = 'protected';
             decisionMeta.candidates = null;
         }
         return action;
     };
+    const cpuCorneredByWall = (x < opponentX && nearLeftWall) || (x > opponentX && nearRightWall);
+    const cornerState = cpuCorneredByWall ? (
+        opponentAttacking ? 'cornered-under-pressure' :
+        opponentAttackBias > 0.3 || repeatedAttackBias > 0.3 ? 'cornered-under-pressure' :
+        'corner-escape-window'
+    ) : 'none';
     const canAttack = attackCooldown <= 0;
     const punchReady = canAttack && canPunch;
     const kickReady = canAttack && canKick;
@@ -122,8 +129,8 @@ function chooseAIAction({
         }
     }
 
-    if (retreatBlocked && !opponentAttacking && opponentAttackBias <= 0.5 && repeatedAttackBias <= 0.5 &&
-        canAttack && dist < AI_TACTICS.cornerPressureRange &&
+if (cornerState === 'corner-escape-window' && !opponentAttacking && opponentAttackBias <= 0.5 &&
+        repeatedAttackBias <= 0.5 && canAttack && dist < AI_TACTICS.cornerPressureRange &&
         rand < (difficulty.cornerEscapeChance ?? 0)) return protectedAction('escape');
 
     if (latePressure && !opponentAttacking) {
@@ -148,18 +155,26 @@ function chooseAIAction({
     if (repeatedAttackBias > 0.5 && dist < 180 && onGround && rand < blockReaction) return protectedAction('block');
 
     // Keep close-wall defense first-match; variation only chooses neutral options.
+if (cornerState === 'cornered-under-pressure') {
+        if (onGround && opponentAttacking) return protectedAction('block');
+        if (kickReady && dist > ATTACKS.punch.range && rand < difficulty.kickClose) return protectedAction('kick');
+        if (punchReady && rand < difficulty.punchClose) return protectedAction('punch');
+        if (kickReady && rand < difficulty.kickClose) return protectedAction('kick');
+        return protectedAction('block');
+    }
+
     if (dist > 110 || !retreatBlocked) return chooseAINeutralAction({
         dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty, rand, previousDecision,
-        aiLearningState, aiLearningTable, decisionMeta
+        aiLearningState, aiLearningTable, decisionMeta, adaptivePressure
     });
 
+    if (cornerState === 'corner-escape-window' && onGround && rand < (difficulty.cornerJump ?? 0.45)) return protectedAction('jump');
     if (kickReady && dist > ATTACKS.punch.range && rand < difficulty.kickClose) return protectedAction('kick');
     if (punchReady && rand < difficulty.punchClose) return protectedAction('punch');
     if (kickReady && rand < difficulty.kickClose) return protectedAction('kick');
     if (opponentBlockBias > 0.5 && !retreatBlocked && rand > difficulty.blockClose) return protectedAction('retreat');
     if (rand < difficulty.blockClose) return protectedAction('block');
-    if (retreatBlocked) return protectedAction(onGround && rand < (difficulty.cornerJump ?? 0.45) ? 'jump' : 'block');
-    return protectedAction(punchReady || kickReady ? 'retreat' : 'approach');
+    return protectedAction(onGround && rand < (difficulty.cornerJump ?? 0.45) ? 'jump' : 'block');
 }
 
 function chooseWeightedAIAction(candidates, rand, previousDecision, repeatWeight, stateIndex, table, influence = 0) {
@@ -179,16 +194,23 @@ function chooseWeightedAIAction(candidates, rand, previousDecision, repeatWeight
     return candidates[candidates.length - 1][0];
 }
 
-function chooseAINeutralAction({ dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty: d, rand, previousDecision, aiLearningState, aiLearningTable, decisionMeta }) {
+function applyAdaptiveWeights(base, pressure) {
+    if (Math.abs(pressure) < 0.001) return base;
+    return Math.max(0.02, Math.min(1, base + base * pressure));
+}
+
+function chooseAINeutralAction({ dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty: d, rand, previousDecision, aiLearningState, aiLearningTable, decisionMeta, adaptivePressure = 0 }) {
     const candidates = [];
     const add = (action, weight, legal = true) => { if (legal && weight > 0) candidates.push([action, weight]); };
+    const ap = Math.max(-0.10, Math.min(0.10, adaptivePressure));
     if (dist > 250) {
-        add('approach', d.approachLong);
+        add('approach', applyAdaptiveWeights(d.approachLong, ap));
         add('idle', 1 - d.approachLong);
     } else if (dist > 110) {
         add('kick', d.kickMid, kickReady);
-        add('approach', d.approachMid - d.kickMid);
-        add('retreat', d.retreatMid - d.approachMid, !retreatBlocked);
+        add('approach', applyAdaptiveWeights(d.approachMid - d.kickMid, ap));
+        const retreatBase = d.retreatMid - d.approachMid;
+        add('retreat', applyAdaptiveWeights(retreatBase, -ap), !retreatBlocked);
         add('jump', d.jumpMid - d.retreatMid);
         add('block', 1 - d.jumpMid);
     } else {
@@ -261,6 +283,30 @@ function applyAIQWeights(candidates, stateIndex, table, config) {
         const multiplier = Math.max(0.5, Math.min(1.5, 1 + influence * q));
         return [action, weight * multiplier];
     });
+}
+
+function buildPerceptionContext({
+    dist, health, energy, onGround, opponentAttacking, canPunch, canKick, canSpecial,
+    opponentHealth, x, opponentX, nearLeftWall, nearRightWall, counterTimer,
+    opponentWhiffed, opponentRecovery, postHitPause, opponentCornered,
+    timedRound, lateRound, cpuBehind, difficulty
+}) {
+    const exactDistance = dist;
+    const distance = dist <= 110 ? 'close' : (dist <= 250 ? 'mid' : 'far');
+    const opponentInAir = !onGround;
+    const retreatBlocked = (x < opponentX && nearLeftWall) || (x > opponentX && nearRightWall);
+    const attackAvailable = canPunch || canKick || canSpecial;
+    const specialAvailable = canSpecial && energy >= SPECIAL_ENERGY_COST;
+    return {
+        distance, exactDistance, opponentInAir, opponentAttacking,
+        opponentWhiffing: opponentWhiffed,
+        opponentRecoveryFrames: opponentRecovery,
+        opponentHitStun: counterTimer,
+        retreatBlocked, cpuHealth: health,
+        opponentHealth, cpuCornered: nearLeftWall || nearRightWall,
+        opponentCornered, attackAvailable, specialAvailable,
+        timedRound, lateRound, cpuBehind
+    };
 }
 
 function getAIDecisionCandidates({ dist, punchReady, kickReady, retreatBlocked, opponentBlockBias, difficulty: d }) {

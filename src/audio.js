@@ -176,6 +176,31 @@ function playGlitchCancelSound() {
     playTone({ wave: 'triangle', start: 260, end: 620, gain: 0.10, duration: 70 }, 'combat', 0.025);
 }
 
+function playRoundStartSound() {
+    playTone({ wave: 'triangle', start: 440, end: 880, gain: 0.08, duration: 180 }, 'ui');
+    playTone({ wave: 'sine', start: 660, end: 1100, gain: 0.06, duration: 120 }, 'ui', 0.08);
+}
+
+function playRoundEndSound(playerWon = true) {
+    const start = playerWon ? 660 : 330;
+    const end = playerWon ? 1100 : 220;
+    playTone({ wave: 'triangle', start, end, gain: 0.10, duration: 240 }, 'ui');
+}
+
+function playDashSound() {
+    playTone({ wave: 'sine', start: 520, end: 180, gain: 0.06, duration: 70 });
+}
+
+function playParrySound() {
+    playTone({ wave: 'triangle', start: 880, end: 1320, gain: 0.10, duration: 100 });
+    playTone({ wave: 'square', start: 1320, end: 880, gain: 0.05, duration: 60 }, 'combat', 0.03);
+}
+
+function playCriticalSound() {
+    playTone({ wave: 'sawtooth', start: 440, end: 80, gain: 0.18, duration: 160 });
+    playTone({ wave: 'square', start: 1200, end: 320, gain: 0.06, duration: 100 }, 'combat', 0.04);
+}
+
 function playHitSound() {
     playImpactSound('punch');
 }

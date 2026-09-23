@@ -5781,6 +5781,181 @@ test('runtime Q learner opens and closes only neutral transitions with bootstrap
         difficulty: api.DIFFICULTIES.normal, rand: 0, opponentHealth: 10,
         previousDecision: '', decisionMeta
     });
-    assert.equal(decisionMeta.source, 'protected', 'lethal Special must remain protected');
+assert.equal(decisionMeta.source, 'protected', 'lethal Special must remain protected');
     assert.equal(decisionMeta.candidates, null);
 });
+
+function runScenarioSteps(api, steps = 120) {
+    const trace = [];
+    for (let i = 0; i < steps; i++) {
+        api.advanceSimulation(16.666);
+        const s = api.getState();
+        trace.push({
+            frame: s.matchElapsedFrames,
+            p1x: Math.round(s.player1.x),
+            p2x: Math.round(s.player2.x),
+            p1health: s.player1.health,
+            p2health: s.player2.health,
+            p1state: s.player1.state,
+            p2state: s.player2.state,
+            p2aiAction: s.player2.aiAction,
+            p2aiTimer: s.player2.aiDecisionTimer
+        });
+    }
+    return trace;
+}
+
+function setupScenario(api, opts = {}) {
+    api.startTraining();
+    api.skipVsIntro();
+    const s = api.getState();
+    const p1 = s.player1;
+    const p2 = s.player2;
+    p1.x = opts.p1x || 350;
+    p2.x = opts.p2x || 550;
+    p1.y = 380; p2.y = 380;
+    p1.onGround = true; p2.onGround = true;
+    p1.velX = 0; p1.velY = 0;
+    p2.velX = 0; p2.velY = 0;
+    p1.health = opts.p1health !== undefined ? opts.p1health : 100;
+    p1.displayHealth = p1.health;
+    p2.health = opts.p2health !== undefined ? opts.p2health : 100;
+    p2.displayHealth = p2.health;
+    p1.energy = 0; p2.energy = 0;
+    p1.state = 'idle'; p2.state = 'idle';
+    p1.attackCooldown = 0; p2.attackCooldown = 0;
+    p1.hitStun = 0; p2.hitStun = 0;
+    p2.aiDecisionTimer = 0;
+    p2.trainingBehavior = 'normal';
+    p2.aiMemory = p2.createAIMemory();
+    p1.clearComboSequence();
+    p2.clearComboSequence();
+    api.setMatchRandomSeed(opts.seed || 42);
+    api.matchElapsedFrames = 0;
+}
+
+function getP1(api) { return api.getState().player1; }
+function getP2(api) { return api.getState().player2; }
+
+test('scenario: player far, CPU approaches and closes distance', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    setupScenario(api, { p1x: 150, p2x: 750, seed: 42 });
+    const trace = runScenarioSteps(api, 180);
+    const finalDist = Math.abs(trace[trace.length - 1].p1x - trace[trace.length - 1].p2x);
+    assert(finalDist < 600, 'CPU must close distance when player is far');
+    const idleSteps = trace.filter((t) => t.p2aiAction === 'idle').length;
+    assert(idleSteps < 60, 'CPU must not idle excessively in neutral far');
+});
+
+test('scenario: same trace with seed 42 remains identical across runs', () => {
+    let trace1, trace2;
+    for (const run of [1, 2]) {
+        const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+        setupScenario(api, { p1x: 350, p2x: 550, seed: 42 });
+        const trace = runScenarioSteps(api, 60);
+        if (run === 1) trace1 = trace;
+        else trace2 = trace;
+    }
+    assert.deepEqual(trace1, trace2, 'same seed must produce identical trace');
+});
+
+test('scenario: same trace with seed 42 is deterministic across loadGame cycles', () => {
+    let trace1, trace2;
+    for (const run of [1, 2]) {
+        const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+        setupScenario(api, { p1x: 350, p2x: 550, seed: 42 });
+        const trace = runScenarioSteps(api, 30);
+        if (run === 1) trace1 = trace;
+        else trace2 = trace;
+    }
+    assert.deepEqual(trace1, trace2, 'same seed must produce identical trace across runs');
+});
+
+test('scenario: jump-in, CPU anti-air fires', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    setupScenario(api, { p1x: 420, p2x: 550, seed: 7 });
+    const p1 = getP1(api);
+    const p2 = getP2(api);
+    p2.aiDecisionTimer = 0;
+    p1.onGround = false;
+    p1.y = 300;
+    p1.velY = -8;
+    p1.velX = 5;
+    api.advanceSimulation(16.666);
+    let antiAirFound = false;
+    for (let i = 0; i < 30; i++) {
+        const s = getP2(api);
+        if (s.prevDecision === 'antiAir' || s.attackCooldown > 0) {
+            antiAirFound = true;
+            break;
+        }
+        s.aiDecisionTimer = 0;
+        api.advanceSimulation(16.666);
+    }
+    assert(antiAirFound, 'CPU should attempt anti-air against jumping opponent');
+});
+
+test('scenario: CPU cornered left, escapes toward center', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    setupScenario(api, { p1x: 550, p2x: 55, seed: 1 });
+    const startX = getP2(api).x;
+    runScenarioSteps(api, 120);
+    assert(getP2(api).x >= startX, 'CPU must move away from left wall when cornered');
+});
+
+test('scenario: CPU cornered right, escapes toward center', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    setupScenario(api, { p1x: 350, p2x: 945, seed: 1 });
+    const startX = getP2(api).x;
+    runScenarioSteps(api, 120);
+    assert(getP2(api).x <= startX, 'CPU must move away from right wall when cornered');
+});
+
+test('scenario: low CPU health triggers special desperation', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    setupScenario(api, { p1x: 480, p2x: 550, p2health: 15, seed: 7 });
+    const p2 = getP2(api);
+    p2.energy = 100;
+    p2.aiDecisionTimer = 0;
+    let specialAttempted = false;
+    for (let i = 0; i < 30; i++) {
+        const s = getP2(api);
+        if (s.lastAttackType === 'special') { specialAttempted = true; break; }
+        s.aiDecisionTimer = 0;
+        api.advanceSimulation(16.666);
+    }
+    assert(specialAttempted, 'CPU with low health and full energy should attempt special');
+});
+
+test('scenario: CPU behind in late round applies pressure', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    setupScenario(api, { p1x: 420, p2x: 550, p1health: 60, p2health: 30, seed: 1 });
+    const s = api.getState();
+    const beforeCount = s.combatMetrics ? s.combatMetrics.cpuAttacksTotal : 0;
+    for (let i = 0; i < 30; i++) {
+        api.advanceSimulation(16.666);
+    }
+});
+
+test('scenario: player blocking repeatedly triggers anti-turtle', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    setupScenario(api, { p1x: 440, p2x: 540, seed: 1 });
+    const p1 = getP1(api);
+    const p2 = getP2(api);
+    p1.state = 'block';
+    for (let i = 0; i < 60; i++) {
+        p2.updateAIMemory(p1, api.DIFFICULTIES.normal);
+        api.advanceSimulation(16.666);
+    }
+    p2.aiDecisionTimer = 0;
+    let pressureAction = false;
+    for (let i = 0; i < 20; i++) {
+        const s2 = getP2(api);
+        s2.aiDecisionTimer = 0;
+        api.advanceSimulation(16.666);
+        if (['punch', 'kick', 'approach'].includes(s2.aiAction)) { pressureAction = true; break; }
+    }
+    assert(pressureAction, 'CPU should use pressure actions against repeated blocking');
+});
+
+

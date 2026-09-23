@@ -31,15 +31,18 @@ class Fighter {
         this.comboHintText = '';
         this.comboHintTimer = 0;
         this.comboFlashTimer = 0;
-        this.lastAttackType = '';
+this.lastAttackType = '';
         this.lastAttackOutcome = '';
+        this.lastAttackSequence = -1;
         this.attackSequence = 0;
+        this.prevDecision = '';
         this.prevPunchPressed = false;
         this.prevKickPressed = false;
         this.prevSpecialPressed = false;
-        this.glitchCancelEnabled = false;
+this.glitchCancelEnabled = false;
         this.glitchCancelUsed = false;
         this.glitchCancelFeedbackFrames = 0;
+        this.adaptivePressure = 0;
         this.aiCounterTimer = 0;
         this.aiPostHitTimer = 0;
         this.aiEscapeDirection = 0;
@@ -346,7 +349,7 @@ createAIMemory() {
             this.airAttackUsed = true;
             this.clearComboSequence();
             this.attack(input, opponent);
-            if (this.isPlayer1) recordPlayerAirAttack();
+if (this.isPlayer1) { recordPlayerAirAttack(); recordPlayerAirAttackMetric(); }
             return;
         }
 
@@ -487,7 +490,7 @@ if (this.aiDecisionTimer <= 0) {
 
             const decisionMeta = {};
 
-            this.aiAction = chooseAIAction({
+this.aiAction = chooseAIAction({
                 dist,
                 health: this.health,
                 energy: this.energy,
@@ -523,10 +526,12 @@ if (this.aiDecisionTimer <= 0) {
                 previousDecision: this.aiPreviousDecisionAction,
                 difficulty,
                 rand,
+                adaptivePressure: this.adaptivePressure,
                 aiLearningState: this.aiLearning ? this.encodeLearningState(dist, opponent, difficulty) : undefined,
                 aiLearningTable: this.aiLearning ? this.aiLearning.table : undefined,
                 decisionMeta
             });
+            this.prevDecision = this.aiAction;
             const actionMap = { approach: 0, retreat: 1, block: 2, jump: 3, idle: 4, punch: 5, kick: 6 };
             const candidates = decisionMeta.source === 'neutral' ? decisionMeta.candidates : null;
             const nextStateIdx = candidates ? this.encodeLearningState(dist, opponent, difficulty) : -1;
@@ -655,6 +660,14 @@ if (latePressure && this.onGround && this.aiAction === 'retreat') {
     updateAIMemory(opponent, difficulty) {
         const decay = difficulty.patternMemoryDecay ?? 2;
         const gain = difficulty.patternMemoryGain ?? 12;
+        const pressureDecay = AI_ADAPTIVE_PRESSURE.decay;
+        const pressureGain = AI_ADAPTIVE_PRESSURE.gain;
+        const pressureRange = AI_ADAPTIVE_PRESSURE.range;
+        this.adaptivePressure = Math.max(-pressureRange, Math.min(pressureRange,
+            this.adaptivePressure - pressureDecay +
+            (opponent.health > this.health ? pressureGain : 0) +
+            (this.aiMemory.repeatedCount > 3 ? pressureGain * 0.5 : 0)
+        ));
         this.aiMemory.attack = Math.max(0, this.aiMemory.attack - decay);
         this.aiMemory.block = Math.max(0, this.aiMemory.block - decay);
         Object.keys(this.aiMemory.attacks).forEach((type) => {
@@ -881,8 +894,9 @@ if (latePressure && this.onGround && this.aiAction === 'retreat') {
             triggerSpecialFeedback(this);
         }
 
-        this.lastAttackType = type;
+this.lastAttackType = type;
         this.attackSequence++;
+        this.lastAttackSequence = this.attackSequence;
         this.state = attack.animation || type;
         this.attackCooldown = attack.cooldown;
         playAttackSound(type);
@@ -910,7 +924,9 @@ if (latePressure && this.onGround && this.aiAction === 'retreat') {
 
         const energyAfter = Math.max(0, Math.min(MAX_ENERGY, Math.round(this.energy)));
         this.lastAttackOutcome = outcome;
-        if (outcome === 'whiff') triggerWhiffFeedback(attackBox, this.accentColor);
+if (outcome === 'whiff') triggerWhiffFeedback(attackBox, this.accentColor);
+        if (!this.isPlayer1) recordCPUStepMetrics();
+        if (damageApplied > 0) recordCombatMetricDamage(!this.isPlayer1, type, damageApplied);
         recordCombatEvent({
             type: 'attackResolved',
             frame: matchElapsedFrames,
