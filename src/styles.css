@@ -1503,6 +1503,135 @@ summary:active {
     text-align: center;
 }
 
+.menu-duel-hero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 8px auto 0;
+    padding: 8px 12px;
+    width: fit-content;
+    max-width: 100%;
+    box-sizing: border-box;
+    background: var(--paper-0);
+    border: 3px solid var(--ink-900);
+}
+
+.menu-duel-hero-p1 {
+    font-weight: bold;
+    font-size: 18px;
+    line-height: 1;
+    color: #1f6feb;
+}
+
+.menu-duel-hero-vs {
+    font-weight: bold;
+    font-size: 24px;
+    line-height: 1;
+}
+
+.menu-duel-hero-rival {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--ink-900);
+    margin: 0;
+    position: relative;
+    vertical-align: middle;
+}
+
+.menu-duel-hero[data-rival="nullPointer"] .menu-duel-hero-rival::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: -6px;
+    width: 14px;
+    height: 14px;
+    border-left: 3px solid currentColor;
+    border-bottom: 3px solid currentColor;
+    transform: rotate(45deg);
+    color: #7c3aed;
+}
+
+.menu-duel-hero[data-rival="nullPointer"] .menu-duel-hero-rival::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    right: -4px;
+    width: 20px;
+    height: 3px;
+    background: currentColor;
+    transform: rotate(30deg);
+    color: #7c3aed;
+}
+
+.menu-duel-hero[data-rival="lagSpike"] .menu-duel-hero-rival::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 18px;
+    height: 18px;
+    border: 3px solid currentColor;
+    border-style: dashed;
+    color: #0891b2;
+}
+
+.menu-duel-hero[data-rival="mergeConflict"] .menu-duel-hero-rival::before, .menu-duel-hero[data-rival="mergeConflict"] .menu-duel-hero-rival::after {
+    content: "";
+    position: absolute;
+    top: 12px;
+    left: 2px;
+    width: 22px;
+    height: 4px;
+    background: currentColor;
+    transform: rotate(35deg);
+    color: #d97706;
+}
+
+.menu-duel-hero[data-rival="mergeConflict"] .menu-duel-hero-rival::after {
+    transform: rotate(-35deg);
+}
+
+.menu-duel-hero[data-rival="boss500"] .menu-duel-hero-rival {
+    border-radius: 50%;
+    border-width: 3px;
+    background: currentColor;
+    color: #dc2626;
+}
+
+.menu-duel-hero[data-rival="boss500"] .menu-duel-hero-rival::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    width: 12px;
+    height: 12px;
+    border: 3px solid var(--paper-0);
+    border-right: 0;
+    border-bottom: 0;
+}
+
+@media (max-width: 559px) {
+    .menu-duel-hero {
+        gap: 6px;
+        padding: 6px 8px;
+    }
+
+    .menu-duel-hero-p1 {
+        font-size: 15px;
+    }
+
+    .menu-duel-hero-vs {
+        font-size: 20px;
+    }
+
+    .menu-duel-hero-rival {
+        width: 24px;
+        height: 24px;
+    }
+}
+
 .menu-layout {
     display: grid;
     grid-template-columns: minmax(300px, 1fr) minmax(290px, 0.95fr);

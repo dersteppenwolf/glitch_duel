@@ -14,19 +14,66 @@ function drawHealthBars() {
     ctx.fillStyle = '#000';
     ctx.textAlign = 'left';
     ctx.fillText(`${hudCompactMode ? 'P1' : t('human')}: ${player1.health}%`, 50, 26);
+
+    if (!hudCompactMode && player1.accentColor !== '#1f6feb') {
+        ctx.strokeStyle = player1.accentColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(50, 30);
+        ctx.lineTo(50 + ctx.measureText(`${t('human')}: ${player1.health}%`).width, 30);
+        ctx.stroke();
+    }
+
     drawEnergyBar(52, 67, player1.energy, false, player1.accentColor, getSpecialActionState(player1));
     ctx.fillStyle = '#000';
     ctx.textAlign = 'right';
     ctx.fillText(`${hudCompactMode ? 'CPU' : (player2.labelKey ? t(player2.labelKey) : t('cpuAI'))}: ${player2.health}%`, WIDTH - 50, 26);
-    drawEnergyBar(WIDTH - 252, 67, player2.energy, true, player2.accentColor, getSpecialActionState(player2));
+
+    if (!hudCompactMode && player2.labelKey) {
+        ctx.strokeStyle = player2.accentColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const labelWidth = ctx.measureText(`${t(player2.labelKey)}: ${player2.health}%`).width;
+        ctx.moveTo(WIDTH - 50 - labelWidth, 30);
+        ctx.lineTo(WIDTH - 50, 30);
+        ctx.stroke();
+    }
+
+    if (hudCompactMode && player2.rivalDetail) {
+        ctx.strokeStyle = player2.accentColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const detail = player2.rivalDetail;
+        const markerX = WIDTH - 360;
+        if (detail === 'pointer') {
+            ctx.moveTo(markerX, 24);
+            ctx.lineTo(markerX + 8, 14);
+            ctx.lineTo(markerX + 5, 24);
+            ctx.lineTo(markerX + 10, 26);
+        } else if (detail === 'lag') {
+            ctx.strokeRect(markerX, 14, 2, 12);
+            ctx.strokeRect(markerX + 5, 16, 2, 10);
+            ctx.strokeRect(markerX + 10, 18, 2, 8);
+        } else if (detail === 'merge') {
+            ctx.moveTo(markerX, 14);
+            ctx.lineTo(markerX + 14, 26);
+            ctx.moveTo(markerX + 14, 14);
+            ctx.lineTo(markerX, 26);
+        } else if (detail === 'boss') {
+            ctx.arc(markerX + 7, 20, 9, 0, Math.PI * 2);
+        }
+        ctx.stroke();
+    }
 
     ctx.textAlign = 'center';
     ctx.font = `bold ${hudCompactMode ? 20 : 13}px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#000';
     ctx.fillText(`${t('round')} ${currentRound}`, WIDTH / 2, 26);
     ctx.font = `bold ${hudCompactMode ? 22 : 14}px ${GAME_FONT_FAMILY}`;
+    ctx.fillStyle = '#000';
     ctx.fillText(`${playerRounds}-${cpuRounds}`, WIDTH / 2, 47);
     ctx.font = `bold ${hudCompactMode ? 32 : 28}px ${GAME_FONT_FAMILY}`;
+    ctx.fillStyle = '#000';
     ctx.fillText(`${Math.ceil(roundTimeMs / 1000)}`, WIDTH / 2, 77);
 }
 
@@ -287,18 +334,59 @@ function drawRoundHighlight() {
 
 function drawResultCard(target, scene, data) {
     target.fillStyle = '#fffdf5'; target.fillRect(0, 0, 1200, 900);
-    target.strokeStyle = '#111'; target.lineWidth = 8; target.strokeRect(16, 16, 1168, 868);
-    target.textAlign = 'left'; target.fillStyle = '#111';
-    target.font = `bold 44px ${GAME_FONT_FAMILY}`; target.fillText('GLITCH DUEL', 50, 76);
-    target.font = `bold 25px ${GAME_FONT_FAMILY}`; target.textAlign = 'right'; target.fillText(data.score, 1140, 76);
-    target.drawImage(scene, 50, 110, 1100, 550);
-    target.textAlign = 'left'; target.font = `bold 30px ${GAME_FONT_FAMILY}`;
-    target.fillText(`${data.title} · ${data.medal}`, 50, 716, 1100);
-    target.font = `bold 23px ${GAME_FONT_FAMILY}`;
-    target.fillText(`${data.rival} · ${data.difficulty} · ${data.arena}`, 50, 764, 1100);
-    target.font = `20px ${GAME_FONT_FAMILY}`;
-    target.fillText(`${data.mode} · SEED ${data.seed}`, 50, 806, 1100);
-    target.fillText(t('challengeCardFooter'), 50, 852, 1100);
+    target.strokeStyle = '#111'; target.lineWidth = 10; target.strokeRect(16, 16, 1168, 868);
+
+    target.textAlign = 'left';
+    target.font = `bold 38px ${GAME_FONT_FAMILY}`; target.fillStyle = '#111';
+    target.fillText('GLITCH DUEL', 42, 64);
+
+    target.font = `bold 20px ${GAME_FONT_FAMILY}`; target.textAlign = 'right';
+    target.fillStyle = '#62605a';
+    target.fillText(data.mode, 1148, 64);
+
+    target.drawImage(scene, 42, 90, 1116, 540);
+
+    target.strokeStyle = '#111';
+    target.lineWidth = 3;
+    target.beginPath();
+    target.moveTo(42, 648);
+    target.lineTo(1158, 648);
+    target.stroke();
+
+    target.textAlign = 'left';
+    target.font = `bold 40px ${GAME_FONT_FAMILY}`;
+    const titleWidth = target.measureText ? target.measureText(data.title).width : data.title.length * 24;
+    target.fillStyle = '#111';
+    target.fillText(data.title, 42, 700, titleWidth > 600 ? 600 : undefined);
+    target.fillStyle = '#62605a';
+    target.font = `bold 16px ${GAME_FONT_FAMILY}`;
+    target.fillText(data.stamp, 42, 730, 400);
+
+    target.textAlign = 'right';
+    target.font = `bold 56px ${GAME_FONT_FAMILY}`;
+    target.fillStyle = '#111';
+    const scoreWidth = target.measureText ? target.measureText(data.score).width : data.score.length * 34;
+    target.fillText(data.score, 1158, 710, scoreWidth > 200 ? 200 : undefined);
+    target.font = `bold 18px ${GAME_FONT_FAMILY}`;
+    target.fillStyle = '#62605a';
+    target.fillText(data.medal, 1158, 740, 400);
+
+    target.strokeStyle = '#111';
+    target.lineWidth = 2;
+    target.beginPath();
+    target.moveTo(42, 760);
+    target.lineTo(1158, 760);
+    target.stroke();
+
+    target.textAlign = 'left';
+    target.font = `bold 20px ${GAME_FONT_FAMILY}`;
+    target.fillStyle = '#111';
+    const footer = `${data.rival} · ${data.difficulty} · ${data.arena}`;
+    target.fillText(footer, 42, 800, 1100);
+    target.font = `17px ${GAME_FONT_FAMILY}`;
+    target.fillStyle = '#62605a';
+    target.fillText(`SEED ${data.seed}`, 42, 835, 1100);
+    target.fillText(t('challengeCardFooter'), 42, 870, 1100);
 }
 
 function drawImpactFlash() {

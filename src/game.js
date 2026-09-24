@@ -1372,6 +1372,18 @@ function renderMatchConfigurationSummary() {
         style: t(FIGHTER_STYLES[selectedFighterStyle].labelKey),
         rival: getRivalLabelFor(selectedRival)
     });
+    renderMenuDuelHero();
+}
+
+function renderMenuDuelHero() {
+    const hero = document.getElementById('menu-duel-hero');
+    if (!hero || !('dataset' in hero)) return;
+    hero.dataset.rival = selectedRival;
+    hero.dataset.style = selectedFighterStyle;
+    hero.dataset.arena = selectedArena;
+    const label = getRivalLabelFor(selectedRival);
+    const rivalEl = hero.querySelector('.menu-duel-hero-rival');
+    if (rivalEl) rivalEl.textContent = label.charAt(0) + label.charAt(1).toLowerCase();
 }
 
 function getArenaConfig() {
@@ -2622,9 +2634,9 @@ function triggerImpactFeedback(x, y, direction, blocked = false, accentColor = n
     const count = reducedMotionEnabled ? (blocked ? 3 : 5) : feedback.particles;
     const colors = blocked ? ['#33f', '#8af', '#fff'] : [accentColor || '#c00', '#f90', '#fff'];
 
-    if (!blocked && (!reducedMotionEnabled || kind !== 'hit')) {
+if (!blocked) {
         impactFlash = { x, y, direction, color: accentColor || '#c00', timer: feedback.flashFrames, maxTimer: feedback.flashFrames,
-            signature: kind === 'hit' ? null : signature };
+            signature };
     }
     arenaReaction = { x, kind, timer: feedback.arenaFrames, maxTimer: feedback.arenaFrames };
 

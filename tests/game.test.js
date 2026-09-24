@@ -3603,7 +3603,8 @@ test('reduced motion limits shake hit-stop and impact particles', () => {
     assert.equal(state.screenShake, 0);
     assert.equal(state.hitStopFrames, 0);
     assert.equal(state.impactParticles.length, 5);
-    assert.equal(state.impactFlash, null);
+    assert.equal(state.impactFlash.timer, 10);
+    assert.equal(state.impactFlash.signature.pattern, 'burst');
 });
 
 test('impact flash draws stylized hit-freeze overlay', () => {

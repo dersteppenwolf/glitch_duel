@@ -32,9 +32,84 @@ function getArenaMotionFrame() {
     return reducedMotionEnabled ? 0 : visualFrame;
 }
 
+function drawArenaFarLayer(arenaKey, arena) {
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.strokeStyle = arena.ground;
+    ctx.lineWidth = 1;
+    ctx.fillStyle = arena.ground;
+
+    if (arenaKey === 'cafeteria') {
+        for (let x = 60; x < WIDTH; x += 170) {
+            ctx.fillRect(x, 52, 120, 150);
+            ctx.strokeRect(x, 52, 120, 150);
+        }
+    } else if (arenaKey === 'lab') {
+        for (let x = 40; x < WIDTH; x += 160) {
+            ctx.strokeRect(x, 40, 100, 200);
+            ctx.beginPath();
+            ctx.arc(x + 50, 140, 20, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    } else if (arenaKey === 'meeting') {
+        for (let x = 80; x < WIDTH; x += 200) {
+            ctx.moveTo(x, 40);
+            ctx.lineTo(x, 180);
+        }
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(WIDTH / 2, 60, 32, 0, Math.PI * 2);
+        ctx.stroke();
+    } else if (arenaKey === 'remoteMeeting') {
+        for (let i = 0; i < 8; i++) {
+            const x = 20 + i * 130;
+            ctx.strokeRect(x, 40, 100, 60);
+        }
+    } else if (arenaKey === 'mathClass') {
+        ctx.globalAlpha = 0.10;
+        ctx.font = `24px ${GAME_FONT_FAMILY}`;
+        ctx.fillStyle = arena.ground;
+        ctx.fillText('∫ f(x) dx = ???', 420, 60);
+    } else if (arenaKey === 'serverDown') {
+        ctx.globalAlpha = 0.10;
+        for (let x = 40; x < WIDTH; x += 70) {
+            ctx.fillRect(x, 30, 20, 40);
+        }
+    } else if (arenaKey === 'geekConvention') {
+        ctx.globalAlpha = 0.10;
+        for (let i = 0; i < 6; i++) {
+            const x = 50 + i * 170;
+            ctx.beginPath();
+            ctx.arc(x, 160, 60, 0, Math.PI, true);
+            ctx.fill();
+        }
+    } else if (arenaKey === 'terminal') {
+        ctx.globalAlpha = 0.08;
+        ctx.font = `14px ${GAME_FONT_FAMILY}`;
+        for (let i = 0; i < 5; i++) ctx.fillText('> _', 40 + i * 210, 60 + i * 26);
+    } else if (arenaKey === 'rooftop') {
+        ctx.globalAlpha = 0.08;
+        for (let i = 0; i < 4; i++) {
+            ctx.fillRect(100 + i * 250, 80, 140, 80);
+            ctx.fillRect(120 + i * 250, 60, 80, 100);
+        }
+    } else {
+        ctx.globalAlpha = 0.08;
+        for (let i = 0; i < 6; i++) {
+            const x = 40 + i * 170;
+            ctx.fillRect(x, 50, 80, 60);
+            ctx.fillRect(x + 10, 40, 50, 70);
+        }
+    }
+
+    ctx.restore();
+}
+
 function drawArenaDetails(arenaKey, arena) {
     ctx.save();
     ctx.globalAlpha = 0.82;
+
+    drawArenaFarLayer(arenaKey, arena);
 
     if (arenaKey === 'cafeteria') drawCafeteriaDetails(arena);
     else if (arenaKey === 'lab') drawLabDetails(arena);
@@ -64,6 +139,9 @@ function drawArenaForeground() {
         ctx.fillRect(810, 430, 190, 70);
         ctx.strokeRect(34, 360, 52, 86);
         ctx.strokeRect(914, 360, 52, 86);
+        ctx.globalAlpha = 0.20;
+        ctx.strokeRect(20, 370, 80, 70);
+        ctx.strokeRect(900, 370, 80, 70);
     } else if (selectedArena === 'lab') {
         ctx.fillRect(0, 432, 190, 68);
         ctx.fillRect(830, 432, 170, 68);
@@ -73,21 +151,33 @@ function drawArenaForeground() {
         ctx.lineTo(160, 420);
         ctx.stroke();
         ctx.strokeRect(878, 382, 54, 48);
+        ctx.globalAlpha = 0.18;
+        ctx.strokeRect(20, 390, 80, 48);
+        ctx.strokeRect(900, 390, 80, 48);
     } else if (selectedArena === 'meeting') {
         ctx.fillRect(0, 438, 225, 62);
         ctx.fillRect(775, 438, 225, 62);
         ctx.strokeRect(46, 366, 58, 72);
         ctx.strokeRect(896, 366, 58, 72);
+        ctx.globalAlpha = 0.18;
+        ctx.strokeRect(30, 378, 80, 52);
+        ctx.strokeRect(890, 378, 80, 52);
     } else if (selectedArena === 'remoteMeeting') {
         ctx.fillRect(0, 442, 230, 58);
         ctx.fillRect(770, 442, 230, 58);
         ctx.strokeRect(30, 370, 120, 58);
         ctx.strokeRect(850, 370, 120, 58);
+        ctx.globalAlpha = 0.18;
+        ctx.strokeRect(14, 382, 96, 40);
+        ctx.strokeRect(890, 382, 96, 40);
     } else if (selectedArena === 'mathClass') {
         ctx.fillRect(0, 438, 205, 62);
         ctx.fillRect(795, 438, 205, 62);
         ctx.strokeRect(42, 388, 105, 42);
         ctx.strokeRect(853, 388, 105, 42);
+        ctx.globalAlpha = 0.18;
+        ctx.strokeRect(24, 400, 90, 30);
+        ctx.strokeRect(886, 400, 90, 30);
     } else if (selectedArena === 'serverDown') {
         ctx.fillStyle = 'rgba(17, 24, 39, 0.88)';
         ctx.fillRect(0, 352, 94, 148);
@@ -95,6 +185,10 @@ function drawArenaForeground() {
         ctx.strokeStyle = '#ef4444';
         ctx.strokeRect(18, 374, 58, 98);
         ctx.strokeRect(924, 374, 58, 98);
+        ctx.globalAlpha = 0.12;
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
+        ctx.fillRect(28, 384, 38, 20);
+        ctx.fillRect(934, 384, 38, 20);
     } else if (selectedArena === 'geekConvention') {
         ctx.fillRect(0, 438, 220, 62);
         ctx.fillRect(780, 438, 220, 62);
@@ -102,11 +196,19 @@ function drawArenaForeground() {
         ctx.arc(72, 392, 24, 0, Math.PI * 2);
         ctx.arc(928, 392, 24, 0, Math.PI * 2);
         ctx.fill();
+        ctx.globalAlpha = 0.18;
+        ctx.beginPath();
+        ctx.arc(32, 400, 28, 0, Math.PI * 2);
+        ctx.arc(968, 400, 28, 0, Math.PI * 2);
+        ctx.fill();
     } else if (selectedArena === 'terminal' || selectedArena === 'rooftop') {
         ctx.fillRect(0, 440, 150, 60);
         ctx.fillRect(850, 440, 150, 60);
         ctx.strokeRect(22, 420, 94, 16);
         ctx.strokeRect(884, 420, 94, 16);
+        ctx.globalAlpha = 0.18;
+        ctx.strokeRect(10, 430, 80, 12);
+        ctx.strokeRect(910, 430, 80, 12);
     } else {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
         ctx.fillRect(0, 430, 174, 70);
@@ -114,6 +216,10 @@ function drawArenaForeground() {
         ctx.strokeStyle = 'rgba(200, 40, 40, 0.55)';
         ctx.strokeRect(30, 380, 104, 42);
         ctx.strokeRect(866, 380, 104, 42);
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = 'rgba(200, 40, 40, 0.14)';
+        ctx.fillRect(20, 396, 60, 20);
+        ctx.fillRect(920, 396, 60, 20);
     }
 
     ctx.restore();
@@ -142,6 +248,15 @@ function drawTerminalDetails(arena) {
     ctx.globalAlpha = 0.25;
     ctx.font = `bold 48px ${GAME_FONT_FAMILY}`;
     ctx.fillText('{  }', 420, 220);
+
+    ctx.fillStyle = 'rgba(36, 87, 70, 0.08)';
+    ctx.font = `12px ${GAME_FONT_FAMILY}`;
+    ctx.fillText('pipeline.py --run', 130, 106);
+    ctx.fillText('deploy.sh --prod', 760, 120);
+    ctx.fillText('$ git push --force', 300, 80);
+    ctx.fillText('ERR_CONNECT', 600, 110);
+    ctx.fillText('npm test', 200, 94);
+
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, 355);
@@ -174,6 +289,16 @@ function drawRooftopDetails(arena) {
     ctx.font = `bold 20px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = arena.ground;
     ctx.fillText('NO CLOUD, NO LAG', 76, 174);
+
+    ctx.fillStyle = 'rgba(88, 66, 115, 0.06)';
+    for (let i = 0; i < 8; i++) {
+        const bx = 50 + i * 120;
+        ctx.fillRect(bx, 40, 90, 80 + (i % 3) * 20);
+        ctx.fillStyle = 'rgba(249, 242, 213, 0.10)';
+        ctx.fillRect(bx + 10, 50, 20, 18);
+        ctx.fillStyle = 'rgba(88, 66, 115, 0.06)';
+    }
+
     ctx.beginPath();
     ctx.moveTo(0, 190); ctx.quadraticCurveTo(490, 104, 1000, 197); ctx.stroke();
 }
@@ -224,6 +349,13 @@ function drawNotebookDetails(arena) {
     ctx.lineTo(95, GROUND_Y + 20);
     ctx.stroke();
 
+    ctx.strokeStyle = 'rgba(200, 40, 40, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(100, 0);
+    ctx.lineTo(100, GROUND_Y + 20);
+    ctx.stroke();
+
     ctx.strokeStyle = arena.accent;
     ctx.lineWidth = 1;
     for (let y = 80; y < GROUND_Y; y += 34) {
@@ -241,12 +373,23 @@ function drawNotebookDetails(arena) {
     ctx.beginPath();
     ctx.arc(785, 230, 34, 0.2, Math.PI * 1.7);
     ctx.stroke();
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+    ctx.font = `14px ${GAME_FONT_FAMILY}`;
+    ctx.fillText('notas de combate', 710, 120);
+    ctx.fillText('no olvidar:', 710, 140);
 }
 
 function drawCafeteriaDetails(arena) {
     const motionFrame = getArenaMotionFrame();
     ctx.fillStyle = 'rgba(124, 79, 44, 0.22)';
     ctx.fillRect(80, 250, 840, 70);
+
+    ctx.fillStyle = 'rgba(124, 79, 44, 0.10)';
+    for (let x = 180; x < 880; x += 140) {
+        ctx.fillRect(x, 280, 100, 40);
+    }
+
     ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
     ctx.fillRect(110, 90, 230, 115);
     ctx.strokeStyle = arena.ground;
@@ -276,6 +419,11 @@ function drawCafeteriaDetails(arena) {
         ctx.quadraticCurveTo(x + 35, 190, x + 24, 178 - Math.cos((motionFrame + x) / 16) * 4);
         ctx.stroke();
     }
+
+    ctx.fillStyle = 'rgba(124, 79, 44, 0.12)';
+    ctx.font = `12px ${GAME_FONT_FAMILY}`;
+    ctx.fillText('COUNTER', 118, 220);
+    ctx.fillText('TRAY LINE', 660, 210);
 }
 
 function drawLabDetails(arena) {
@@ -289,6 +437,14 @@ function drawLabDetails(arena) {
         ctx.stroke();
     }
 
+    ctx.fillStyle = 'rgba(36, 83, 122, 0.06)';
+    ctx.strokeStyle = arena.accent;
+    ctx.lineWidth = 1;
+    for (let x = 150; x < 850; x += 140) {
+        ctx.fillRect(x, 60, 80, 140);
+        ctx.strokeRect(x, 60, 80, 140);
+    }
+
     ctx.strokeStyle = arena.ground;
     ctx.lineWidth = 3;
     ctx.strokeRect(92, 105, 190, 95);
@@ -298,6 +454,11 @@ function drawLabDetails(arena) {
     ctx.fillText('E = mc^2?', 120, 145);
     ctx.fillText('NaN sample', 745, 125);
     ctx.fillText('DO NOT LICK', 742, 165);
+
+    ctx.fillStyle = 'rgba(36, 83, 122, 0.15)';
+    ctx.font = `13px ${GAME_FONT_FAMILY}`;
+    ctx.fillText('H2O + bug', 230, 150);
+    ctx.fillText('centrifuge', 710, 230);
 
     ctx.strokeStyle = 'rgba(42, 157, 143, 0.55)';
     ctx.beginPath();
@@ -313,11 +474,29 @@ function drawLabDetails(arena) {
 function drawMeetingDetails(arena) {
     ctx.fillStyle = 'rgba(91, 70, 54, 0.20)';
     ctx.fillRect(120, 238, 760, 72);
+
+    ctx.fillStyle = 'rgba(91, 70, 54, 0.08)';
+    for (let x = 180; x < 820; x += 160) {
+        ctx.fillRect(x, 260, 80, 50);
+    }
+
     ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
     ctx.fillRect(340, 72, 320, 150);
     ctx.strokeStyle = arena.ground;
     ctx.lineWidth = 3;
     ctx.strokeRect(340, 72, 320, 150);
+
+    ctx.strokeStyle = 'rgba(91, 70, 54, 0.10)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(WIDTH / 2, 92, 16, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(WIDTH / 2, 92);
+    ctx.lineTo(WIDTH / 2, 82);
+    ctx.moveTo(WIDTH / 2, 92);
+    ctx.lineTo(WIDTH / 2 + 8, 92);
+    ctx.stroke();
 
     ctx.fillStyle = arena.ground;
     ctx.font = `bold 18px ${GAME_FONT_FAMILY}`;
@@ -338,6 +517,9 @@ function drawMeetingDetails(arena) {
 function drawRemoteMeetingDetails(arena) {
     const motionFrame = getArenaMotionFrame();
     const windows = [[95, 86, 'HUMANO'], [315, 86, 'CPU'], [535, 86, 'LAG...'], [755, 86, 'MUTED']];
+
+    ctx.fillStyle = 'rgba(29, 78, 216, 0.06)';
+    ctx.fillRect(40, 190, 920, 50);
 
     windows.forEach(([x, y, label], i) => {
         ctx.fillStyle = i === 1 ? 'rgba(255, 220, 220, 0.92)' : 'rgba(255, 255, 255, 0.88)';
@@ -362,6 +544,15 @@ function drawRemoteMeetingDetails(arena) {
     ctx.fillText('RECONNECTING', 730, 292);
     ctx.fillStyle = motionFrame % 48 < 24 ? '#dc2626' : 'rgba(220, 38, 38, 0.32)';
     ctx.fillText('REC', 860, 238);
+
+    ctx.strokeStyle = 'rgba(29, 78, 216, 0.10)';
+    ctx.lineWidth = 4;
+    for (let i = 0; i < 5; i++) {
+        const barX = 420 + i * 36;
+        const barH = 10 + i * 6;
+        ctx.fillStyle = motionFrame % 30 < 15 + i * 3 ? 'rgba(29, 78, 216, 0.25)' : 'rgba(29, 78, 216, 0.08)';
+        ctx.fillRect(barX, 196 - barH, 20, barH);
+    }
 }
 
 function drawMathClassDetails(arena) {
@@ -371,6 +562,10 @@ function drawMathClassDetails(arena) {
     ctx.lineWidth = 4;
     ctx.strokeRect(105, 72, 790, 210);
 
+    ctx.strokeStyle = 'rgba(54, 83, 20, 0.10)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(110, 77, 780, 200);
+
     ctx.fillStyle = arena.ground;
     ctx.font = `bold 21px ${GAME_FONT_FAMILY}`;
     ctx.fillText('f(punch) = pain', 145, 126);
@@ -378,6 +573,12 @@ function drawMathClassDetails(arena) {
     ctx.font = `18px ${GAME_FONT_FAMILY}`;
     ctx.fillText('lim combo -> K.O.', 190, 190);
     ctx.fillText('bug theorem: hit first', 520, 220);
+
+    ctx.fillStyle = 'rgba(54, 83, 20, 0.12)';
+    ctx.font = `14px ${GAME_FONT_FAMILY}`;
+    ctx.fillText('x = (-b ± √(b² - 4ac)) / 2a', 140, 155);
+    ctx.fillText('P(win) = 1 - P(lose)', 160, 250);
+    ctx.fillText('docker ps -a', 700, 240);
 }
 
 function drawServerDownDetails(arena) {
@@ -390,6 +591,19 @@ function drawServerDownDetails(arena) {
     ctx.strokeRect(90, 76, 240, 210);
     ctx.strokeRect(670, 76, 240, 210);
 
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.10)';
+    ctx.lineWidth = 1;
+    for (let y = 90; y < 270; y += 24) {
+        ctx.beginPath();
+        ctx.moveTo(102, y);
+        ctx.lineTo(318, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(682, y);
+        ctx.lineTo(898, y);
+        ctx.stroke();
+    }
+
     ctx.fillStyle = '#fecaca';
     ctx.font = `bold 18px ${GAME_FONT_FAMILY}`;
     ctx.fillText('SERVER DOWN', 126, 122);
@@ -397,6 +611,13 @@ function drawServerDownDetails(arena) {
     ctx.font = `15px ${GAME_FONT_FAMILY}`;
     ctx.fillText('retrying...', 130, 170);
     ctx.fillText('coffee required', 718, 172);
+
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
+    ctx.font = `12px ${GAME_FONT_FAMILY}`;
+    ctx.fillText('UPTIME: 0d', 700, 200);
+    ctx.fillText('PING: ∞', 700, 218);
+    ctx.fillText('DEADLOCK', 120, 198);
+
     ctx.fillStyle = 'rgba(239, 68, 68, 0.42)';
     ctx.fillRect(420, 98, 160, 120);
     ctx.fillStyle = motionFrame % 36 < 18 ? '#ef4444' : '#7f1d1d';
@@ -428,5 +649,17 @@ function drawGeekConventionDetails(arena) {
         ctx.fillRect(x, 250, 46, 58);
         ctx.strokeStyle = arena.ground;
         ctx.strokeRect(x, 250, 46, 58);
+    }
+
+    ctx.fillStyle = 'rgba(154, 52, 18, 0.08)';
+    ctx.font = `26px ${GAME_FONT_FAMILY}`;
+    ctx.fillText('GEEKCON 404', 400, 220);
+
+    ctx.fillStyle = 'rgba(154, 52, 18, 0.10)';
+    for (let i = 0; i < 12; i++) {
+        const cx = 80 + i * 78;
+        ctx.beginPath();
+        ctx.arc(cx, 265, 8, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
