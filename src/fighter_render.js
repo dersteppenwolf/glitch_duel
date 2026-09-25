@@ -2,8 +2,15 @@ function drawFighter(fighter) {
     ctx.save();
     const baseX = fighter.x;
     const baseY = fighter.y;
-    const accentColor = fighter.accentColor || (fighter.isPlayer1 ? '#1f6feb' : '#d22');
+    const isPlayer1 = fighter.isPlayer1;
+    const role = isPlayer1 ? 'player' : 'cpu';
+    const palette = isPlayer1 ? VISUAL_PALETTE.player : VISUAL_PALETTE.cpu;
+    const accentColor = fighter.accentColor || palette.accent;
 
+    if (!reducedMotionEnabled && fighter.state !== 'victory' && fighter.state !== 'defeat' && !fighter.finishSnapshot) {
+        drawFighterTrail(fighter, baseX, baseY, accentColor);
+    }
+    writeGlitchSparks(fighter, baseX, baseY);
     drawFighterIdentityMarker(fighter, baseX, baseY, accentColor);
     drawGlitchCancelFeedback(fighter, baseX, baseY);
     if (!fighter.finishSnapshot && fighter.state !== 'victory' && fighter.state !== 'defeat') drawSpecialReadyIndicator(fighter, baseX, baseY, accentColor);
@@ -13,15 +20,18 @@ function drawFighter(fighter) {
         ctx.translate(-baseX * 2, 0);
     }
 
+    const idleBob = fighter.state === 'idle' && !reducedMotionEnabled ? Math.sin(fighter.frame / 8) * 2 : 0;
+    const walkBob = fighter.state === 'walk' && !reducedMotionEnabled ? Math.sin(fighter.frame / 4) * 1.5 : 0;
     const legAngle = fighter.state === 'walk' && fighter.onGround && !reducedMotionEnabled ? Math.sin(fighter.frame / 3) * 20 : 0;
     const headBob = fighter.state === 'hit' && !reducedMotionEnabled ? Math.sin(fighter.frame / 2) * 5 : 0;
+    const crouchIdle = fighter.state === 'crouch' && !reducedMotionEnabled ? Math.sin(fighter.frame / 6) * 1.5 : 0;
     const isCrouching = fighter.state === 'crouch';
-    const hipY = isCrouching ? baseY + 4 : baseY - 20;
-    const torsoTopY = isCrouching ? baseY - 34 : baseY - 55;
+    const hipY = isCrouching ? baseY + 4 + crouchIdle : baseY - 20 + idleBob + walkBob;
+    const torsoTopY = isCrouching ? baseY - 34 : baseY - 55 + idleBob + walkBob;
     const lean = fighter.state === 'hit' ? -12 : (fighter.state === 'block' ? -5 :
         (!fighter.isPlayer1 && fighter.state === 'walk' && fighter.aiAction === 'retreat' ? -7 : 0));
-    const shoulderY = isCrouching ? baseY - 28 : baseY - 48;
-    const headY = isCrouching ? baseY - 54 : baseY - 75 + headBob;
+    const shoulderY = isCrouching ? baseY - 28 : baseY - 48 + idleBob;
+    const headY = isCrouching ? baseY - 54 + crouchIdle : baseY - 75 + headBob + idleBob;
 
     if (fighter.state === 'victory') {
         drawVictoryPose(fighter, baseX, baseY, accentColor);
@@ -574,4 +584,22 @@ function drawCpuRivalDetail(fighter, baseX, headY, accentColor) {
 
 function getCpuVisualMode() {
     return typeof selectedDifficulty === 'string' ? selectedDifficulty : 'normal';
+}
+
+function drawFighterTrail(fighter, baseX, baseY, accentColor) {
+    if (!trailParticles || fighter.state === 'idle' || fighter.state === 'block' || fighter.state === 'crouch') return;
+    if (fighter.frame % 3 !== 0) return;
+    const speed = Math.abs(fighter.velX);
+    if (speed < 0.5 && fighter.state !== 'punch' && fighter.state !== 'kick' && fighter.state !== 'special') return;
+    const trailY = baseY - 40;
+    const size = fighter.state === 'walk' ? 3 : (fighter.state === 'punch' || fighter.state === 'kick' ? 5 : 6);
+    addTrailPart(new TrailParticle(baseX, trailY, accentColor, size));
+}
+
+function writeGlitchSparks(fighter, baseX, baseY) {
+    if (fighter.state !== 'hit' || !fighter.hitStun || reducedMotionEnabled) return;
+    if (fighter.frame % 4 !== 0) return;
+    const color = fighter.isPlayer1 ? VISUAL_PALETTE.player.glow : VISUAL_PALETTE.cpu.glow;
+    const sparks = new GlitchSparks(baseX + (fighter.facingRight ? -10 : 10), baseY - 40, color, 3);
+    addGlitchSparks(sparks);
 }

@@ -12,6 +12,8 @@ let player1;
 let player2;
 let floatingTexts = [];
 let impactParticles = [];
+let trailParticles = [];
+let glitchSparksList = [];
 let keys = {};
 let activePointers = new Map();
 let gameState = 'menu';
@@ -2071,8 +2073,10 @@ function startRound() {
     player1.applyStyle(selectedFighterStyle);
     player2.applyStyle('balanced');
     player2.applyRival(selectedRival);
-    floatingTexts = [];
+floatingTexts = [];
     impactParticles = [];
+    trailParticles = [];
+    glitchSparksList = [];
     clearActiveInput();
     screenShake = 0;
     hitStopFrames = 0;
@@ -2297,6 +2301,8 @@ function showMainMenu() {
     player2 = new Fighter(750, false);
     floatingTexts = [];
     impactParticles = [];
+    trailParticles = [];
+    glitchSparksList = [];
     clearActiveInput();
     screenShake = 0;
     hitStopFrames = 0;
@@ -2578,6 +2584,16 @@ function updateEffects() {
         if (impactParticles[i].life <= 0) impactParticles.splice(i, 1);
     }
 
+    for (let i = trailParticles.length - 1; i >= 0; i--) {
+        trailParticles[i].update();
+        if (trailParticles[i].life <= 0) trailParticles.splice(i, 1);
+    }
+
+    for (let i = glitchSparksList.length - 1; i >= 0; i--) {
+        glitchSparksList[i].update();
+        if (!glitchSparksList[i].isAlive()) glitchSparksList.splice(i, 1);
+    }
+
     if (impactFlash) {
         impactFlash.timer--;
         if (impactFlash.timer <= 0) impactFlash = null;
@@ -2594,8 +2610,10 @@ function updateEffects() {
 }
 
 function triggerSpecialFeedback(fighter) {
-    const duration = reducedMotionEnabled ? 12 : 24;
-    const color = fighter.accentColor || '#ffcc00';
+    const duration = reducedMotionEnabled ? 12 : 30;
+    const role = fighter.isPlayer1 ? 'player' : 'cpu';
+    const palette = VISUAL_PALETTE[role];
+    const color = fighter.accentColor || palette.special;
     specialFlash = {
         x: fighter.x,
         y: fighter.y - 52,
@@ -2606,6 +2624,23 @@ function triggerSpecialFeedback(fighter) {
         fullFlash: false
     };
     specialFlash.signature = getCombatSignature(fighter);
+
+    if (!reducedMotionEnabled) {
+        addGlitchSparks(new GlitchSparks(fighter.x, fighter.y - 50, VISUAL_PALETTE.special.spark, 12));
+
+        for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI * 2 / 6) * i;
+            const speed = 3 + randomCosmetic() * 4;
+            addImpactParticle(new ImpactParticle(
+                fighter.x + Math.cos(angle) * 20,
+                fighter.y - 50 + Math.sin(angle) * 20,
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed,
+                color, 'line'
+            ));
+        }
+    }
+
     addCombatText(fighter.x, fighter.y - 140, t('specialImpact'), color, 'special');
     musicStutter(60);
 }
@@ -2626,19 +2661,31 @@ function updateHealthAnimations() {
 function triggerImpactFeedback(x, y, direction, blocked = false, accentColor = null, attacker = null) {
     const kind = blocked ? 'block' : getCombatFeedbackKind(attacker && attacker.lastAttackType);
     const feedback = COMBAT_FEEDBACK[kind];
+    const visualKind = kind;
+    const visualPalette = getVisualPaletteForKind(visualKind);
+    const role = attacker && attacker.isPlayer1 ? 'player' : 'cpu';
+    const visualColor = getVisualColorForKind(visualKind, role);
+
     if (!blocked && (kind === 'special' || kind === 'combo')) musicCriticalHitLP();
     const signature = getCombatSignature(attacker);
     screenShake = reducedMotionEnabled ? 0 : Math.max(screenShake, feedback.shake);
     hitStopFrames = reducedMotionEnabled ? 0 : Math.max(hitStopFrames, feedback.stop);
 
     const count = reducedMotionEnabled ? (blocked ? 3 : 5) : feedback.particles;
-    const colors = blocked ? ['#33f', '#8af', '#fff'] : [accentColor || '#c00', '#f90', '#fff'];
+    const colors = blocked
+        ? [visualPalette.primary, visualPalette.burst, visualPalette.spark]
+        : [accentColor || visualColor, visualPalette.burst, visualPalette.spark];
 
 if (!blocked) {
-        impactFlash = { x, y, direction, color: accentColor || '#c00', timer: feedback.flashFrames, maxTimer: feedback.flashFrames,
+        const flashColor = accentColor || visualPalette.flash || '#c00';
+        impactFlash = { x, y, direction, color: flashColor, timer: feedback.flashFrames, maxTimer: feedback.flashFrames,
             signature };
     }
-    arenaReaction = { x, kind, timer: feedback.arenaFrames, maxTimer: feedback.arenaFrames };
+    arenaReaction = { x, y, kind, timer: feedback.arenaFrames, maxTimer: feedback.arenaFrames };
+
+    if (!reducedMotionEnabled && (kind === 'special' || kind === 'combo')) {
+        addGlitchSparks(new GlitchSparks(x, y, visualPalette.spark, kind === 'special' ? 10 : 6));
+    }
 
     for (let i = 0; i < count; i++) {
         const spread = -1.2 + randomCosmetic() * 2.4;
@@ -2647,9 +2694,10 @@ if (!blocked) {
         const vy = spread * speed;
         const color = i === count - 1 ? colors[0]
             : (!blocked && accentColor && i === 0 ? accentColor : colors[Math.floor(randomCosmetic() * colors.length)]);
-        // Draw the contact silhouette last so sparks cannot obscure its shape.
         const type = i === count - 1 ? (blocked ? 'shield' : 'burst')
-            : (kind !== 'hit' && !blocked && i % 3 === 0 ? 'pixel' : (i % 3 === 0 ? 'dot' : 'line'));
+            : (kind === 'special' && i % 4 === 0 ? 'glitch'
+                : (kind !== 'hit' && kind !== 'block' && !blocked && i % 3 === 0 ? 'pixel'
+                    : (blocked && i % 2 === 0 ? 'smoke' : (i % 3 === 0 ? 'dot' : 'line'))));
 
         addImpactParticle(new ImpactParticle(x, y, vx, vy, color, type));
     }
@@ -2675,8 +2723,10 @@ function draw() {
         player2.draw();
     }
     drawArenaForeground();
-    if (!roundHighlight) {
+if (!roundHighlight) {
+        trailParticles.forEach((p) => p.draw());
         impactParticles.forEach((p) => p.draw());
+        glitchSparksList.forEach((s) => s.draw());
         drawSpecialFlash();
         drawImpactFlash();
         floatingTexts.forEach((t) => t.draw());
@@ -2826,6 +2876,19 @@ function triggerGlitchCancelFeedback(fighter) {
     announce(t('glitchCancelAnnounce', { cost: GLITCH_CANCEL_ENERGY_COST }), 'special');
     combatStatusCacheKey = null;
     touchSpecialStateCacheKey = null;
+
+    if (fighter && !reducedMotionEnabled) {
+        addGlitchSparks(new GlitchSparks(fighter.x, fighter.y - 50, '#00a8b5', 8));
+        for (let i = 0; i < 4; i++) {
+            const angle = randomCosmetic() * Math.PI * 2;
+            const speed = 2 + randomCosmetic() * 3;
+            addImpactParticle(new ImpactParticle(
+                fighter.x, fighter.y - 40,
+                Math.cos(angle) * speed, Math.sin(angle) * speed,
+                i % 2 === 0 ? '#00a8b5' : '#d1008f', 'glitch'
+            ));
+        }
+    }
 }
 
 function advanceSimulation(deltaMs) {

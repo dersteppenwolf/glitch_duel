@@ -26,7 +26,34 @@ const COMBAT_FEEDBACK = {
     dangerHealth: 30,
     whiffFrames: 12,
     maxParticles: 80,
-    maxTexts: 10
+    maxTexts: 10,
+    maxTrails: 30,
+    maxGlitchSparks: 20
+};
+const VISUAL_PALETTE = {
+    player: { accent: '#1f6feb', glow: 'rgba(31, 111, 235, 0.35)', hit: '#4d94ff', special: '#00bfff', combo: '#ff6b6b' },
+    cpu: { accent: '#d22', glow: 'rgba(220, 34, 34, 0.35)', hit: '#ff4444', special: '#ff8800', combo: '#ff4444' },
+    hit: { primary: '#fff', burst: '#ffdd44', spark: '#ff8800', text: '#c00', flash: 'rgba(255, 200, 50, 0.45)' },
+    block: { primary: '#33f', burst: '#8af', spark: '#fff', text: '#33f', flash: 'rgba(50, 100, 255, 0.25)' },
+    whiff: { primary: '#888', arc: '#aaa', text: '#888' },
+    special: { primary: '#ffcc00', burst: '#ff8800', spark: '#fff', beam: 'rgba(255, 204, 0, 0.5)', flash: 'rgba(255, 200, 0, 0.6)' },
+    combo: { primary: '#ff6b6b', burst: '#ff4444', spark: '#ffaa00', flash: 'rgba(255, 50, 50, 0.4)' },
+    ko: { flash: 'rgba(200, 0, 0, 0.5)', text: '#e11d48' },
+    danger: { pulse: '#e11d48', glow: 'rgba(225, 29, 72, 0.3)', warning: '#facc15' },
+    text: { primary: '#fffdf2', shadow: '#111', outline: '#000' },
+    hud: { panel: '#fffdf5', shadow: 'rgba(0, 0, 0, 0.22)', border: '#111', accent: '#000' },
+    arena: {
+        notebook: { wall: '#f8f6f0', ground: '#222', accent: 'rgba(0, 0, 0, 0.08)', reaction: '#222' },
+        cafeteria: { wall: '#f2dfc2', ground: '#7c4f2c', accent: 'rgba(124, 79, 44, 0.24)', reaction: '#7c4f2c' },
+        lab: { wall: '#e8f4ff', ground: '#24537a', accent: 'rgba(36, 83, 122, 0.12)', reaction: '#24537a' },
+        meeting: { wall: '#f4efe6', ground: '#5b4636', accent: 'rgba(91, 70, 54, 0.22)', reaction: '#5b4636' },
+        remoteMeeting: { wall: '#dbeafe', ground: '#1d4ed8', accent: 'rgba(29, 78, 216, 0.18)', reaction: '#1d4ed8' },
+        mathClass: { wall: '#eef7e5', ground: '#365314', accent: 'rgba(54, 83, 20, 0.16)', reaction: '#365314' },
+        serverDown: { wall: '#1f2937', ground: '#ef4444', accent: 'rgba(239, 68, 68, 0.22)', reaction: '#ef4444' },
+        geekConvention: { wall: '#fff7ed', ground: '#9a3412', accent: 'rgba(154, 52, 18, 0.18)', reaction: '#9a3412' },
+        terminal: { wall: '#edf6ee', ground: '#245746', accent: 'rgba(36, 87, 70, 0.10)', reaction: '#245746' },
+        rooftop: { wall: '#eee8f5', ground: '#584273', accent: 'rgba(88, 66, 115, 0.12)', reaction: '#584273' }
+    }
 };
 const COMBAT_SIGNATURES = {
     balanced: { pattern: 'burst', bands: 4 },

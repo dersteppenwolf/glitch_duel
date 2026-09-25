@@ -1045,7 +1045,7 @@ test('unsupported Web Audio stays silent without breaking combat or volume setti
 });
 
 test('hitstop and particles scale with contact strength while damage and block rules stay intact', () => {
-    for (const [type, health, stop, particles] of [['punch', 92, 5, 14], ['comboKick', 82, 7, 20], ['special', 74, 9, 26]]) {
+    for (const [type, health, stop, particles] of [['punch', 92, 5, 14], ['comboKick', 82, 7, 20], ['special', 74, 9, 32]]) {
         const { api } = loadGame();
         const { player, opponent } = createFighters(api, 100, 220);
         player.energy = 100;

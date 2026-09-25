@@ -114,6 +114,13 @@ function drawHealthBar(x, y, health, displayHealth, alignRight, accentColor = '#
     }
 
     if (healthWidth > 0) {
+        const dangerGlow = getHealthBarGlow(health);
+        if (dangerGlow) {
+            ctx.save();
+            ctx.fillStyle = dangerGlow;
+            ctx.fillRect(alignRight ? x + width - inset - healthWidth - 4 : x + inset - 4, y + inset - 2, healthWidth + 8, innerHeight + 4);
+            ctx.restore();
+        }
         ctx.fillStyle = getHealthBarColor(health);
         ctx.fillRect(alignRight ? x + width - inset - healthWidth : x + inset, y + inset, healthWidth, innerHeight);
     }
@@ -147,9 +154,16 @@ function drawHealthBar(x, y, health, displayHealth, alignRight, accentColor = '#
 }
 
 function getHealthBarColor(health) {
-    if (health <= COMBAT_FEEDBACK.dangerHealth) return '#e11d48';
-    if (health <= 60) return '#facc15';
+    if (health <= COMBAT_FEEDBACK.dangerHealth) return VISUAL_PALETTE.danger.pulse;
+    if (health <= 60) return VISUAL_PALETTE.danger.warning;
     return '#22c55e';
+}
+
+function getHealthBarGlow(health) {
+    if (health <= COMBAT_FEEDBACK.dangerHealth && !reducedMotionEnabled) {
+        return `rgba(225, 29, 72, ${0.15 + Math.sin(visualFrame / 8) * 0.1})`;
+    }
+    return null;
 }
 
 function drawEnergyBar(x, y, energy, alignRight, accentColor = '#000', actionState = 'charging') {
@@ -229,18 +243,18 @@ function drawStatusMessage() {
 
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.78)';
+    ctx.fillStyle = VISUAL_PALETTE.hud.shadow;
     ctx.fillRect(x + 10, y + 10, panelWidth, panelHeight);
-    ctx.fillStyle = '#fffdf2';
+    ctx.fillStyle = VISUAL_PALETTE.hud.panel;
     ctx.fillRect(x, y, panelWidth, panelHeight);
-    ctx.strokeStyle = '#000';
+    ctx.strokeStyle = VISUAL_PALETTE.hud.border;
     ctx.lineWidth = 6;
     ctx.strokeRect(x, y, panelWidth, panelHeight);
     ctx.strokeStyle = accent;
     ctx.lineWidth = 4;
     ctx.strokeRect(x + 10, y + 10, panelWidth - 20, panelHeight - 20);
 
-    ctx.strokeStyle = '#000';
+    ctx.strokeStyle = VISUAL_PALETTE.hud.border;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(x + 20, y - 10);
@@ -252,10 +266,10 @@ function drawStatusMessage() {
     ctx.textAlign = 'center';
     ctx.font = `bold 58px ${GAME_FONT_FAMILY}`;
     ctx.lineWidth = 12;
-    ctx.strokeStyle = '#000';
+    ctx.strokeStyle = VISUAL_PALETTE.text.outline;
     ctx.strokeText(statusMessage, WIDTH / 2, y + 61);
     ctx.lineWidth = 4;
-    ctx.strokeStyle = '#fffdf2';
+    ctx.strokeStyle = VISUAL_PALETTE.text.primary;
     ctx.strokeText(statusMessage, WIDTH / 2, y + 61);
     ctx.fillStyle = accent;
     ctx.fillText(statusMessage, WIDTH / 2, y + 61);

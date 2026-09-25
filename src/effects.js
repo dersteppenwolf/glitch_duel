@@ -7,11 +7,14 @@ class FloatingText {
         this.life = 60;
         this.vy = -2.0;
         this.kind = kind;
+        this.scale = 1;
     }
 
     update() {
         if (!reducedMotionEnabled) this.y += this.vy;
         this.life--;
+        if (!reducedMotionEnabled && this.life > 50) this.scale = 1 + (this.life - 50) * 0.04;
+        else this.scale = Math.max(0.85, this.scale - 0.01);
     }
 
     draw() {
@@ -19,7 +22,8 @@ class FloatingText {
         ctx.globalAlpha = Math.min(1, this.life / 18);
         const emphasis = this.kind === 'special' ? 30 : (this.kind === 'combo' ? 27 : 22);
         const pop = reducedMotionEnabled ? 0 : Math.max(0, 6 - (60 - this.life));
-        const fontSize = Math.min(emphasis + pop, (WIDTH - 64) / Math.max(1, this.text.length) * 1.5);
+        const baseFontSize = Math.min(emphasis + pop, (WIDTH - 64) / Math.max(1, this.text.length) * 1.5);
+        const fontSize = baseFontSize * this.scale;
         ctx.font = `bold ${fontSize}px ${GAME_FONT_FAMILY}`;
         ctx.textAlign = 'center';
         const textWidth = typeof ctx.measureText === 'function' ? ctx.measureText(this.text).width : this.text.length * 14;
@@ -27,12 +31,12 @@ class FloatingText {
         const drawX = Math.max(margin + textWidth / 2, Math.min(WIDTH - margin - textWidth / 2, this.x));
         const safeTop = typeof HUD_SAFE_BOTTOM === 'number' ? HUD_SAFE_BOTTOM + 22 : 134;
         const drawY = Math.max(safeTop, Math.min(HEIGHT - 24, this.y));
-        ctx.fillStyle = '#fffdf2';
-        ctx.strokeStyle = '#111';
+        ctx.fillStyle = VISUAL_PALETTE.text.primary;
+        ctx.strokeStyle = VISUAL_PALETTE.text.shadow;
         ctx.lineWidth = this.kind === 'special' ? 3 : 2;
         ctx.fillRect(drawX - textWidth / 2 - 8, drawY - fontSize, textWidth + 16, fontSize + 7);
         ctx.strokeRect(drawX - textWidth / 2 - 8, drawY - fontSize, textWidth + 16, fontSize + 7);
-        ctx.strokeStyle = '#000';
+        ctx.strokeStyle = VISUAL_PALETTE.text.outline;
         ctx.lineWidth = 2;
         ctx.strokeText(this.text, drawX, drawY);
         ctx.fillStyle = this.color;
@@ -57,7 +61,7 @@ class ImpactParticle {
     }
 
     update() {
-        if (!reducedMotionEnabled && !['burst', 'shield', 'whiff'].includes(this.type)) {
+        if (!reducedMotionEnabled && !['burst', 'shield', 'whiff', 'glitch'].includes(this.type)) {
             this.x += this.vx;
             this.y += this.vy;
         }
@@ -79,16 +83,16 @@ class ImpactParticle {
         if (this.type === 'burst' || this.type === 'shield') {
             const points = this.type === 'shield' ? 6 : 12;
             const radius = this.type === 'shield' ? 25 : 32;
-            ctx.fillStyle = '#fffdf2';
+            ctx.fillStyle = VISUAL_PALETTE.text.primary;
             ctx.lineWidth = 3;
             ctx.beginPath();
             for (let i = 0; i <= points; i++) {
                 const angle = i * Math.PI * 2 / points;
                 const r = this.type === 'burst' && i % 2 ? radius * 0.4 : radius;
-                const x = this.x + Math.cos(angle) * r;
-                const y = this.y + Math.sin(angle) * r;
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
+                const px = this.x + Math.cos(angle) * r;
+                const py = this.y + Math.sin(angle) * r;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
             }
             ctx.fill();
             ctx.stroke();
@@ -103,11 +107,22 @@ class ImpactParticle {
         } else if (this.type === 'whiff') {
             ctx.lineWidth = 2;
             ctx.beginPath();
-            // An open, broken arc distinguishes empty space from contact.
             ctx.arc(this.x, this.y, 16, -0.7, 0.2);
             ctx.stroke();
             ctx.beginPath();
             ctx.arc(this.x, this.y, 16, 0.6, 1.3);
+            ctx.stroke();
+        } else if (this.type === 'glitch') {
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 4; i++) {
+                const gx = this.x + (i - 1.5) * 6;
+                const gy = this.y + (i % 2) * 4;
+                ctx.strokeRect(gx - 3, gy - 1, 6 + i * 2, 3);
+            }
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(this.x - 8, this.y + 6);
+            ctx.lineTo(this.x + 8, this.y + 6);
             ctx.stroke();
         } else if (this.type === 'pixel') {
             ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size * 1.8, this.size * 0.65);
@@ -116,6 +131,11 @@ class ImpactParticle {
             ctx.moveTo(this.x, this.y);
             ctx.lineTo(this.x - this.lineX, this.y - this.lineY);
             ctx.stroke();
+        } else if (this.type === 'smoke') {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * (1 - this.life / this.maxLife * 0.5) * alpha, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
         } else {
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.size * alpha, 0, Math.PI * 2);
@@ -123,6 +143,84 @@ class ImpactParticle {
         }
 
         ctx.restore();
+    }
+}
+
+class TrailParticle {
+    constructor(x, y, color, size = 4) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.size = size;
+        this.life = 10;
+        this.maxLife = 10;
+    }
+
+    update() {
+        this.life--;
+    }
+
+    draw() {
+        const alpha = Math.max(0, this.life / this.maxLife);
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.5;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * alpha, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+class GlitchSparks {
+    constructor(x, y, color, count = 8) {
+        this.particles = [];
+        for (let i = 0; i < count; i++) {
+            const angle = randomCosmetic() * Math.PI * 2;
+            const speed = 1 + randomCosmetic() * 4;
+            this.particles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 1,
+                life: 8 + Math.floor(randomCosmetic() * 8),
+                maxLife: 16,
+                size: 1 + randomCosmetic() * 3
+            });
+        }
+        this.color = color;
+    }
+
+    update() {
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            if (!reducedMotionEnabled) {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.1;
+            }
+            p.life--;
+            if (p.life <= 0) this.particles.splice(i, 1);
+        }
+    }
+
+    draw() {
+        ctx.save();
+        for (const p of this.particles) {
+            const alpha = Math.max(0, p.life / p.maxLife);
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = p.size;
+            ctx.beginPath();
+            const offset = reducedMotionEnabled ? 0 : (p.life % 2 === 0 ? 3 : -3);
+            ctx.moveTo(p.x, p.y - 4);
+            ctx.lineTo(p.x + offset, p.y + 4);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    isAlive() {
+        return this.particles.length > 0;
     }
 }
 
@@ -138,6 +236,18 @@ function addImpactParticle(particle) {
     impactParticles.push(particle);
 }
 
+function addTrailPart(part) {
+    if (!trailParticles) return;
+    if (trailParticles.length >= COMBAT_FEEDBACK.maxTrails) trailParticles.shift();
+    trailParticles.push(part);
+}
+
+function addGlitchSparks(sparks) {
+    if (!glitchSparksList) return;
+    if (glitchSparksList.length >= COMBAT_FEEDBACK.maxGlitchSparks) glitchSparksList.shift();
+    glitchSparksList.push(sparks);
+}
+
 function addCombatText(x, y, text, color, kind = 'hit') {
     const nearby = floatingTexts.filter((label) => Math.abs(label.x - x) < 100 && Math.abs(label.y - y) < 34).length;
     if (floatingTexts.length >= COMBAT_FEEDBACK.maxTexts) floatingTexts.shift();
@@ -147,6 +257,21 @@ function addCombatText(x, y, text, color, kind = 'hit') {
 function getCombatFeedbackKind(type) {
     if (type === 'special') return 'special';
     return ['comboPunch', 'comboKick', 'backKick'].includes(type) ? 'combo' : 'hit';
+}
+
+function getVisualColorForKind(kind, role = 'player') {
+    const palette = role === 'player' ? VISUAL_PALETTE.player : VISUAL_PALETTE.cpu;
+    if (kind === 'special') return palette.special;
+    if (kind === 'combo') return palette.combo;
+    return palette.hit;
+}
+
+function getVisualPaletteForKind(kind) {
+    if (kind === 'special') return VISUAL_PALETTE.special;
+    if (kind === 'combo') return VISUAL_PALETTE.combo;
+    if (kind === 'block') return VISUAL_PALETTE.block;
+    if (kind === 'whiff') return VISUAL_PALETTE.whiff;
+    return VISUAL_PALETTE.hit;
 }
 
 function getCombatSignature(fighter) {

@@ -1,11 +1,15 @@
 function drawBackground() {
     const arena = getArenaConfig();
+    const arenaKey = selectedArena;
+    const arenaPalette = VISUAL_PALETTE.arena[arenaKey] || VISUAL_PALETTE.arena.notebook;
 
-    ctx.fillStyle = arena.background;
+    ctx.fillStyle = arenaPalette.wall;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    drawArenaAmbient(arenaKey, arenaPalette);
+
     ctx.strokeStyle = arena.accent;
     ctx.lineWidth = 1;
-
     for (let x = 0; x < WIDTH; x += 50) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -13,10 +17,10 @@ function drawBackground() {
         ctx.stroke();
     }
 
-    drawArenaDetails(selectedArena, arena);
+    drawArenaDetails(arenaKey, arena);
     drawArenaReaction(arena);
 
-    ctx.strokeStyle = arena.ground;
+    ctx.strokeStyle = arenaPalette.ground;
     ctx.lineWidth = 6;
     ctx.beginPath();
     ctx.moveTo(0, GROUND_Y + 35);
@@ -26,6 +30,63 @@ function drawBackground() {
     }
 
     ctx.stroke();
+}
+
+function drawArenaAmbient(arenaKey, palette) {
+    if (reducedMotionEnabled) return;
+    const motionFrame = getArenaMotionFrame();
+
+    if (arenaKey === 'serverDown') {
+        ctx.save();
+        ctx.globalAlpha = 0.04;
+        for (let i = 0; i < 6; i++) {
+            const x = 100 + i * 160;
+            const flicker = Math.sin(motionFrame / 5 + i) * 0.5 + 0.5;
+            ctx.fillStyle = `rgba(239, 68, 68, ${flicker * 0.15})`;
+            ctx.fillRect(x, 120 + Math.sin(motionFrame / 8 + i) * 10, 40, 60);
+        }
+        ctx.restore();
+    } else if (arenaKey === 'terminal') {
+        ctx.save();
+        ctx.globalAlpha = 0.06;
+        ctx.fillStyle = palette.ground;
+        for (let i = 0; i < 4; i++) {
+            const x = 80 + i * 260;
+            const blink = Math.sin(motionFrame / 12 + i * 2) > 0.3;
+            if (blink) ctx.fillRect(x, 100 + Math.sin(motionFrame / 10 + i) * 5, 60, 5);
+        }
+        ctx.restore();
+    } else if (arenaKey === 'cafeteria' || arenaKey === 'lab') {
+        ctx.save();
+        ctx.globalAlpha = 0.03;
+        ctx.fillStyle = palette.ground;
+        for (let i = 0; i < 3; i++) {
+            const x = 300 + i * 200;
+            const drift = Math.sin(motionFrame / 15 + i * 2) * 8;
+            ctx.fillRect(x + drift, 160 + i * 20, 30, 15);
+        }
+        ctx.restore();
+    } else if (arenaKey === 'rooftop') {
+        ctx.save();
+        ctx.globalAlpha = 0.05;
+        ctx.fillStyle = palette.ground;
+        for (let i = 0; i < 5; i++) {
+            const flicker = Math.sin(motionFrame / 6 + i * 1.5) * 0.3 + 0.5;
+            ctx.fillStyle = `rgba(88, 66, 115, ${flicker * 0.08})`;
+            ctx.fillRect(200 + i * 150, 100 + Math.sin(motionFrame / 10 + i) * 6, 40, 8);
+        }
+        ctx.restore();
+    } else if (arenaKey === 'remoteMeeting') {
+        ctx.save();
+        ctx.globalAlpha = 0.04;
+        ctx.fillStyle = palette.ground;
+        for (let i = 0; i < 4; i++) {
+            const barX = 400 + i * 40;
+            const barH = 15 + Math.sin(motionFrame / 8 + i) * 10;
+            ctx.fillRect(barX, 180 - barH, 16, barH);
+        }
+        ctx.restore();
+    }
 }
 
 function getArenaMotionFrame() {
@@ -310,30 +371,63 @@ function drawArenaReaction(arena) {
     const displacement = reducedMotionEnabled ? 0 : (1 - progress) * 22;
     const strength = reaction.kind === 'special' ? 1 : (reaction.kind === 'combo' ? 0.8 : (reaction.kind === 'block' ? 0.3 : 0.5));
     const edgeX = reaction.x < WIDTH / 2 ? 125 : 875;
+    const arenaKey = selectedArena;
+    const arenaPalette = VISUAL_PALETTE.arena[arenaKey] || VISUAL_PALETTE.arena.notebook;
     ctx.save();
     ctx.globalAlpha = progress * strength * 0.7;
-    ctx.strokeStyle = arena.ground;
-    ctx.fillStyle = arena.ground;
+    ctx.strokeStyle = arenaPalette.ground;
+    ctx.fillStyle = arenaPalette.ground;
     ctx.lineWidth = 2;
-    if (['terminal', 'serverDown', 'remoteMeeting'].includes(selectedArena)) {
-        for (let i = 0; i < 5; i++) ctx.fillRect(edgeX - 58 + i * 3, 154 + i * 16, 100 - i * 12, 3);
-    } else if (selectedArena === 'cafeteria' || selectedArena === 'lab') {
+
+    if (!reducedMotionEnabled) {
+        ctx.save();
+        ctx.globalAlpha = (1 - progress) * strength * 0.15;
+        ctx.fillStyle = arenaPalette.ground;
+        const flashRadius = 60 + (1 - progress) * 40;
+        ctx.beginPath();
+        ctx.arc(reaction.x, reaction.y, flashRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    if (arenaKey === 'serverDown') {
+        for (let i = 0; i < 6; i++) {
+            const flicker = i % 2 === 0 ? 1 : 0.5;
+            ctx.globalAlpha = progress * strength * flicker * 0.5;
+            ctx.fillRect(edgeX - 58 + i * 3, 148 + i * 16, 100 - i * 12, 4);
+        }
+    } else if (arenaKey === 'terminal') {
+        ctx.font = `bold 13px ${GAME_FONT_FAMILY}`;
+        ctx.globalAlpha = progress * strength * 0.5;
+        ctx.fillText('> ERROR', edgeX - 40, 154);
+        ctx.fillText('STATUS: 500', edgeX - 40, 176);
+        for (let i = 0; i < 5; i++) ctx.fillRect(edgeX - 58 + i * 3, 190 + i * 16, 100 - i * 12, 3);
+    } else if (arenaKey === 'remoteMeeting') {
+        ctx.font = `bold 12px ${GAME_FONT_FAMILY}`;
+        ctx.globalAlpha = progress * strength * 0.6;
+        ctx.fillText('RECONNECTING', edgeX - 60, 154);
+        for (let i = 0; i < 5; i++) ctx.fillRect(edgeX - 58 + i * 3, 164 + i * 16, 100 - i * 12, 4);
+    } else if (arenaKey === 'cafeteria' || arenaKey === 'lab') {
         for (let i = 0; i < 3; i++) {
             ctx.beginPath();
             ctx.moveTo(edgeX - 20 + i * 20, 220);
             ctx.quadraticCurveTo(edgeX - 35 + i * 20, 196 - displacement, edgeX - 20 + i * 20, 166 - displacement);
             ctx.stroke();
         }
-    } else if (selectedArena === 'rooftop' || selectedArena === 'geekConvention') {
+    } else if (arenaKey === 'rooftop' || arenaKey === 'geekConvention') {
         ctx.strokeRect(edgeX - 60 - displacement, 142, 120 + displacement * 2, 54);
         for (let i = 0; i < 4; i++) ctx.fillRect(edgeX - 52 + i * 28, 216, 12, 10);
+    } else if (arenaKey === 'mathClass') {
+        ctx.font = `bold 14px ${GAME_FONT_FAMILY}`;
+        ctx.globalAlpha = progress * strength * 0.4;
+        ctx.fillText('f(x) = ??', edgeX - 38, 168);
     } else {
         for (let i = 0; i < 4; i++) {
             const x = edgeX - 30 + i * 20;
             ctx.strokeRect(x, 178 - (i % 2) * 20 - displacement, 10, 15);
         }
     }
-    // The floor response stays below feet; arena reactions never hide a fighter.
+    ctx.globalAlpha = progress * strength * 0.7;
     ctx.beginPath();
     ctx.moveTo(Math.max(0, reaction.x - 45 - displacement), GROUND_Y + 47);
     ctx.lineTo(Math.min(WIDTH, reaction.x + 45 + displacement), GROUND_Y + 47);
