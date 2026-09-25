@@ -89,6 +89,18 @@ function createMockAudioContext(audioEvents = [], options = {}) {
             return { curve: null, connect() { return this; }, disconnect() {} };
         }
 
+        createDynamicsCompressor() {
+            return {
+                threshold: { value: 0 },
+                knee: { value: 0 },
+                ratio: { value: 0 },
+                attack: { value: 0 },
+                release: { value: 0 },
+                connect() { return this; },
+                disconnect() {}
+            };
+        }
+
         createDelay(maxTime) {
             return { delayTime: parameter('delayTime'), connect() { return this; }, disconnect() {} };
         }
@@ -957,7 +969,7 @@ test('Web Audio cleanup stays idempotent when onended is delivered repeatedly', 
 
 test('audio settings stay lazy, persist each channel, clamp setters and isolate mute', () => {
     const { api, context, audioEvents } = loadGame();
-    assert.deepEqual({ ...api.getAudioVolumes() }, { combat: 0.65, ui: 0.55 });
+    assert.deepEqual({ ...api.getAudioVolumes() }, { combat: 0.65, ui: 0.55, music: 0.50 });
     api.setupAudioSettings();
     assert.equal(api.getAudioDiagnostics().contextState, 'uninitialized');
     api.setAudioVolume('combat', 0);
@@ -976,9 +988,9 @@ test('audio settings stay lazy, persist each channel, clamp setters and isolate 
     assert(audioEvents.filter((event) => event.event === 'start').length > starts);
     const saved = context.window.localStorage.getItem('glitchDuelAudioVolumes');
     const reload = loadGame({ storage: { glitchDuelAudioVolumes: saved } });
-    assert.deepEqual({ ...reload.api.getAudioVolumes() }, { combat: 0.3, ui: 0 });
+    assert.deepEqual({ ...reload.api.getAudioVolumes() }, { combat: 0.3, ui: 0, music: 0.50 });
     assert.equal(reload.api.getAudioDiagnostics().contextState, 'uninitialized');
-    assert.equal(api.setAudioVolume('music', 1), false);
+    assert.equal(api.setAudioVolume('music', 1), true);
     assert.equal(api.setAudioVolume('ui', NaN), false);
     api.setAudioVolume('ui', 2);
     assert.equal(api.getAudioVolumes().ui, 1);
@@ -989,7 +1001,7 @@ test('audio settings stay lazy, persist each channel, clamp setters and isolate 
 test('invalid or unavailable audio preferences preserve defaults and native slider feedback', () => {
     for (const stored of ['{broken', 'null', '[]', '{"version":2,"combat":0}', '{"version":1,"combat":"0","ui":5}']) {
         const { api } = loadGame({ storage: { glitchDuelAudioVolumes: stored } });
-        assert.deepEqual({ ...api.getAudioVolumes() }, { combat: 0.65, ui: 0.55 });
+        assert.deepEqual({ ...api.getAudioVolumes() }, { combat: 0.65, ui: 0.55, music: 0.50 });
     }
     const { api, elements } = loadGame({ storageGetThrows: true, storageSetThrows: true });
     api.setupAudioSettings();

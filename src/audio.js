@@ -13,11 +13,27 @@ let musicBarIndex = 0;
 let musicEffects = { lowpass: null, bitcrush: null, stutterTimer: null };
 let musicMasterGain = null;
 let musicMasterFilter = null;
+let musicMasterCompressor = null;
 let musicDelay = null;
 let musicDelayGain = null;
 let musicChorusLFO = null;
 let musicChorusGain = null;
 let musicPadOscillators = [];
+let musicDrumsGain = null;
+let musicBassGain = null;
+let musicMelodyGain = null;
+let musicGlitchGain = null;
+let scheduledMusicVoices = new Set();
+let musicRandom = Math.random;
+let musicDuckingTimer = 0;
+let musicTransitionIntensity = 0;
+let musicTransitionFadeFrames = 0;
+
+const INTENSITY_LAYER_MIX = {
+    1: { drums: 0.50, bass: 0.60, melody: 0.50, glitch: 0.15, pad: 0.40 },
+    2: { drums: 0.70, bass: 0.80, melody: 0.70, glitch: 0.40, pad: 0.60 },
+    3: { drums: 1.00, bass: 1.00, melody: 1.00, glitch: 0.80, pad: 0.80 }
+};
 
 // Melody phrase memory — built once per intensity, repeated with variation
 let melodyPhrases = { 1: null, 2: null, 3: null };
@@ -84,47 +100,64 @@ function initMusicBus() {
     if (!audioCtx) return;
     if (musicMasterGain) return;
     musicMasterGain = audioCtx.createGain();
-    if (!musicChorusLFO) {
     musicMasterGain.gain.value = 0.85;
-    musicMasterFilter = audioCtx.createBiquadFilter();
-    musicMasterFilter.type = 'lowshelf';
-    musicMasterFilter.frequency.value = 300;
-    musicMasterFilter.gain.value = 2.5;
-    const highCut = audioCtx.createBiquadFilter();
-    highCut.type = 'lowpass';
-    highCut.frequency.value = 10000;
-    highCut.Q.value = 0.5;
-    musicMasterGain.connect(musicMasterFilter).connect(highCut).connect(audioCtx.destination);
-    const lfo = audioCtx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.value = 0.04;
-    const lfoGain = audioCtx.createGain();
-    lfoGain.gain.value = 500;
-    lfo.connect(lfoGain);
-    lfoGain.connect(highCut.frequency);
-    lfo.start();
-    musicDelay = audioCtx.createDelay(0.5);
-    musicDelay.delayTime.value = 0.12;
-    musicDelayGain = audioCtx.createGain();
-    musicDelayGain.gain.value = 0.18;
-    musicDelay.connect(musicDelayGain);
-    musicDelayGain.connect(musicMasterGain);
-    musicChorusLFO = audioCtx.createOscillator();
-    musicChorusLFO.type = 'sine';
-    musicChorusLFO.frequency.value = 1.2;
-    musicChorusGain = audioCtx.createGain();
-    musicChorusGain.gain.value = 0.008;
+    musicMasterCompressor = audioCtx.createDynamicsCompressor();
+    musicMasterCompressor.threshold.value = -18;
+    musicMasterCompressor.knee.value = 6;
+    musicMasterCompressor.ratio.value = 4;
+    musicMasterCompressor.attack.value = 0.003;
+    musicMasterCompressor.release.value = 0.12;
+
+    musicDrumsGain = audioCtx.createGain();
+    musicDrumsGain.gain.value = 1;
+    musicBassGain = audioCtx.createGain();
+    musicBassGain.gain.value = 1;
+    musicMelodyGain = audioCtx.createGain();
+    musicMelodyGain.gain.value = 1;
+    musicGlitchGain = audioCtx.createGain();
+    musicGlitchGain.gain.value = 1;
+
+    if (!musicChorusLFO) {
+        musicMasterFilter = audioCtx.createBiquadFilter();
+        musicMasterFilter.type = 'lowshelf';
+        musicMasterFilter.frequency.value = 300;
+        musicMasterFilter.gain.value = 2.5;
+        const highCut = audioCtx.createBiquadFilter();
+        highCut.type = 'lowpass';
+        highCut.frequency.value = 10000;
+        highCut.Q.value = 0.5;
+        musicMasterGain.connect(musicMasterCompressor);
+        musicMasterCompressor.connect(musicMasterFilter).connect(highCut).connect(audioCtx.destination);
+        const lfo = audioCtx.createOscillator();
+        lfo.type = 'sine';
+        lfo.frequency.value = 0.04;
+        const lfoGain = audioCtx.createGain();
+        lfoGain.gain.value = 500;
+        lfo.connect(lfoGain);
+        lfoGain.connect(highCut.frequency);
+        lfo.start();
+        musicDelay = audioCtx.createDelay(0.5);
+        musicDelay.delayTime.value = 0.12;
+        musicDelayGain = audioCtx.createGain();
+        musicDelayGain.gain.value = 0.18;
+        musicDelay.connect(musicDelayGain);
+        musicDelayGain.connect(musicMasterGain);
+        musicChorusLFO = audioCtx.createOscillator();
+        musicChorusLFO.type = 'sine';
+        musicChorusLFO.frequency.value = 1.2;
+        musicChorusGain = audioCtx.createGain();
+        musicChorusGain.gain.value = 0.008;
         musicChorusLFO.connect(musicChorusGain);
         musicChorusLFO.start();
     }
 }
 
 function loadAudioVolumes() {
-    const values = { combat: AUDIO_CONFIG.combat, ui: AUDIO_CONFIG.ui };
+    const values = { combat: AUDIO_CONFIG.combat, ui: AUDIO_CONFIG.ui, music: AUDIO_CONFIG.music };
     try {
         const saved = JSON.parse(window.localStorage.getItem(AUDIO_STORAGE_KEY));
         if (saved && saved.version === 1) {
-            for (const channel of ['combat', 'ui']) {
+            for (const channel of ['combat', 'ui', 'music']) {
                 if (typeof saved[channel] === 'number' && Number.isFinite(saved[channel]) && saved[channel] >= 0 && saved[channel] <= 1) values[channel] = saved[channel];
             }
         }
@@ -137,7 +170,7 @@ function getAudioVolumes() {
 }
 
 function setAudioVolume(channel, value) {
-    if (!['combat', 'ui'].includes(channel) || !Number.isFinite(value)) return false;
+    if (!['combat', 'ui', 'music'].includes(channel) || !Number.isFinite(value)) return false;
     audioVolumes[channel] = Math.max(0, Math.min(1, value));
     try {
         window.localStorage.setItem(AUDIO_STORAGE_KEY, JSON.stringify({ version: 1, ...audioVolumes }));
@@ -319,11 +352,16 @@ function buildWalkingBass(intensity, barIndex) {
     return { notes: rhythm.noteIndices.map(i => walking[i]), durations: rhythm.durations };
 }
 
+function getLayerMultiplier(layer) {
+    const mix = INTENSITY_LAYER_MIX[musicIntensity] || INTENSITY_LAYER_MIX[1];
+    return mix[layer] || 1;
+}
+
 function scheduleDrumKick(time, gain = 0.5, humanMs = 0) {
     if (!audioCtx || musicVolume() <= 0) return;
     if (!Number.isFinite(gain) || gain <= 0) return;
     time = Math.max(0, time + humanMs / 1000);
-    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('drums');
     const sine = audioCtx.createOscillator();
     const sg = audioCtx.createGain();
     sine.type = 'sine';
@@ -353,7 +391,7 @@ function scheduleDrumSnare(time, gain = 0.4, humanMs = 0) {
     if (!audioCtx || musicVolume() <= 0) return;
     if (!Number.isFinite(gain) || gain <= 0) return;
     time = Math.max(0, time + humanMs / 1000);
-    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('drums');
     const sine = audioCtx.createOscillator();
     const sg = audioCtx.createGain();
     sine.type = 'triangle';
@@ -399,7 +437,7 @@ function scheduleDrumHat(time, gain = 0.25, humanMs = 0, closed = true) {
     if (!audioCtx || musicVolume() <= 0) return;
     if (!Number.isFinite(gain) || gain <= 0) return;
     time = Math.max(0, time + humanMs / 1000);
-    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('drums');
     const noise = audioCtx.createBufferSource();
     const dur = closed ? 0.04 : 0.12;
     const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
@@ -432,6 +470,35 @@ function createWaveShaper(amount) {
     const ws = audioCtx.createWaveShaper();
     ws.curve = curve;
     return ws;
+}
+
+function getStyleMelodyPhrase(pool, rootIdx, intensity, barIndex) {
+    const cell = getStyleMelodyCell();
+    const section = Math.floor(barIndex / 8) % 3;
+    const isB = section === 1;
+    const isBreakdown = section === 2;
+    const phrase = [];
+    if (isBreakdown) {
+        for (let i = 0; i < 16; i++) {
+            const cellIdx = Math.floor(i * cell.rhythm.length / 16) % cell.rhythm.length;
+            phrase.push(pool[rootIdx + cell.cell[cellIdx]]);
+        }
+        return phrase;
+    }
+    const cellNotes = cell.cell.map((offset) => pool[rootIdx + offset]);
+    if (isB) {
+        const transposed = cell.cell.map((offset) => pool[rootIdx + offset + 3]);
+        for (let i = 0; i < 16; i++) {
+            const cellIdx = Math.floor(i / 2) % cellNotes.length;
+            phrase.push(i % 4 < 2 ? cellNotes[cellIdx] : transposed[cellIdx]);
+        }
+    } else {
+        for (let i = 0; i < 16; i++) {
+            const cellIdx = Math.floor(i / 2) % cellNotes.length;
+            phrase.push(cellNotes[cellIdx]);
+        }
+    }
+    return phrase;
 }
 
 function buildMelodyPhrase(intensity, barIndex) {
@@ -606,7 +673,11 @@ function buildMelodyPhrase(intensity, barIndex) {
         };
         const styleMelodies = melodies[musicStyle] || melodies.default;
         const styleInt = styleMelodies[intensity] || styleMelodies[1] || styleMelodies[Object.keys(styleMelodies)[0]];
-        melodyPhrases[musicStyle][sk][key] = styleInt[section % 3];
+        if (styleInt && styleInt[section % 3]) {
+            melodyPhrases[musicStyle][sk][key] = styleInt[section % 3];
+        } else {
+            melodyPhrases[musicStyle][sk][key] = getStyleMelodyPhrase(pool, rootIdx, intensity, barIndex);
+        }
     }
     return melodyPhrases[musicStyle][sk][key];
 }
@@ -615,7 +686,7 @@ function scheduleBassNote(note, time, duration, gain = 0.5) {
     if (!audioCtx || musicVolume() <= 0) return;
     if (!Number.isFinite(note) || !Number.isFinite(gain) || gain <= 0) return;
     time = Math.max(0, time);
-    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('bass');
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     o.type = 'triangle';
@@ -653,7 +724,7 @@ function scheduleMelodyNote(note, time, duration, gain = 0.4, harmonyInterval = 
     if (!audioCtx || musicVolume() <= 0) return;
     if (!Number.isFinite(note) || !Number.isFinite(gain) || gain <= 0) return;
     time = Math.max(0, time);
-    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('melody');
     if (harmonyInterval !== 0) {
         const ho = audioCtx.createOscillator();
         const hg = audioCtx.createGain();
@@ -747,7 +818,7 @@ function scheduleGlitchNote(note, time, duration, gain = 0.2) {
     if (!audioCtx || musicVolume() <= 0) return;
     if (!Number.isFinite(note) || !Number.isFinite(gain) || gain <= 0) return;
     time = Math.max(0, time);
-    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('glitch');
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     o.type = 'sawtooth';
@@ -777,7 +848,7 @@ function schedulePluckedString(note, time, duration, gain = 0.15) {
     if (!audioCtx || musicVolume() <= 0) return;
     if (!Number.isFinite(note) || !Number.isFinite(gain) || gain <= 0) return;
     time = Math.max(0, time);
-    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('melody');
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     o.type = 'triangle';
@@ -801,7 +872,7 @@ function schedulePluckedString(note, time, duration, gain = 0.15) {
 function scheduleMelodicPerc(time, gain = 0.12) {
     if (!audioCtx || musicVolume() <= 0) return;
     time = Math.max(0, time);
-    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('drums');
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     o.type = 'sine';
@@ -817,7 +888,7 @@ function scheduleMelodicPerc(time, gain = 0.12) {
 function schedulePadDouble(time, gain = 0.12) {
     if (!audioCtx || musicVolume() <= 0) return;
     time = Math.max(0, time);
-    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain;
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('pad');
     const base = MUSIC_CONFIG.notePool[2];
     const fifth = base + 7;
     const oct = base + 12;
@@ -838,6 +909,49 @@ function schedulePadDouble(time, gain = 0.12) {
 function getEffectiveBpm() {
     const s = MUSIC_STYLES[musicStyle];
     return (s && s.bpm) ? s.bpm : MUSIC_CONFIG.bpm;
+}
+
+function getMusicTiming() {
+    const bpm = getEffectiveBpm();
+    const beatSec = 60 / bpm;
+    return { bpm, beatSec, barSec: beatSec * 16 };
+}
+
+const STYLE_MELODY_CELLS = {
+    bitDuel: { cell: [0, 2, 4, 7, 4, 2], rhythm: [0.25, 0.25, 0.25, 0.25, 0.25, 0.75], octave: 0 },
+    baroqueBash: { cell: [0, 2, 3, 5, 7, 5, 3, 2], rhythm: [0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], octave: 0 },
+    neonFury: { cell: [0, 0, 3, 5, 7, 5, 3], rhythm: [0.5, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25], octave: 0 },
+    glitchAssault: { cell: [0, 0, 7, 7, 5, 5, 4], rhythm: [0.125, 0.125, 0.125, 0.125, 0.25, 0.125, 0.125], octave: 0 },
+    retroGroove: { cell: [0, 2, 4, 5, 4, 2], rhythm: [0.375, 0.125, 0.25, 0.125, 0.125, 0.5], octave: 0 },
+    voidReach: { cell: [0, 0, 0, 2, 4, 4, 2], rhythm: [1, 0.5, 0.5, 0.5, 0.5, 0.5, 1], octave: -12 }
+};
+
+function getStyleMelodyCell() {
+    const cell = STYLE_MELODY_CELLS[musicStyle] || STYLE_MELODY_CELLS.bitDuel;
+    return cell;
+}
+
+function schedulePreSpecialSilence() {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    stopPadNotes();
+    try {
+        for (const voice of scheduledMusicVoices) {
+            try { voice.stop(now + 0.01); } catch (_) {}
+        }
+    } catch (_) {}
+}
+
+function musicDuck(durationMs = 200, reductionDb = 4) {
+    if (!audioCtx || !musicMasterGain) return;
+    const now = audioCtx.currentTime;
+    const ratio = Math.pow(10, -reductionDb / 20);
+    if (typeof musicMasterGain.gain.cancelScheduledValues === 'function') {
+        musicMasterGain.gain.cancelScheduledValues(now);
+    }
+    musicMasterGain.gain.setValueAtTime(musicMasterGain.gain.value || 0.85, now);
+    musicMasterGain.gain.linearRampToValueAtTime(0.85 * ratio, now + 0.015);
+    musicMasterGain.gain.linearRampToValueAtTime(0.85, now + durationMs / 1000);
 }
 
 function stopPadNotes() {
@@ -879,8 +993,8 @@ function scheduleMusicNode(type, note, startTime, duration, gain) {
 }
 
 function buildMusicPattern(intensity, barIndex) {
-    const beatMs = 60000 / MUSIC_CONFIG.bpm;
-    const beatSec = beatMs / 1000;
+    const bpm = getEffectiveBpm();
+    const beatSec = 60000 / bpm / 1000;
     const pool = MUSIC_CONFIG.notePool;
     const rootIdx = intensity >= 3 ? 4 : 2;
     const section = Math.floor(barIndex / 8) % 3;
@@ -1092,17 +1206,63 @@ function scheduleMusicBar(pattern, barStart, beatSec) {
     }
 }
 
+function restoreMusicMasterGain() {
+    if (!audioCtx || !musicMasterGain) return;
+    const now = audioCtx.currentTime;
+    if (typeof musicMasterGain.gain.cancelScheduledValues === 'function') {
+        musicMasterGain.gain.cancelScheduledValues(now);
+    }
+    musicMasterGain.gain.setValueAtTime(0.0001, now);
+    musicMasterGain.gain.linearRampToValueAtTime(0.85, now + 0.04);
+}
+
 function startMusic() {
     if (!audioCtx || musicVolume() <= 0) return;
     initMusicBus();
+    restoreMusicMasterGain();
     stopMusic();
     musicPaused = false;
     musicNextBar = audioCtx.currentTime;
     musicBarIndex = 0;
 }
 
+function scheduleMusicVoice(source) {
+    scheduledMusicVoices.add(source);
+    if (typeof source.stop === 'function') {
+        const origStop = source.stop.bind(source);
+        source.stop = (t) => {
+            scheduledMusicVoices.delete(source);
+            return origStop(t);
+        };
+    }
+    if (typeof source.onended === 'function') {
+        const origOnended = source.onended;
+        source.onended = () => {
+            scheduledMusicVoices.delete(source);
+            origOnended();
+        };
+    }
+    return source;
+}
+
+function stopScheduledMusicVoices() {
+    for (const voice of scheduledMusicVoices) {
+        try { if (typeof voice.stop === 'function') voice.stop(); } catch (_) {}
+        try { if (typeof voice.disconnect === 'function') voice.disconnect(); } catch (_) {}
+    }
+    scheduledMusicVoices.clear();
+}
+
 function tickMusic() {
     if (musicPaused || !audioCtx || musicVolume() <= 0 || !musicMasterGain) return;
+    if (musicTransitionFadeFrames > 0) {
+        musicTransitionFadeFrames--;
+        if (musicTransitionFadeFrames <= 0 && musicTransitionIntensity > 0) {
+            musicIntensity = musicTransitionIntensity;
+            musicTransitionIntensity = 0;
+        }
+        applyLayerGains();
+    }
     const now = audioCtx.currentTime;
     if (now < musicNextBar) return;
     const bpm = getEffectiveBpm();
@@ -1118,17 +1278,32 @@ function stopMusic() {
     musicNextBar = 0;
     musicBarIndex = 0;
     musicEffects = { lowpass: null, bitcrush: null, stutterTimer: null };
+    stopScheduledMusicVoices();
     stopPadNotes();
 }
 
 function setMusicIntensity(level) {
     const clamped = Math.max(1, Math.min(3, level || 1));
-    if (clamped === musicIntensity) return;
+    if (clamped === musicIntensity && musicTransitionFadeFrames <= 0) return;
+    if (clamped !== musicIntensity) {
+        musicTransitionIntensity = clamped;
+        musicTransitionFadeFrames = 32;
+    }
     musicIntensity = clamped;
+}
+
+function applyLayerGains() {
+    if (!musicDrumsGain || !musicBassGain || !musicMelodyGain || !musicGlitchGain) return;
+    const mix = INTENSITY_LAYER_MIX[musicIntensity] || INTENSITY_LAYER_MIX[1];
+    musicDrumsGain.gain.value = mix.drums;
+    musicBassGain.gain.value = mix.bass;
+    musicMelodyGain.gain.value = mix.melody;
+    musicGlitchGain.gain.value = mix.glitch;
 }
 
 function musicCriticalHitLP() {
     if (!audioCtx || musicVolume() <= 0) return;
+    musicDuck(160, 3);
     try {
         const filter = audioCtx.createBiquadFilter();
         filter.type = 'lowpass';

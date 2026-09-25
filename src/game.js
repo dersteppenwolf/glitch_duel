@@ -3493,7 +3493,7 @@ function setupRestartButton() {
 
 function renderAudioSettings() {
     const volumes = getAudioVolumes();
-    for (const channel of ['combat', 'ui']) {
+    for (const channel of ['combat', 'ui', 'music']) {
         const slider = document.getElementById(`${channel}-volume`);
         const output = document.getElementById(`${channel}-volume-value`);
         const value = Math.round(volumes[channel] * 100);
@@ -3504,7 +3504,7 @@ function renderAudioSettings() {
 
 function setupAudioSettings() {
     renderAudioSettings();
-    for (const channel of ['combat', 'ui']) {
+    for (const channel of ['combat', 'ui', 'music']) {
         const slider = document.getElementById(`${channel}-volume`);
         if (slider) slider.addEventListener('input', (event) => {
             setAudioVolume(channel, Number(event.target.value) / 100);
