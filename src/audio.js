@@ -28,6 +28,10 @@ let musicRandom = createSeededRandom(Date.now() & 0xFFFF);
 let musicDuckingTimer = 0;
 let musicTransitionIntensity = 0;
 let musicTransitionFadeFrames = 0;
+let musicNoiseFloor = null;
+let musicDroneVoices = [];
+
+const WAVE_POOL = ['sine', 'triangle', 'sawtooth', 'square'];
 
 const INTENSITY_LAYER_MIX = {
     1: { drums: 0.50, bass: 0.60, melody: 0.50, glitch: 0.15, pad: 0.40 },
@@ -393,11 +397,7 @@ function scheduleDrumKick(time, gain = 0.5, humanMs = 0) {
     noise.start(time); noise.stop(time + 0.06);
 }
 
-function scheduleDrumSnare(time, gain = 0.4, humanMs = 0) {
-    if (!audioCtx || musicVolume() <= 0) return;
-    if (!Number.isFinite(gain) || gain <= 0) return;
-    time = Math.max(0, time + humanMs / 1000);
-    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('drums');
+function scheduleDrumSnareBody(time, vol) {
     const sine = audioCtx.createOscillator();
     const sg = audioCtx.createGain();
     sine.type = 'triangle';
@@ -418,7 +418,7 @@ function scheduleDrumSnare(time, gain = 0.4, humanMs = 0) {
     nf.type = 'bandpass';
     nf.frequency.value = 4000;
     nf.Q.value = 0.6;
-    if (Math.random() < 0.3) {
+    if (musicRandom() < 0.3) {
         const noise2 = audioCtx.createBufferSource();
         const buf2 = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.08, audioCtx.sampleRate);
         const d2 = buf2.getChannelData(0);
@@ -439,16 +439,35 @@ function scheduleDrumSnare(time, gain = 0.4, humanMs = 0) {
     noise.start(time); noise.stop(time + 0.15);
 }
 
+function scheduleDrumSnare(time, gain = 0.4, humanMs = 0) {
+    if (!audioCtx || musicVolume() <= 0) return;
+    if (!Number.isFinite(gain) || gain <= 0) return;
+    time = Math.max(0, time + humanMs / 1000);
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('drums');
+    scheduleDrumSnareBody(time, vol);
+    const toneFreq = 180 + musicRandom() * 40;
+    const tone = audioCtx.createOscillator();
+    const tg = audioCtx.createGain();
+    tone.type = 'sine';
+    tone.frequency.setValueAtTime(toneFreq, time);
+    tone.frequency.exponentialRampToValueAtTime(toneFreq * 0.5, time + 0.06);
+    tg.gain.setValueAtTime(0, time);
+    tg.gain.linearRampToValueAtTime(Math.min(0.08, vol * 0.25), time + 0.003);
+    tg.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
+    tone.connect(tg).connect(musicMasterGain);
+    tone.start(time); tone.stop(time + 0.1);
+}
+
 function scheduleDrumHat(time, gain = 0.25, humanMs = 0, closed = true) {
     if (!audioCtx || musicVolume() <= 0) return;
     if (!Number.isFinite(gain) || gain <= 0) return;
     time = Math.max(0, time + humanMs / 1000);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('drums');
+    const dur = closed ? 0.04 : 0.14;
     const noise = audioCtx.createBufferSource();
-    const dur = closed ? 0.04 : 0.12;
     const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
     const data = buf.getChannelData(0);
-    const decay = closed ? audioCtx.sampleRate * 0.01 : audioCtx.sampleRate * 0.025;
+    const decay = closed ? audioCtx.sampleRate * 0.01 : audioCtx.sampleRate * 0.03;
     for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / decay);
     noise.buffer = buf;
     const ng = audioCtx.createGain();
@@ -456,10 +475,22 @@ function scheduleDrumHat(time, gain = 0.25, humanMs = 0, closed = true) {
     ng.gain.linearRampToValueAtTime(0.0001, time + dur);
     const nf = audioCtx.createBiquadFilter();
     nf.type = 'highpass';
-    nf.frequency.value = 7000;
+    nf.frequency.value = closed ? 7000 : 5000;
     nf.Q.value = 0.5;
     noise.connect(ng).connect(nf).connect(musicMasterGain);
     noise.start(time); noise.stop(time + dur + 0.01);
+    if (!closed) {
+        const body = audioCtx.createOscillator();
+        const bg = audioCtx.createGain();
+        body.type = 'sine';
+        body.frequency.setValueAtTime(300, time);
+        body.frequency.exponentialRampToValueAtTime(120, time + dur * 0.5);
+        bg.gain.setValueAtTime(0, time);
+        bg.gain.linearRampToValueAtTime(Math.min(0.06, vol * 0.2), time + 0.002);
+        bg.gain.exponentialRampToValueAtTime(0.0001, time + dur * 0.6);
+        body.connect(bg).connect(musicMasterGain);
+        body.start(time); body.stop(time + dur + 0.02);
+    }
 }
 
 function noteAt(root, offset) {
@@ -989,6 +1020,89 @@ function musicDuck(durationMs = 200, reductionDb = 4) {
     musicMasterGain.gain.linearRampToValueAtTime(0.85, now + durationMs / 1000);
 }
 
+function pickWave() {
+    return WAVE_POOL[Math.floor(musicRandom() * WAVE_POOL.length)];
+}
+
+function scheduleChord(notes, time, gain, wave = 'sine') {
+    if (!audioCtx || musicVolume() <= 0) return;
+    if (!notes || !notes.length) return;
+    time = Math.max(0, time);
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('melody');
+    const perNoteGain = vol / notes.length * 0.6;
+    notes.forEach((note, i) => {
+        if (!Number.isFinite(note)) return;
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = wave === 'pulseWide' ? 'square' : (wave === 'pulseNarrow' ? 'square' : wave);
+        o.frequency.value = midiToFreq(note);
+        const fadeIn = 0.04 + i * 0.005;
+        g.gain.setValueAtTime(0, time);
+        g.gain.linearRampToValueAtTime(perNoteGain, time + fadeIn);
+        g.gain.setValueAtTime(perNoteGain, time + 0.3);
+        g.gain.exponentialRampToValueAtTime(0.0001, time + 1.2);
+        o.connect(g).connect(musicMasterGain);
+        o.start(time);
+        o.stop(time + 1.5);
+    });
+}
+
+function startNoiseFloor() {
+    if (!audioCtx || musicNoiseFloor) return;
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 1; i < data.length; i++) {
+        data[i] = data[i - 1] * 0.997 + (Math.random() - 0.5) * 0.05;
+    }
+    const source = audioCtx.createBufferSource();
+    source.buffer = buf;
+    source.loop = true;
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0.003;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 2000;
+    source.connect(gain).connect(filter).connect(musicMasterGain);
+    source.start();
+    musicNoiseFloor = { source, gain, filter };
+}
+
+function stopNoiseFloor() {
+    if (!musicNoiseFloor) return;
+    try { musicNoiseFloor.source.stop(); } catch (_) {}
+    try { musicNoiseFloor.gain.disconnect(); } catch (_) {}
+    try { musicNoiseFloor.filter.disconnect(); } catch (_) {}
+    musicNoiseFloor = null;
+}
+
+function schedulePadDrone(notes, startTime, duration) {
+    if (!audioCtx || musicVolume() <= 0) return;
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * 0.08 * getLayerMultiplier('pad');
+    notes.forEach((note) => {
+        if (!Number.isFinite(note)) return;
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = 'sine';
+        o.frequency.value = midiToFreq(note);
+        g.gain.setValueAtTime(0, startTime);
+        g.gain.linearRampToValueAtTime(vol, startTime + 0.5);
+        g.gain.setValueAtTime(vol, startTime + duration - 0.5);
+        g.gain.linearRampToValueAtTime(0.0001, startTime + duration);
+        o.connect(g).connect(musicMasterGain);
+        o.start(startTime);
+        o.stop(startTime + duration + 0.1);
+        musicDroneVoices.push({ o, g });
+    });
+}
+
+function stopDroneVoices() {
+    for (const v of musicDroneVoices) {
+        try { v.o.stop(); } catch (_) {}
+        try { v.g.disconnect(); } catch (_) {}
+    }
+    musicDroneVoices = [];
+}
+
 function stopPadNotes() {
     for (const entry of musicPadOscillators) {
         try { entry.o.stop(); } catch (_) {}
@@ -1224,6 +1338,20 @@ function scheduleMusicBar(pattern, barStart, beatSec) {
     if (!melodyPhrase || melodyPhrase.length === 0) return;
     const section = Math.floor(musicBarIndex / 8) % 3;
     const isLastBarOfSection = musicBarIndex > 0 && musicBarIndex % 8 === 7;
+    const isFirstBarOfSection = musicBarIndex % 8 === 0;
+    if (isFirstBarOfSection && section !== 2 && musicIntensity >= 2) {
+        const pool = MUSIC_CONFIG.notePool;
+        const rootIdx = musicIntensity >= 3 ? 4 : 2;
+        const chordNotes = [pool[rootIdx], pool[rootIdx + 3], pool[rootIdx + 7]];
+        scheduleChord(chordNotes, barStart, 0.10 + musicIntensity * 0.02, 'sine');
+    }
+    if (section === 0 && musicBarIndex % 8 === 0) {
+        stopDroneVoices();
+        const pool = MUSIC_CONFIG.notePool;
+        const rootIdx = musicIntensity >= 3 ? 4 : 2;
+        const droneNotes = [pool[rootIdx] - 12, pool[rootIdx] - 24];
+        schedulePadDrone(droneNotes, barStart, beatSec * 16 * 2);
+    }
     let padScheduled = false;
     let fillScheduled = false;
     let breathScheduled = false;
@@ -1313,6 +1441,7 @@ function startMusic() {
     musicPaused = false;
     musicNextBar = audioCtx.currentTime;
     musicBarIndex = 0;
+    startNoiseFloor();
 }
 
 function scheduleMusicVoice(source) {
@@ -1369,6 +1498,8 @@ function stopMusic() {
     musicEffects = { lowpass: null, bitcrush: null, stutterTimer: null };
     stopScheduledMusicVoices();
     stopPadNotes();
+    stopNoiseFloor();
+    stopDroneVoices();
 }
 
 function setMusicIntensity(level) {
