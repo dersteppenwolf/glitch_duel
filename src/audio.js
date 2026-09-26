@@ -24,7 +24,7 @@ let musicBassGain = null;
 let musicMelodyGain = null;
 let musicGlitchGain = null;
 let scheduledMusicVoices = new Set();
-let musicRandom = Math.random;
+let musicRandom = createSeededRandom(Date.now() & 0xFFFF);
 let musicDuckingTimer = 0;
 let musicTransitionIntensity = 0;
 let musicTransitionFadeFrames = 0;
@@ -118,6 +118,10 @@ function initMusicBus() {
     musicGlitchGain.gain.value = 1;
 
     if (!musicChorusLFO) {
+        musicDrumsGain.connect(musicMasterGain);
+        musicBassGain.connect(musicMasterGain);
+        musicMelodyGain.connect(musicMasterGain);
+        musicGlitchGain.connect(musicMasterGain);
         musicMasterFilter = audioCtx.createBiquadFilter();
         musicMasterFilter.type = 'lowshelf';
         musicMasterFilter.frequency.value = 300;
@@ -188,7 +192,9 @@ function getAudioDiagnostics() {
 
 function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
 
-const HUMANIZE = { jitter: 0.006, swing: 0.005, ghost: 0.2 };
+function noteVelocity() { return 0.85 + musicRandom() * 0.30; }
+
+const HUMANIZE = { jitter: 0.012, swing: 0.012, ghost: 0.35 };
 
 const MELODY_ACCENT = { downbeat: 1.2, upbeat: 0.85 };
 
@@ -720,11 +726,34 @@ function scheduleBassNote(note, time, duration, gain = 0.5) {
     o2.start(time); o2.stop(time + duration + 0.05);
 }
 
+function maybeAddApproachNote(note, time, duration, gain) {
+    if (musicRandom() > 0.12) return;
+    if (time < 0.05) return;
+    const approachTime = time - 0.035 - musicRandom() * 0.02;
+    const direction = musicRandom() > 0.5 ? 1 : -1;
+    const approachNote = note + direction;
+    if (!Number.isFinite(approachNote)) return;
+    const approachGain = gain * 0.25;
+    const approachDur = 0.03 + musicRandom() * 0.02;
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * approachGain * getLayerMultiplier('melody');
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(midiToFreq(approachNote), approachTime);
+    g.gain.setValueAtTime(0, approachTime);
+    g.gain.linearRampToValueAtTime(Math.min(0.12, vol), approachTime + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, approachTime + approachDur);
+    o.connect(g).connect(musicMasterGain);
+    o.start(approachTime);
+    o.stop(approachTime + approachDur + 0.02);
+}
+
 function scheduleMelodyNote(note, time, duration, gain = 0.4, harmonyInterval = 0) {
     if (!audioCtx || musicVolume() <= 0) return;
     if (!Number.isFinite(note) || !Number.isFinite(gain) || gain <= 0) return;
     time = Math.max(0, time);
     const vol = musicVolume() * AUDIO_CONFIG.mixGain * gain * getLayerMultiplier('melody');
+    maybeAddApproachNote(note, time, duration, gain);
     if (harmonyInterval !== 0) {
         const ho = audioCtx.createOscillator();
         const hg = audioCtx.createGain();
@@ -823,20 +852,20 @@ function scheduleGlitchNote(note, time, duration, gain = 0.2) {
     const g = audioCtx.createGain();
     o.type = 'sawtooth';
     o.frequency.setValueAtTime(midiToFreq(note), time);
-    const sweepRate = 4 + Math.random() * 6;
+    const sweepRate = 4 + musicRandom() * 6;
     o.frequency.linearRampToValueAtTime(midiToFreq(note) * 0.3, time + duration);
     g.gain.setValueAtTime(0, time);
     g.gain.linearRampToValueAtTime(Math.min(0.2, vol * 0.6), time + 0.004);
     g.gain.exponentialRampToValueAtTime(0.0001, time + duration * 0.6);
     const bp = audioCtx.createBiquadFilter();
     bp.type = 'bandpass';
-    bp.frequency.value = 2000 + Math.random() * 3000;
-    bp.Q.value = 3 + Math.random() * 4;
+    bp.frequency.value = 2000 + musicRandom() * 3000;
+    bp.Q.value = 3 + musicRandom() * 4;
     const sweep = audioCtx.createOscillator();
     sweep.type = 'sine';
-    sweep.frequency.value = 0.2 + Math.random() * 0.3;
+    sweep.frequency.value = 0.2 + musicRandom() * 0.3;
     const sweepGain = audioCtx.createGain();
-    sweepGain.gain.value = 1500 + Math.random() * 2000;
+    sweepGain.gain.value = 1500 + musicRandom() * 2000;
     sweep.connect(sweepGain);
     sweepGain.connect(bp.frequency);
     sweep.start();
@@ -906,9 +935,15 @@ function schedulePadDouble(time, gain = 0.12) {
     }
 }
 
-function getEffectiveBpm() {
+function getEffectiveBpm(rubato = false) {
     const s = MUSIC_STYLES[musicStyle];
-    return (s && s.bpm) ? s.bpm : MUSIC_CONFIG.bpm;
+    let bpm = (s && s.bpm) ? s.bpm : MUSIC_CONFIG.bpm;
+    if (rubato) {
+        const section = Math.floor(musicBarIndex / 8) % 3;
+        if (section === 1) bpm += 1 + Math.floor(musicRandom() * 2);
+        else if (section === 2) bpm -= 1;
+    }
+    return bpm;
 }
 
 function getMusicTiming() {
@@ -1005,7 +1040,7 @@ function buildMusicPattern(intensity, barIndex) {
     const dp = DRUM_PATTERNS[drumIdx] || DRUM_PATTERNS[0];
 
     function humanizeMs(beat) {
-        return (Math.random() - 0.5) * HUMANIZE.jitter * 1000;
+        return (musicRandom() - 0.5) * HUMANIZE.jitter * 1000;
     }
 
     function swingMs(beat) {
@@ -1023,7 +1058,7 @@ function buildMusicPattern(intensity, barIndex) {
                 if (!Number.isFinite(note)) return null;
                 if (isBreakdown && beat > 8) return null;
                 const dur = Math.min(beatSec * walkingBass.durations[di], beatSec * 0.95);
-                return { note, gain: 0.45 + Math.random() * 0.08, dur, humanMs: humanizeMs(beat) };
+                return { note, gain: 0.45 + musicRandom() * 0.08, dur, humanMs: humanizeMs(beat) };
             }
             acc = end;
         }
@@ -1031,9 +1066,9 @@ function buildMusicPattern(intensity, barIndex) {
     };
 
     function beatInPattern(beat) {
-        for (const b of dp.kicks) { if (b === beat) return { type: 'kick', gain: 0.4 + Math.random() * 0.12, humanMs: h(beat) }; }
-        for (const b of dp.snares) { if (b === beat) return { type: 'snare', gain: 0.3 + Math.random() * 0.1, humanMs: h(beat) }; }
-        if (dp.hatEach > 0 && beat % dp.hatEach === 0) return { type: 'hat', gain: 0.1 + Math.random() * 0.06, humanMs: h(beat) };
+        for (const b of dp.kicks) { if (b === beat) return { type: 'kick', gain: 0.4 + musicRandom() * 0.12, humanMs: h(beat) }; }
+        for (const b of dp.snares) { if (b === beat) return { type: 'snare', gain: 0.3 + musicRandom() * 0.1, humanMs: h(beat) }; }
+        if (dp.hatEach > 0 && beat % dp.hatEach === 0) return { type: 'hat', gain: 0.1 + musicRandom() * 0.06, humanMs: h(beat) };
         return null;
     }
 
@@ -1055,7 +1090,7 @@ function buildMusicPattern(intensity, barIndex) {
             melody: ({ beat }) => {
                 if (isBreakdown) return null;
                 if (beat % 8 !== 0) return null;
-                return { note: pool[rootIdx + 4], gain: accentGain(beat, 0.3) + Math.random() * 0.05, dur: beatSec * 1.8, humanMs: humanizeMs(beat) };
+                return { note: pool[rootIdx + 4], gain: accentGain(beat, 0.3) + musicRandom() * 0.05, dur: beatSec * 1.8, humanMs: humanizeMs(beat) };
             },
             glitch: () => null,
             pad: () => null,
@@ -1085,12 +1120,12 @@ function buildMusicPattern(intensity, barIndex) {
             melody: ({ beat }) => {
                 if (isBreakdown) return null;
                 if (beat % 4 !== 0) return null;
-                return { note: pool[rootIdx + 3 + (Math.floor(barIndex / 8) % 3)], gain: accentGain(beat, 0.35) + Math.random() * 0.05, dur: beatSec * 1.5, humanMs: humanizeMs(beat) };
+                return { note: pool[rootIdx + 3 + (Math.floor(barIndex / 8) % 3)], gain: accentGain(beat, 0.35) + musicRandom() * 0.05, dur: beatSec * 1.5, humanMs: humanizeMs(beat) };
             },
             glitch: ({ beat }) => {
                 if (isBreakdown) return null;
                 if (beat % 12 !== 0) return null;
-                return { note: pool[(beat + Math.floor(beat / 12)) % pool.length], gain: 0.18 + Math.random() * 0.06, dur: beatSec * 0.4, humanMs: humanizeMs(beat) };
+                return { note: pool[(beat + Math.floor(beat / 12)) % pool.length], gain: 0.18 + musicRandom() * 0.06, dur: beatSec * 0.4, humanMs: humanizeMs(beat) };
             },
             pad: ({ beat }) => (beat === 0 && !isBreakdown) ? { gain: 0.12 } : null,
             string: ({ beat }) => {
@@ -1125,12 +1160,12 @@ function buildMusicPattern(intensity, barIndex) {
             melody: ({ beat }) => {
                 if (isBreakdown) return null;
                 if (beat % 2 !== 0) return null;
-                return { note: pool[rootIdx + 4 + (Math.floor(beat / 2) % 4)], gain: accentGain(beat, 0.4) + Math.random() * 0.06, dur: beatSec * 0.8, humanMs: humanizeMs(beat) };
+                return { note: pool[rootIdx + 4 + (Math.floor(beat / 2) % 4)], gain: accentGain(beat, 0.4) + musicRandom() * 0.06, dur: beatSec * 0.8, humanMs: humanizeMs(beat) };
             },
             glitch: ({ beat }) => {
                 if (isBreakdown) return null;
                 if (beat % 6 !== 0) return null;
-                return { note: pool[(beat + Math.floor(beat / 6) * 3) % pool.length], gain: 0.22 + Math.random() * 0.08, dur: beatSec * 0.25, humanMs: humanizeMs(beat) };
+                return { note: pool[(beat + Math.floor(beat / 6) * 3) % pool.length], gain: 0.22 + musicRandom() * 0.08, dur: beatSec * 0.25, humanMs: humanizeMs(beat) };
             },
             pad: ({ beat }) => (beat === 0) ? { gain: 0.14 } : null,
             string: ({ beat }) => {
@@ -1152,14 +1187,46 @@ function buildMusicPattern(intensity, barIndex) {
     return patterns[intensity] || patterns[1];
 }
 
+function addGhostBassNote(t, beatSec) {
+    if (!audioCtx || musicVolume() <= 0) return;
+    if (musicRandom() > 0.15) return;
+    const pool = MUSIC_CONFIG.notePool;
+    const rootIdx = (musicIntensity || 1) >= 3 ? 4 : 2;
+    const ghostNote = pool[rootIdx + Math.floor(musicRandom() * 3)];
+    if (!Number.isFinite(ghostNote)) return;
+    const ghostGain = 0.10 + musicRandom() * 0.05;
+    const ghostDur = beatSec * 0.12;
+    const vol = musicVolume() * AUDIO_CONFIG.mixGain * ghostGain * getLayerMultiplier('bass');
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(midiToFreq(ghostNote), t);
+    const o2 = audioCtx.createOscillator();
+    const g2 = audioCtx.createGain();
+    o2.type = 'triangle';
+    o2.frequency.setValueAtTime(midiToFreq(ghostNote - 12), t);
+    g2.gain.setValueAtTime(0, t);
+    g2.gain.linearRampToValueAtTime(Math.min(0.04, vol * 0.3), t + 0.01);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + ghostDur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(Math.min(0.08, vol * 0.4), t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + ghostDur);
+    o.connect(g).connect(musicMasterGain);
+    o2.connect(g2).connect(musicMasterGain);
+    o.start(t); o.stop(t + ghostDur + 0.03);
+    o2.start(t); o2.stop(t + ghostDur + 0.03);
+}
+
 function scheduleMusicBar(pattern, barStart, beatSec) {
     if (!audioCtx || musicPaused) return;
     const beats = 16;
     const melodyPhrase = buildMelodyPhrase(musicIntensity || 1, musicBarIndex);
     if (!melodyPhrase || melodyPhrase.length === 0) return;
     const section = Math.floor(musicBarIndex / 8) % 3;
+    const isLastBarOfSection = musicBarIndex > 0 && musicBarIndex % 8 === 7;
     let padScheduled = false;
     let fillScheduled = false;
+    let breathScheduled = false;
     for (let b = 0; b < beats; b++) {
         const beat = { beat: b, total: beats };
         const t = Math.max(0.01, barStart + b * beatSec);
@@ -1180,25 +1247,47 @@ function scheduleMusicBar(pattern, barStart, beatSec) {
         else if (drum && drum.type === 'snare') scheduleDrumSnare(t, drum.gain, drum.humanMs || 0);
         else if (drum && drum.type === 'hat') scheduleDrumHat(t, drum.gain, drum.humanMs || 0);
         const bass = pattern.bass(beat);
-        if (bass && Number.isFinite(bass.note)) scheduleBassNote(bass.note, Math.max(0, t + (bass.humanMs || 0) / 1000), bass.dur, bass.gain);
+        const vel = noteVelocity();
+        if (bass && Number.isFinite(bass.note)) scheduleBassNote(bass.note, Math.max(0, t + (bass.humanMs || 0) / 1000), bass.dur, bass.gain * vel);
         const mel = pattern.melody(beat);
-        if (mel) { const melNote = melodyPhrase[Math.floor(b * melodyPhrase.length / beats) % melodyPhrase.length]; if (Number.isFinite(melNote)) scheduleMelodyNote(melNote, Math.max(0, t + (mel.humanMs || 0) / 1000), mel.dur, mel.gain); }
+        const velMel = noteVelocity();
+        if (mel) { const melNote = melodyPhrase[Math.floor(b * melodyPhrase.length / beats) % melodyPhrase.length]; if (Number.isFinite(melNote)) scheduleMelodyNote(melNote, Math.max(0, t + (mel.humanMs || 0) / 1000), mel.dur, mel.gain * velMel); }
         const contra = pattern.contra ? pattern.contra(beat) : null;
-        if (contra && Number.isFinite(contra.note)) scheduleMelodyNote(contra.note, Math.max(0, t + (contra.humanMs || 0) / 1000), contra.dur, contra.gain, contra.harmony || 0);
+        if (contra && Number.isFinite(contra.note)) scheduleMelodyNote(contra.note, Math.max(0, t + (contra.humanMs || 0) / 1000), contra.dur, contra.gain * noteVelocity(), contra.harmony || 0);
         const gl = pattern.glitch(beat);
-        if (gl && Number.isFinite(gl.note)) scheduleGlitchNote(gl.note, Math.max(0, t + (gl.humanMs || 0) / 1000), gl.dur, gl.gain);
+        const velGl = noteVelocity();
+        if (gl && Number.isFinite(gl.note)) scheduleGlitchNote(gl.note, Math.max(0, t + (gl.humanMs || 0) / 1000), gl.dur, gl.gain * velGl);
         const str = pattern.string ? pattern.string(beat) : null;
-        if (str && Number.isFinite(str.note)) schedulePluckedString(str.note, Math.max(0, t + (str.humanMs || 0) / 1000), str.dur, str.gain);
+        if (str && Number.isFinite(str.note)) schedulePluckedString(str.note, Math.max(0, t + (str.humanMs || 0) / 1000), str.dur, str.gain * noteVelocity());
         const perc = pattern.percussion ? pattern.percussion(beat) : null;
         if (perc) scheduleMelodicPerc(t, perc.gain);
         if (!padScheduled && pattern.pad && pattern.pad(beat)) {
             schedulePadDouble(t, pattern.pad(beat).gain);
             padScheduled = true;
         }
+        if (!breathScheduled && isLastBarOfSection && b >= 14) {
+            breathScheduled = true;
+            const hushNote = audioCtx.createOscillator();
+            const hushGain = audioCtx.createGain();
+            hushNote.type = 'sine';
+            hushNote.frequency.value = 60;
+            hushGain.gain.setValueAtTime(0.03, t);
+            hushGain.gain.exponentialRampToValueAtTime(0.0001, t + beatSec * 0.3);
+            hushNote.connect(hushGain).connect(musicMasterGain);
+            hushNote.start(t);
+            hushNote.stop(t + beatSec * 0.4);
+        }
+        if (!breathScheduled && b === 15 && isLastBarOfSection && musicRandom() > 0.4) {
+            breathScheduled = true;
+            if (musicRandom() > 0.5) scheduleDrumHat(t, 0.08, 0, true);
+        }
         const fill = pattern.fill ? pattern.fill(beat) : null;
         if (fill && fill.fill && !fillScheduled) {
             scheduleDrumFill(t, beatSec);
             fillScheduled = true;
+        }
+        if (b > 0 && b < 15 && !bass && b % 3 === 1 && musicRandom() < 0.12) {
+            addGhostBassNote(t, beatSec);
         }
     }
     if (musicIntensity >= 3 && musicBarIndex > 0 && musicBarIndex % 8 === 0) {
@@ -1265,7 +1354,7 @@ function tickMusic() {
     }
     const now = audioCtx.currentTime;
     if (now < musicNextBar) return;
-    const bpm = getEffectiveBpm();
+    const bpm = getEffectiveBpm(true);
     const beatSec = 60000 / bpm / 1000;
     const pattern = buildMusicPattern(musicIntensity || 1, musicBarIndex);
     scheduleMusicBar(pattern, musicNextBar, beatSec);
