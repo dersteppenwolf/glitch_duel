@@ -249,11 +249,18 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Native button-based touch controls with Pointer Events, safe areas, prioritized landscape view, and degraded portrait layout with orientation warning.
 - Active matches pause when the page becomes hidden and require an explicit resume.
 - Training mode with position, CPU, timer, reset, health, and energy controls.
+- Training objectives and progress sit in an arena footer. Expand `OPCIONES DE PRÁCTICA / PRACTICE OPTIONS` for position, CPU, timer, reset, health and energy; the footer reserves layout space and scrolls internally on short screens.
 - Training objectives inside the existing mode: three combo connections, crouch-and-punish, block-and-counter, and combat-earned energy/special spend. Trial progress is session-only and excluded from stats/history.
 - Optional `GLITCH CANCEL` Training experiment outside the `n/4` trial progression, with whiff/cancel/follow-up guidance, `CANCEL 25`/`USED 1/1` states, and no stats/history persistence.
 - First-run onboarding with an immediate skip path.
 
 ### Visual And Audio
+
+- Illustrated paper-comic menu with two local SVG fighters, a bold VS sticker, and selection-driven style, rival and arena accents. Native match/settings disclosures and the primary Play Now action remain available.
+- Fighters have colored style/rival outfits, clearer guard, retreat, hit and finish poses, contact shadows and a thin light under-outline on the dark Server Down arena. These details do not change hitboxes or combat rules.
+- Symmetric P1/CPU energy bars, a larger central timer, checked diamond round tokens, and an infinity symbol for untimed Training. CPU Special readiness uses the same recovery-aware action state as the other cues.
+- All ten arenas use distinct lighting and floor composition; notebook margins, cafe light cones, lab windows, office projection, video-call panels, classroom chalk tones, server alerts, convention bunting, terminal scan panels and the rooftop skyline. The menu previews have small CSS ambient loops.
+- Split-panel VS intros use decorative portraits. Results emphasize the score and illustrated medal, while PNG cards reuse the scene with a stamp and winner portrait. Short paper-entry/button transitions and preview loops respect both the saved reduced-motion choice and the system fallback.
 
 - Contact uses a starburst; blocked contact uses a shield with two bars; a whiff leaves an open broken arc. Hitstop lasts 5 fixed steps for normal hits, 7 for combos, 9 for specials and 2 for blocks (zero with reduced motion). Shake and particle intensity scale with contact strength; the HUD stays steady. Specials use a localized beam and outline.
 - Four player styles and four CPU rivals have distinct combo/special motifs: bursts, streaks, fractures, scanlines, brackets, echoes, split lines and pixel bands. These are local geometric effects, with no full-screen flash or framebuffer pixel processing.

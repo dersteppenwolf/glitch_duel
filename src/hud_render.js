@@ -10,7 +10,7 @@ function drawHealthBars() {
     drawHealthBar(50, 34, player1.health, player1.displayHealth, false, player1.accentColor);
     drawHealthBar(WIDTH - 354, 34, player2.health, player2.displayHealth, true, player2.accentColor);
 
-    ctx.font = `bold ${hudCompactMode ? 28 : 18}px ${GAME_FONT_FAMILY}`;
+    ctx.font = `bold ${hudCompactMode ? 25 : 18}px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#000';
     ctx.textAlign = 'left';
     ctx.fillText(`${hudCompactMode ? 'P1' : t('human')}: ${player1.health}%`, 50, 26);
@@ -25,9 +25,11 @@ function drawHealthBars() {
     }
 
     drawEnergyBar(52, 67, player1.energy, false, player1.accentColor, getSpecialActionState(player1));
+    drawEnergyBar(WIDTH - 252, 67, player2.energy, true, player2.accentColor, getSpecialActionState(player2));
+    ctx.font = `bold ${hudCompactMode ? 25 : 18}px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#000';
     ctx.textAlign = 'right';
-    ctx.fillText(`${hudCompactMode ? 'CPU' : (player2.labelKey ? t(player2.labelKey) : t('cpuAI'))}: ${player2.health}%`, WIDTH - 50, 26);
+    ctx.fillText(`${hudCompactMode ? 'CPU' : (player2.labelKey ? t(player2.labelKey) : t('cpuAI'))}: ${player2.health}%`, WIDTH - 50, 26, 300);
 
     if (!hudCompactMode && player2.labelKey) {
         ctx.strokeStyle = player2.accentColor;
@@ -69,12 +71,27 @@ function drawHealthBars() {
     ctx.font = `bold ${hudCompactMode ? 20 : 13}px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#000';
     ctx.fillText(`${t('round')} ${currentRound}`, WIDTH / 2, 26);
-    ctx.font = `bold ${hudCompactMode ? 22 : 14}px ${GAME_FONT_FAMILY}`;
-    ctx.fillStyle = '#000';
-    ctx.fillText(`${playerRounds}-${cpuRounds}`, WIDTH / 2, 47);
-    ctx.font = `bold ${hudCompactMode ? 32 : 28}px ${GAME_FONT_FAMILY}`;
-    ctx.fillStyle = '#000';
-    ctx.fillText(`${Math.ceil(roundTimeMs / 1000)}`, WIDTH / 2, 77);
+    ctx.font = `bold 14px ${GAME_FONT_FAMILY}`;
+    ctx.fillText(`${playerRounds}-${cpuRounds}`, WIDTH / 2, 86);
+    ctx.font = `bold ${hudCompactMode ? 36 : 38}px ${GAME_FONT_FAMILY}`;
+    ctx.fillStyle = roundTimeMs <= 10000 && gameMode !== 'training' ? '#a51d40' : '#111';
+    ctx.fillText(gameMode === 'training' && !getEffectiveTrainingConfig().timer ? '∞' : `${Math.ceil(roundTimeMs / 1000)}`, WIDTH / 2, 63);
+    drawRoundTokens(WIDTH / 2 - 65, playerRounds, player1.accentColor);
+    drawRoundTokens(WIDTH / 2 + 42, cpuRounds, player2.accentColor);
+}
+
+function drawRoundTokens(x, wins, color) {
+    for (let index = 0; index < ROUNDS_TO_WIN; index++) {
+        ctx.fillStyle = index < wins ? color : '#e8e2d6';
+        ctx.strokeStyle = '#111'; ctx.lineWidth = 2;
+        const center = x + index * 20;
+        ctx.beginPath(); ctx.moveTo(center, 43); ctx.lineTo(center + 7, 51);
+        ctx.lineTo(center, 59); ctx.lineTo(center - 7, 51); ctx.closePath(); ctx.fill(); ctx.stroke();
+        if (index < wins) {
+            ctx.strokeStyle = '#fffdf5'; ctx.beginPath();
+            ctx.moveTo(center - 3, 51); ctx.lineTo(center, 54); ctx.lineTo(center + 4, 48); ctx.stroke();
+        }
+    }
 }
 
 function drawHudPlate(x, y, width, height, accentColor) {
@@ -85,9 +102,8 @@ function drawHudPlate(x, y, width, height, accentColor) {
     ctx.strokeStyle = '#111';
     ctx.lineWidth = 4;
     ctx.strokeRect(x, y, width, height);
-    ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x + 7, y + 7, width - 14, height - 14);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(x + 2, y + 2, width - 4, 3);
 }
 
 function drawHealthBar(x, y, health, displayHealth, alignRight, accentColor = '#000') {
@@ -104,9 +120,6 @@ function drawHealthBar(x, y, health, displayHealth, alignRight, accentColor = '#
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 4;
     ctx.strokeRect(x, y, width, height);
-    ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x + 3, y + 3, width - 6, height - 6);
 
     if (displayWidth > 0) {
         ctx.fillStyle = '#9ca3af';
@@ -177,14 +190,13 @@ function drawEnergyBar(x, y, energy, alignRight, accentColor = '#000', actionSta
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 3;
     ctx.strokeRect(x, y, width, height);
-    ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x + 2, y + 2, width - 4, height - 4);
-
     if (fillWidth > 0) {
         ctx.fillStyle = full ? '#ffd400' : '#00d5ff';
         ctx.fillRect(alignRight ? x + width - fillWidth : x, y, fillWidth, height);
     }
+
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, width, height);
 
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.lineWidth = 1;
@@ -296,29 +308,73 @@ function drawVsIntro() {
     ctx.globalAlpha = alpha;
     ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    ctx.fillStyle = '#fffdf2';
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 7;
-    ctx.fillRect(190, 112, 620, 220);
-    ctx.strokeRect(190, 112, 620, 220);
-
+    const color = player2.accentColor;
+    ctx.fillStyle = '#fffdf2'; ctx.fillRect(120, 116, 760, 288);
+    ctx.fillStyle = '#e6f1f9'; ctx.fillRect(122, 162, 374, 170);
+    ctx.fillStyle = '#f3e8e7'; ctx.fillRect(504, 162, 374, 170);
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 5; ctx.strokeRect(120, 116, 760, 288);
+    ctx.fillStyle = '#111'; ctx.fillRect(120, 116, 760, 44);
     ctx.textAlign = 'center';
-    ctx.font = `bold 34px ${GAME_FONT_FAMILY}`;
-    ctx.fillStyle = '#111';
-    ctx.fillText(getVsIntroTitle(), WIDTH / 2, 155);
+    ctx.font = `bold 24px ${GAME_FONT_FAMILY}`;
+    ctx.fillStyle = '#fffdf5';
+    ctx.fillText(getVsIntroTitle(), WIDTH / 2, 146, 710);
+    drawDuelPortrait(ctx, 267, 214, 1, 'player', selectedFighterStyle, '#1f6feb');
+    drawDuelPortrait(ctx, 733, 214, 1, 'cpu', getRivalConfig().detail, color);
     const rivalLabel = getRivalLabel();
-    ctx.font = `bold ${rivalLabel.length > 13 ? 42 : 54}px ${GAME_FONT_FAMILY}`;
-    ctx.lineWidth = 8;
-    ctx.strokeStyle = '#000';
-    ctx.strokeText(`P1  VS  ${rivalLabel}`, WIDTH / 2, 235);
-    ctx.fillStyle = player2.accentColor;
-    ctx.fillText(`P1  VS  ${rivalLabel}`, WIDTH / 2, 235);
     ctx.font = `bold 20px ${GAME_FONT_FAMILY}`;
     ctx.fillStyle = '#111';
-    ctx.fillText(`${getDifficultyLabel()} | ${getArenaLabel()}`, WIDTH / 2, 285);
+    ctx.fillText(`P1 · ${t(FIGHTER_STYLES[selectedFighterStyle].labelKey)}`, 282, 314, 280);
+    ctx.fillText(rivalLabel, 720, 314, 270);
+    ctx.fillStyle = '#ffd447'; ctx.fillRect(457, 222, 86, 62);
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 4; ctx.strokeRect(457, 222, 86, 62);
+    ctx.font = `bold 38px ${GAME_FONT_FAMILY}`; ctx.fillStyle = '#111'; ctx.fillText('VS', 500, 267);
+    // Full identity remains available as one text run, including compact layouts.
+    ctx.font = `bold 13px ${GAME_FONT_FAMILY}`;
+    ctx.fillText(`P1  VS  ${rivalLabel}`, WIDTH / 2, 187, 320);
+    ctx.fillStyle = (VISUAL_PALETTE.arena[selectedArena] || VISUAL_PALETTE.arena.notebook).ground;
+    ctx.fillRect(120, 335, 760, 5);
+    ctx.font = `bold 19px ${GAME_FONT_FAMILY}`; ctx.fillStyle = '#111';
+    ctx.fillText(`${getDifficultyLabel()} | ${getArenaLabel()}`, WIDTH / 2, 365, 710);
     ctx.font = `bold 14px ${GAME_FONT_FAMILY}`;
-    ctx.fillText(t(getRivalConfig().introKey), WIDTH / 2, 312);
+    ctx.fillText(t(getRivalConfig().introKey), WIDTH / 2, 389, 710);
     ctx.restore();
+}
+
+// Decorative busts share visual vocabulary, never Fighter state or combat rules.
+function drawDuelPortrait(target, x, y, scale, role, detail, color) {
+    target.save(); target.translate(x, y); target.scale(scale, scale);
+    const alpha = typeof target.globalAlpha === 'number' ? target.globalAlpha : 1;
+    target.fillStyle = color; target.globalAlpha = alpha * 0.12;
+    target.beginPath(); target.arc(0, 14, 57, 0, Math.PI * 2); target.fill(); target.globalAlpha = alpha;
+    target.strokeStyle = '#111'; target.lineWidth = 6;
+    target.beginPath(); target.moveTo(0, 25); target.lineTo(0, 65);
+    target.moveTo(-34, 60); target.lineTo(-18, 40); target.lineTo(18, 40); target.lineTo(34, 60); target.stroke();
+    target.fillStyle = '#fffdf5'; target.beginPath(); target.arc(0, 0, 29, 0, Math.PI * 2); target.fill(); target.stroke();
+    target.strokeStyle = color; target.lineWidth = 5;
+    if (role === 'player') {
+        target.beginPath(); target.moveTo(-25, -15); target.lineTo(25, -19); target.lineTo(40, -28); target.stroke();
+        target.fillStyle = '#111'; target.beginPath(); target.arc(9, 1, 3, 0, Math.PI * 2); target.fill();
+    } else {
+        target.fillStyle = color; target.fillRect(-21, -8, 42, 12);
+        target.beginPath(); target.moveTo(0, -29); target.lineTo(10, -44); target.lineTo(22, -39); target.stroke();
+    }
+    target.fillStyle = color;
+    if (detail === 'heavy' || detail === 'boss') {
+        target.fillRect(-22, 36, 44, 17);
+        if (detail === 'boss') { target.strokeStyle = color; target.lineWidth = 3; target.strokeRect(-35, -34, 70, 68); }
+    } else if (detail === 'technical' || detail === 'pointer') {
+        target.fillRect(-10, 35, 20, 29);
+        target.beginPath(); target.moveTo(-35, -35); target.lineTo(-47, -12); target.lineTo(-33, -17); target.stroke();
+    } else if (detail === 'merge') {
+        target.beginPath(); target.moveTo(-22, 35); target.lineTo(22, 63); target.moveTo(22, 35); target.lineTo(-22, 63); target.stroke();
+    } else if (detail === 'lag') {
+        for (let i = 0; i < 3; i++) target.fillRect(-19, 36 + i * 9, 38, 4);
+        target.strokeRect(-39, -22, 7, 37); target.strokeRect(32, -22, 7, 37);
+    } else {
+        target.fillRect(-17, 57, 34, 6);
+        if (detail === 'fast') { target.beginPath(); target.moveTo(-17, 60); target.lineTo(-38, 70); target.stroke(); }
+    }
+    target.restore();
 }
 
 function drawRoundHighlight() {
@@ -351,13 +407,13 @@ function drawResultCard(target, scene, data) {
     target.strokeStyle = '#111'; target.lineWidth = 10; target.strokeRect(16, 16, 1168, 868);
 
     target.textAlign = 'left';
-    target.font = `bold 38px ${GAME_FONT_FAMILY}`; target.fillStyle = '#111';
+    target.font = `bold 46px ${GAME_FONT_FAMILY}`; target.fillStyle = '#111';
     target.fillText('GLITCH DUEL', 42, 64);
 
     target.font = `bold 20px ${GAME_FONT_FAMILY}`; target.textAlign = 'right';
     target.fillStyle = '#62605a';
     target.fillText(data.mode, 1148, 64);
-
+    target.fillStyle = data.accent || '#e94370'; target.fillRect(42, 77, 1116, 6);
     target.drawImage(scene, 42, 90, 1116, 540);
 
     target.strokeStyle = '#111';
@@ -372,15 +428,18 @@ function drawResultCard(target, scene, data) {
     const titleWidth = target.measureText ? target.measureText(data.title).width : data.title.length * 24;
     target.fillStyle = '#111';
     target.fillText(data.title, 42, 700, titleWidth > 600 ? 600 : undefined);
-    target.fillStyle = '#62605a';
+    target.fillStyle = '#ffd447'; target.fillRect(42, 710, 310, 32);
+    target.strokeStyle = '#111'; target.lineWidth = 2; target.strokeRect(42, 710, 310, 32);
+    target.fillStyle = '#111';
     target.font = `bold 16px ${GAME_FONT_FAMILY}`;
-    target.fillText(data.stamp, 42, 730, 400);
+    target.fillText(data.stamp, 54, 732, 286);
 
     target.textAlign = 'right';
-    target.font = `bold 56px ${GAME_FONT_FAMILY}`;
+    target.font = `bold 68px ${GAME_FONT_FAMILY}`;
     target.fillStyle = '#111';
     const scoreWidth = target.measureText ? target.measureText(data.score).width : data.score.length * 34;
-    target.fillText(data.score, 1158, 710, scoreWidth > 200 ? 200 : undefined);
+    target.fillText(data.score, 1158, 714, scoreWidth > 200 ? 200 : undefined);
+    drawDuelPortrait(target, 772, 698, 0.6, data.playerWon ? 'player' : 'cpu', data.playerWon ? data.styleKey : data.rivalDetail, data.playerWon ? '#1f6feb' : (data.accent || '#e94370'));
     target.font = `bold 18px ${GAME_FONT_FAMILY}`;
     target.fillStyle = '#62605a';
     target.fillText(data.medal, 1158, 740, 400);

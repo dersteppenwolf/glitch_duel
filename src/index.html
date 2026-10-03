@@ -5,7 +5,7 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GLITCH DUEL - Arcade VS AI</title>
-    <link rel="stylesheet" href="styles.css?v=20260912-duels3">
+    <link rel="stylesheet" href="styles.css?v=20261003-comic4">
 </head>
 <body>
     <div id="game-container">
@@ -34,6 +34,53 @@
                 </details>
             </div>
             <canvas id="game" width="1000" height="500" tabindex="0" role="img" aria-label="Arena de combate GLITCH DUEL" data-i18n-aria="canvasLabel"></canvas>
+            <div id="training-panel" role="group" aria-label="Controles de entrenamiento" data-i18n-aria="trainingControlsLabel">
+                <div class="training-objective">
+                    <label class="training-trial-picker" for="training-trial-select">
+                        <span data-i18n="trainingTrialLabel">Objetivo de entrenamiento</span>
+                        <select id="training-trial-select">
+                            <option value="free" data-i18n="trainingTrialFreeOption">PRACTICA LIBRE</option>
+                            <option value="combos" data-i18n="trainingTrialCombos">TRIAL 1 · COMBOS</option>
+                            <option value="crouchPunish" data-i18n="trainingTrialCrouchPunish">TRIAL 2 · CASTIGO AGACHADO</option>
+                            <option value="blockCounter" data-i18n="trainingTrialBlockCounter">TRIAL 3 · BLOQUEO Y CONTRA</option>
+                            <option value="specialSpend" data-i18n="trainingTrialSpecialSpend">TRIAL 4 · CARGAR Y GASTAR</option>
+                            <option value="glitchCancel" data-i18n="trainingGlitchCancelOption">EXPERIMENTO · GLITCH CANCEL</option>
+                        </select>
+                    </label>
+                    <div class="training-feedback">
+                        <div id="training-trial-brief" class="training-trial-brief"></div>
+                        <div id="training-trial-progress" class="training-trial-progress"></div>
+                    </div>
+                    <button id="training-trial-next" type="button" hidden data-i18n="trainingTrialNext">SIGUIENTE TRIAL</button>
+                </div>
+                <details id="training-options">
+                    <summary id="training-options-summary" data-i18n="trainingOptions">OPCIONES DE PRÁCTICA</summary>
+                    <div class="training-options-content">
+                        <fieldset id="training-free-options">
+                            <legend data-i18n="trainingFreeOptions">OPCIONES LIBRES</legend>
+                            <select id="training-position-select" aria-label="Posicion de entrenamiento" data-i18n-aria="trainingPositionLabel">
+                                <option value="mid" data-i18n="trainingPositionMid">MEDIA</option>
+                                <option value="close" data-i18n="trainingPositionClose">CERCA</option>
+                                <option value="corner" data-i18n="trainingPositionCorner">ESQUINA</option>
+                            </select>
+                            <select id="training-cpu-select" aria-label="CPU de entrenamiento" data-i18n-aria="trainingCpuLabel">
+                                <option value="idle" data-i18n="trainingCpuIdle">CPU QUIETA</option>
+                                <option value="block" data-i18n="trainingCpuBlock">CPU BLOQUEA</option>
+                                <option value="normal" data-i18n="trainingCpuNormal">CPU NORMAL</option>
+                            </select>
+                            <select id="training-timer-select" aria-label="Timer de entrenamiento" data-i18n-aria="trainingTimerLabel">
+                                <option value="off" data-i18n="trainingTimerOff">SIN TIEMPO</option>
+                                <option value="on" data-i18n="trainingTimerOn">CON TIEMPO</option>
+                            </select>
+                        </fieldset>
+                        <div class="training-admin-actions">
+                            <button id="training-reset-button" type="button" data-i18n="trainingReset">RESET</button>
+                            <button id="training-health-button" type="button" data-i18n="trainingHealth">VIDA</button>
+                            <button id="training-energy-button" type="button" data-i18n="trainingEnergy">ENERGIA</button>
+                        </div>
+                    </div>
+                </details>
+            </div>
         </div>
 
         <div id="game-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -49,9 +96,39 @@
                 <div id="match-configuration-summary" class="match-configuration-summary">Dificultad: NORMAL · Arena: CUADERNO · Estilo: BALANCEADO · Rival: NULL POINTER</div>
 
                 <div id="menu-duel-hero" class="menu-duel-hero" aria-hidden="true" data-rival="nullPointer" data-style="balanced" data-arena="notebook">
-                    <span class="menu-duel-hero-p1">P1</span>
+                    <span class="hero-caption hero-caption--p1"><b>P1</b><span id="hero-style-label">BALANCEADO</span></span>
+                    <svg class="hero-art" viewBox="0 0 720 180" focusable="false">
+                        <path class="hero-speed" d="M20 40h125M65 67h82M30 139h138M564 42h116M592 65h88M550 138h140" />
+                        <path class="hero-ground" d="M0 164l110-2 85 4 158-3 100 2 135-3 132 2" />
+                        <g class="hero-fighter hero-player">
+                            <ellipse class="hero-shadow" cx="220" cy="162" rx="49" ry="8" />
+                            <path class="hero-body" d="M211 91l-9 31-34 37m34-37 49 33M210 94l-26 14-17-19M215 94l27-19 46 12" />
+                            <path class="hero-sash" d="M201 116h16l-4 10h-18z" />
+                            <path class="hero-fast" d="M197 119l-43 8 19 8 21-6" />
+                            <path class="hero-technical" d="M202 94l19 2-9 24-13-3z" />
+                            <path class="hero-heavy" d="M200 91h28v18h-28z" />
+                            <circle class="hero-head" cx="218" cy="62" r="26" />
+                            <path class="hero-band" d="M196 49l39-4 21-9m-19 11 14 8" />
+                            <circle class="hero-eye" cx="230" cy="61" r="3" />
+                            <path class="hero-glove" d="M283 78q22-4 24 11t-22 12z" />
+                        </g>
+                        <g class="hero-fighter hero-cpu">
+                            <ellipse class="hero-shadow" cx="502" cy="162" rx="49" ry="8" />
+                            <path class="hero-body" d="M506 91l9 33 38 34m-38-34-48 33M502 95l-28-18-34 13M507 95l27 12 14-24" />
+                            <path class="hero-cpu-outfit" d="M494 95h22l5 24-25 2z" />
+                            <circle class="hero-head" cx="502" cy="62" r="26" />
+                            <path class="hero-antenna" d="M506 36l8-16 13 5" />
+                            <path class="hero-visor" d="M482 55h36v12h-36z" />
+                            <path class="hero-glove" d="M441 81q-24-3-24 12t24 12z" />
+                            <g class="hero-pointer"><path d="M476 29l-18 29 13-3 4 14M525 98l12 8-9 18" /></g>
+                            <g class="hero-lag"><path d="M470 44h-9v40h10m60-40h9v40h-9M491 103h21m-21 9h21" /></g>
+                            <g class="hero-merge"><path d="M480 31l43 12m-41 0 39-13M492 96l26 26m-26 0 26-26" /></g>
+                            <g class="hero-boss"><path d="M473 48l7-17h40l11 17M488 95h34v14h-34" /></g>
+                        </g>
+                        <path class="hero-divider" d="M379 12l-36 45 36 18-33 49 26 24-21 25" />
+                    </svg>
                     <span class="menu-duel-hero-vs">VS</span>
-                    <span class="menu-duel-hero-rival"></span>
+                    <span class="hero-caption hero-caption--cpu"><b>CPU</b><span id="hero-rival-label">NULL POINTER</span></span>
                 </div>
 
                 <p id="challenge-notice" class="challenge-notice" hidden></p>
@@ -380,45 +457,6 @@
             </div>
         </div>
 
-        <div id="training-panel" role="group" aria-label="Controles de entrenamiento" data-i18n-aria="trainingControlsLabel">
-            <label class="training-trial-picker" for="training-trial-select">
-                <span data-i18n="trainingTrialLabel">Objetivo de entrenamiento</span>
-                <select id="training-trial-select">
-                    <option value="free" data-i18n="trainingTrialFreeOption">PRACTICA LIBRE</option>
-                    <option value="combos" data-i18n="trainingTrialCombos">TRIAL 1 · COMBOS</option>
-                    <option value="crouchPunish" data-i18n="trainingTrialCrouchPunish">TRIAL 2 · CASTIGO AGACHADO</option>
-                    <option value="blockCounter" data-i18n="trainingTrialBlockCounter">TRIAL 3 · BLOQUEO Y CONTRA</option>
-                    <option value="specialSpend" data-i18n="trainingTrialSpecialSpend">TRIAL 4 · CARGAR Y GASTAR</option>
-                    <option value="glitchCancel" data-i18n="trainingGlitchCancelOption">EXPERIMENTO · GLITCH CANCEL</option>
-                </select>
-            </label>
-            <div id="training-trial-brief" class="training-trial-brief"></div>
-            <div id="training-trial-progress" class="training-trial-progress"></div>
-            <button id="training-trial-next" type="button" hidden data-i18n="trainingTrialNext">SIGUIENTE TRIAL</button>
-            <fieldset id="training-free-options">
-                <legend data-i18n="trainingFreeOptions">OPCIONES LIBRES</legend>
-                <select id="training-position-select" aria-label="Posicion de entrenamiento" data-i18n-aria="trainingPositionLabel">
-                    <option value="mid" data-i18n="trainingPositionMid">MEDIA</option>
-                    <option value="close" data-i18n="trainingPositionClose">CERCA</option>
-                    <option value="corner" data-i18n="trainingPositionCorner">ESQUINA</option>
-                </select>
-                <select id="training-cpu-select" aria-label="CPU de entrenamiento" data-i18n-aria="trainingCpuLabel">
-                    <option value="idle" data-i18n="trainingCpuIdle">CPU QUIETA</option>
-                    <option value="block" data-i18n="trainingCpuBlock">CPU BLOQUEA</option>
-                    <option value="normal" data-i18n="trainingCpuNormal">CPU NORMAL</option>
-                </select>
-                <select id="training-timer-select" aria-label="Timer de entrenamiento" data-i18n-aria="trainingTimerLabel">
-                    <option value="off" data-i18n="trainingTimerOff">SIN TIEMPO</option>
-                    <option value="on" data-i18n="trainingTimerOn">CON TIEMPO</option>
-                </select>
-            </fieldset>
-            <div class="training-admin-actions">
-                <button id="training-reset-button" type="button" data-i18n="trainingReset">RESET</button>
-                <button id="training-health-button" type="button" data-i18n="trainingHealth">VIDA</button>
-                <button id="training-energy-button" type="button" data-i18n="trainingEnergy">ENERGIA</button>
-            </div>
-        </div>
-
         <div id="game-over" role="dialog" aria-modal="true" aria-labelledby="game-over-title" tabindex="-1">
             <h1 id="game-over-title" class="dialog-focus-target" tabindex="-1" data-i18n="gameOverTitle">RESULTADO</h1>
             <div id="winner-text"></div>
@@ -439,16 +477,16 @@
         </div>
     </div>
 
-    <script src="i18n.js?v=20260912-duels3"></script>
+    <script src="i18n.js?v=20261003-comic4"></script>
     <script src="config.js?v=20260921-ai3"></script>
     <script src="input.js?v=20260818-glitch-cancel"></script>
     <script src="audio.js?v=20260912-juice3"></script>
     <script src="effects.js?v=20260912-juice3"></script>
     <script src="ai.js?v=20260921-ai3"></script>
-    <script src="fighter_render.js?v=20260912-duels3"></script>
+    <script src="fighter_render.js?v=20261003-comic4"></script>
     <script src="fighter.js?v=20260921-ai3"></script>
-    <script src="arena_render.js?v=20260912-juice3"></script>
-    <script src="hud_render.js?v=20260912-duels3"></script>
-    <script src="game.js?v=20260921-ai3"></script>
+    <script src="arena_render.js?v=20261003-comic4"></script>
+    <script src="hud_render.js?v=20261003-comic4"></script>
+    <script src="game.js?v=20261003-comic4"></script>
 </body>
 </html>

@@ -250,3 +250,32 @@ Windows, navegador integrado de Codex (Chromium), viewport 1280×720, `localhost
 - [ ] Confirmar descarga física y apertura del PNG en un navegador convencional y diálogo nativo de Web Share con archivo/texto. No se invocó envío a contactos. Cancelación, fallbacks y callbacks tardíos tienen cobertura automática, que no sustituye esta comprobación.
 
 Los fixtures se retiran antes del commit. Quedan pendientes también juego sostenido, valoración de variedad/justicia, viralidad, dispositivos físicos, AT y comodidad bajo movimiento reducido. La revisión breve no certifica esas propiedades.
+
+## Inspección acotada para propuestas visuales — 2026-10-03
+
+Árbol inicialmente limpio, Windows, navegador integrado de OpenChamber, producción servida en `http://localhost:8765/src/`, idioma ES. Revisión de herramienta para analizar el estado actual y proponer mejoras; no implementación ni playtest humano.
+
+- Menú, entrada a onboarding, omisión hacia Entrenamiento y retorno mediante Pausa/Menu recorridos con botones reales. Capturas efectivas del panel integrado a 667×910 y 667×877; el preset Desktop anunció 1440×900 pero no entregó captura de ese tamaño, por lo que no se certifica escritorio. El preset Mobile permitió consultar el DOM a 390×844, sin captura ni prueba táctil física.
+- Captura del menú: título, resumen, CTA amarillo y disclosures visibles. El hero actual es una pequeña cartela `P1 VS Nu` con un símbolo superpuesto a la abreviatura del rival; no representa dos luchadores ilustrados.
+- Entrenamiento libre, Cuaderno/NULL POINTER y Servidor Caído/BOSS 500 (configuración cargada por reto `gd-51`, seed 53): las figuras y la identidad de cabeza se dibujan, pero en Servidor Caído los trazos negros del cuerpo se confunden con el fondo oscuro. HUD: energía visible solamente para P1. Inspección de `drawHealthBars()` confirma la ausencia de llamada a `drawEnergyBar()` para P2.
+- En ambas capturas de Entrenamiento, el panel administrativo absoluto queda separado de la arena y la toolbar se superpone a su fila inferior de acciones. Es un hallazgo de composición en esos tamaños, no una conclusión sobre todos los viewports.
+- No se obtuvo evidencia de resultado/PNG: una captura etiquetada `revision-visual-resultado` muestra en realidad el menú y no valida el diálogo de resultado. El análisis de la tarjeta se limita a su código.
+- Baseline técnica con Node.js 24.19.0: sintaxis de todos los `src/*.js` y de `tests/game.test.js` correcta; suite 224/224 sin fallos. Estos resultados no demuestran contraste, percepción visual ni rendimiento.
+
+Pendientes de esta revisión: matriz completa de arenas/rivales/estados, capturas de escritorio real, combate sostenido, touch/gamepad físicos, lectores de pantalla, zoom real, comodidad de movimiento y medición de rendimiento. El cierre histórico por aceptación explícita no cambia.
+
+## Comprobación acotada del pulido cómic — plan 0054, 2026-10-03
+
+Windows, navegador integrado OpenChamber, producción local en puerto 8765, seed 54, capturas efectivas 667×910. Se usó además una página temporal con iframe de producción, Canvas/DOM reales y estados controlados; sus archivos `visual-review*` se retiraron al terminar. No son pruebas con participantes ni hardware físico.
+
+- Menú real: portada SVG de dos figuras, título con tratamiento gráfico, resumen y CTA visibles con disclosures cerrados. Entrada a Training y opciones plegadas/abiertas; el pie queda bajo la arena y las acciones administrativas ya no están cubiertas por la toolbar. Se retiró el margen CSS de 38px que separaba toolbar y Canvas en pantallas estrechas sin touch.
+- Servidor Caído, PESADO/BOSS 500: captura confirma contorno claro del cuerpo, accesorios de color, suelo/alertas y barras de energía simétricas. Una inspección detectó que las marcas de la barra podían dejar una fuente pequeña para el nombre CPU; se restablece ahora la fuente antes del nombre.
+- Atlas temporal: diez imágenes obtenidas del Canvas de producción confirman composiciones de Cuaderno, Cafetería, Laboratorio, Reunión presencial/remota, Matemáticas, Servidor Caído, Convención, Terminal y Azotea. Centro y HUD permanecen visibles en estas escenas de reposo. No certifica todos los estados/esquinas de cada arena.
+- Intro controlada en Azotea, Técnico/MERGE CONFLICT: retratos y VS visibles. La primera captura mostró la cartela ROUND encima del encabezado de intro; se suprime ahora la cartela de estado durante VS. Regresión automática comprueba que el renderer de cartela no se invoca durante VS y vuelve a invocarse al terminar.
+- Resultado controlado 2-1, vida P1 5%, combo y sello ULTIMO BIT: marcador protagonista, medalla ilustrada y preview. ES y EN con movimiento reducido conservaron información. La primera composición añadía un sello sobre el HUD capturado en PNG; se movió al pie de resultado. Segunda captura muestra tarjeta completa, retrato, score, medalla, seed y acciones share/descarga/reto/reinicio/menú legibles tras scroll interno.
+- Captura efectiva 390×844 del resultado EN: preview y botones se adaptan al ancho. El fixture externo añade sus propios scrollbars y no representa el layout de producción. Training abierto se comprobó también dentro de un iframe fijo de 390×740: footer con scroll interno y sin superposición; no se simuló touch físico. Al redimensionar un Training activo se observó la pausa por interrupción de página prevista.
+- Los presets Desktop y algunas capturas devolvieron tamaños distintos o timeout; no se afirma validación de 1440×900. Capturas tituladas intro que todavía mostraban menú fueron descartadas como evidencia de intro.
+
+Pendientes: escucha/AT, teclado y touch/gamepad físicos, comodidad, zoom real, desktop amplio, rendimiento y playtest prolongado. No se probó descarga física ni envío por Web Share. La revisión valida estados concretos de presentación, no el cierre de estas matrices humanas.
+
+Validación técnica final: Node.js 24.19.0, 231 pruebas aprobadas (siete nuevas), sintaxis `src/*.js` y `tests/game.test.js` correcta y `git diff --check` aprobado. Sin fixtures de revisión en producción.

@@ -791,6 +791,8 @@ function setReducedMotion(value) {
 function renderMotionPreference() {
     const toggle = document.getElementById('reduce-motion-toggle');
     if (toggle) toggle.checked = reducedMotionEnabled;
+    const root = document.documentElement;
+    if (root && typeof root.setAttribute === 'function') root.setAttribute('data-reduced-motion', String(reducedMotionEnabled));
 }
 
 function recordCombatStatusEvent(text) {
@@ -1166,6 +1168,7 @@ function renderTrainingTrial() {
     if (panel) {
         panel.className = isTrainingTrial() && trialState && trialState.completed ? 'training-panel training-panel--complete' : 'training-panel';
     }
+    if (gameMode === 'training' && gameState === 'playing') resizeCanvas();
 
     if (isTrainingTrial() && trialState && trialState.completed) {
         const signature = `${activeTrialId}|${getLanguage()}|complete`;
@@ -1379,13 +1382,14 @@ function renderMatchConfigurationSummary() {
 
 function renderMenuDuelHero() {
     const hero = document.getElementById('menu-duel-hero');
-    if (!hero || !('dataset' in hero)) return;
-    hero.dataset.rival = selectedRival;
-    hero.dataset.style = selectedFighterStyle;
-    hero.dataset.arena = selectedArena;
-    const label = getRivalLabelFor(selectedRival);
-    const rivalEl = hero.querySelector('.menu-duel-hero-rival');
-    if (rivalEl) rivalEl.textContent = label.charAt(0) + label.charAt(1).toLowerCase();
+    if (!hero) return;
+    hero.setAttribute('data-rival', selectedRival);
+    hero.setAttribute('data-style', selectedFighterStyle);
+    hero.setAttribute('data-arena', selectedArena);
+    const rivalLabel = document.getElementById('hero-rival-label');
+    const styleLabel = document.getElementById('hero-style-label');
+    if (rivalLabel) rivalLabel.textContent = getRivalLabelFor(selectedRival);
+    if (styleLabel) styleLabel.textContent = t(FIGHTER_STYLES[selectedFighterStyle].labelKey);
 }
 
 function getArenaConfig() {
@@ -1878,7 +1882,13 @@ function renderArcadeRunSummary(winText) {
     const medal = getPostMatchMedal(!!playerWon);
 
     result.textContent = runComplete ? t('arcadeComplete') : (arcadeRun.awaitingNext ? t('playerWins') : t('arcadeOver'));
+    result.className = 'result-verdict';
+    const scoreHero = document.createElement('div');
+    scoreHero.className = 'result-score';
+    scoreHero.textContent = `${playerRounds} — ${cpuRounds}`;
+    scoreHero.setAttribute('aria-label', `${t('finalScore')}: ${playerRounds}-${cpuRounds}`);
     medalElement.className = 'post-match-medal';
+    medalElement.setAttribute('data-medal', medal.id);
     medalTitle.textContent = medal.title;
     medalDetail.textContent = medal.detail;
     medalElement.append(medalTitle, medalDetail);
@@ -1914,7 +1924,7 @@ function renderArcadeRunSummary(winText) {
         summary.append(progress, results, phraseElement);
     }
 
-    winText.replaceChildren(result, medalElement, summary);
+    winText.replaceChildren(result, scoreHero, medalElement, summary);
 }
 
 function renderGameOverText() {
@@ -1943,7 +1953,13 @@ function renderGameOverText() {
     const phraseElement = document.createElement('p');
 
     result.textContent = playerWon ? t('playerWins') : t('cpuWins');
+    result.className = 'result-verdict';
+    const scoreHero = document.createElement('div');
+    scoreHero.className = 'result-score';
+    scoreHero.textContent = `${playerRounds} — ${cpuRounds}`;
+    scoreHero.setAttribute('aria-label', `${t('finalScore')}: ${playerRounds}-${cpuRounds}`);
     medalElement.className = 'post-match-medal';
+    medalElement.setAttribute('data-medal', medal.id);
     medalTitle.textContent = medal.title;
     medalDetail.textContent = medal.detail;
     medalElement.append(medalTitle, medalDetail);
@@ -1955,7 +1971,7 @@ function renderGameOverText() {
     streak.textContent = `${t('finalStreak')}: ${stats.currentStreak} | ${t('finalBest')}: ${stats.bestStreak}`;
     phraseElement.textContent = phrase;
     summary.append(score, difficulty, arena, rival, streak, phraseElement);
-    winText.replaceChildren(result, medalElement, summary);
+    winText.replaceChildren(result, scoreHero, medalElement, summary);
     renderResultCard();
 }
 
@@ -2025,10 +2041,21 @@ function resizeCanvas() {
     const toolbarHeight = toolbar && typeof toolbar.getBoundingClientRect === 'function' && toolbar.style.display !== 'none'
         ? Math.ceil(toolbar.getBoundingClientRect().height)
         : 0;
+    const trainingPanel = document.getElementById('training-panel');
+    const trainingHeight = gameMode === 'training' && gameState === 'playing' && trainingPanel && typeof trainingPanel.getBoundingClientRect === 'function'
+        ? Math.ceil(trainingPanel.getBoundingClientRect().height) : 0;
     const maxDisplayWidth = Math.max(160, viewport.width - horizontalPadding);
-    const availableHeight = viewport.height - topReserve - bottomReserve - canvasBorderReserve - toolbarHeight;
+    const availableHeight = viewport.height - topReserve - bottomReserve - canvasBorderReserve - toolbarHeight - trainingHeight - (trainingHeight ? 24 : 0);
     const maxDisplayHeight = Math.max(120, Math.min(viewport.height * heightRatio, availableHeight));
-    const displayWidth = Math.floor(Math.min(maxDisplayWidth, maxDisplayHeight * aspectRatio));
+    let displayWidth = Math.floor(Math.min(maxDisplayWidth, maxDisplayHeight * aspectRatio));
+    // Training wraps at the shell width. Measure its final width before reserving height.
+    const shell = document.getElementById('arena-shell');
+    if (trainingHeight && shell) {
+        shell.style.width = `${displayWidth + canvasBorderReserve}px`;
+        const wrappedHeight = Math.ceil(trainingPanel.getBoundingClientRect().height);
+        const trainingAvailable = viewport.height - topReserve - bottomReserve - canvasBorderReserve - toolbarHeight - wrappedHeight - 24;
+        displayWidth = Math.floor(Math.min(displayWidth, Math.max(120, trainingAvailable) * aspectRatio));
+    }
     const displayHeight = Math.floor(displayWidth / aspectRatio);
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DEVICE_PIXEL_RATIO);
     const backingWidth = Math.round(displayWidth * dpr);
@@ -2042,9 +2069,13 @@ function resizeCanvas() {
     canvasDisplayWidth = displayWidth;
     hudCompactMode = displayWidth / WIDTH < 0.65;
     canvas.style.marginTop = topReserve ? `${topReserve}px` : '';
-    canvas.style.marginBottom = bottomReserve ? `${bottomReserve}px` : '';
+    const trainingFooterVisible = gameMode === 'training' && gameState === 'playing';
+    canvas.style.marginBottom = bottomReserve && !trainingFooterVisible ? `${bottomReserve}px` : '';
     const arenaShell = document.getElementById('arena-shell');
-    if (arenaShell) arenaShell.style.width = `${displayWidth + canvasBorderReserve}px`;
+    if (arenaShell) {
+        arenaShell.style.width = `${displayWidth + canvasBorderReserve}px`;
+        arenaShell.style.marginBottom = bottomReserve && trainingFooterVisible ? `${bottomReserve}px` : '';
+    }
 
     if (canvas.width !== backingWidth || canvas.height !== backingHeight) {
         canvas.width = backingWidth;
@@ -2735,7 +2766,7 @@ if (!roundHighlight) {
     ctx.save();
     drawHealthBars();
     drawVsIntro();
-    if (!roundHighlight) drawStatusMessage();
+    if (!roundHighlight && vsIntroTimer <= 0) drawStatusMessage();
     if (debugOverlayEnabled && !roundHighlight) drawDebugOverlay();
 
     ctx.restore();
@@ -2994,9 +3025,13 @@ function getGameplayFocusableElements() {
     }
     const trainingPanel = document.getElementById('training-panel');
     if (gameMode === 'training' && isGameplayFocusableVisible(trainingPanel)) {
-        ['training-trial-select', 'training-position-select', 'training-cpu-select', 'training-timer-select',
-            'training-reset-button', 'training-health-button', 'training-energy-button', 'training-trial-next']
+        ['training-trial-select', 'training-trial-next', 'training-options-summary']
             .forEach((id) => elements.push(document.getElementById(id)));
+        if (document.getElementById('training-options').open) {
+            ['training-position-select', 'training-cpu-select', 'training-timer-select',
+                'training-reset-button', 'training-health-button', 'training-energy-button']
+                .forEach((id) => elements.push(document.getElementById(id)));
+        }
     }
     return elements.filter(isGameplayFocusableVisible);
 }
@@ -3391,6 +3426,7 @@ function getResultCardData() {
     return { title: playerWon ? t('playerWins') : t('cpuWins'), score: `${playerRounds}-${cpuRounds}`,
         rival: getRivalLabel(), arena: getArenaLabel(), difficulty: getDifficultyLabel(),
         medal: getPostMatchMedal(playerWon).title, seed: matchSeed,
+        playerWon, styleKey: selectedFighterStyle, rivalDetail: getRivalConfig().detail, accent: getRivalConfig().accentColor,
         mode: gameMode === 'arcade' ? t('arcadeRun') : t('modeVersus'),
         stamp: roundHighlight ? t(roundHighlight.key) : t('gameOverTitle') };
 }
@@ -3588,6 +3624,7 @@ function setupMainMenu() {
 }
 
 function setupTrainingControls() {
+    document.getElementById('training-options').addEventListener('toggle', resizeCanvas);
     document.getElementById('training-reset-button').addEventListener('click', resetTraining);
     document.getElementById('training-health-button').addEventListener('click', () => refillTraining('health'));
     document.getElementById('training-energy-button').addEventListener('click', () => refillTraining('energy'));

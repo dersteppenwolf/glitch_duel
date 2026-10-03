@@ -186,7 +186,9 @@ function loadGame(options = {}) {
         'combat-status': 'details',
         'combat-status-summary': 'summary',
         'combat-status-compact': 'span',
-        'combat-status-details': 'dl'
+        'combat-status-details': 'dl',
+        'training-options': 'details',
+        'training-options-summary': 'summary'
     };
     const staticParents = {
         'pause-button': 'game-toolbar',
@@ -465,6 +467,11 @@ function loadGame(options = {}) {
             COMIC_FEEDBACK,
             getCPUAIContext,
             drawFighter,
+            drawHealthBars,
+            drawDuelPortrait,
+            drawResultCard,
+            renderMenuDuelHero,
+            setupTrainingControls,
             draw,
             resizeCanvas,
             initGame,
@@ -573,6 +580,8 @@ function loadGame(options = {}) {
             musicPitchDrop,
             drawHealthBar,
             drawEnergyBar,
+            setEnergyBarRendererForTest: (renderer) => { drawEnergyBar = renderer; },
+            setStatusRendererForTest: (renderer) => { drawStatusMessage = renderer; },
             COMBAT_FEEDBACK,
             getState: () => ({
                 roundHighlight, combatCaptionFrames, resultCardFile, loadedChallenge,
@@ -2082,10 +2091,13 @@ test('keyboard Tab advances through visible gameplay controls without wrapping',
     assert.deepEqual(ids.slice(0, 3), ['game', 'combat-status-summary', 'pause-button']);
     assert.deepEqual(ids.slice(3, 11), ['btn-left', 'btn-right', 'btn-jump', 'btn-crouch', 'btn-block', 'btn-punch', 'btn-kick', 'btn-special']);
     assert(ids.includes('training-trial-select'));
-    assert(ids.includes('training-position-select'));
-    assert(ids.includes('training-cpu-select'));
-    assert(ids.includes('training-timer-select'));
-    assert(ids.includes('training-reset-button'));
+    assert(ids.includes('training-options-summary'));
+    assert(!ids.includes('training-position-select'));
+    training.elements.get('training-options').open = true;
+    const expandedIds = Array.from(training.api.getGameplayFocusableElements(), (element) => element.id);
+    for (const id of ['training-position-select', 'training-cpu-select', 'training-timer-select', 'training-reset-button']) {
+        assert(expandedIds.includes(id));
+    }
 });
 
 test('binding capture cancels on Tab and keeps an equivalent focus target', () => {
@@ -2266,9 +2278,9 @@ test('static HTML contract preserves local assets, script order, controls, and a
     assert.match(html, /<label class="training-trial-picker" for="training-trial-select">/);
     assert.match(html, /<select id="training-trial-select">/);
     assert.deepEqual([...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split('?')[0]), scripts);
-    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=20260912-duels3">/);
-    assert.match(html, /<script src="i18n\.js\?v=20260912-duels3"><\/script>/);
-    assert.match(html, /<script src="game\.js\?v=20260921-ai3"><\/script>/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css\?v=[a-zA-Z0-9-]+">/);
+    assert.match(html, /<script src="i18n\.js\?v=[a-zA-Z0-9-]+"><\/script>/);
+    assert.match(html, /<script src="game\.js\?v=[a-zA-Z0-9-]+"><\/script>/);
     assert.match(html, /<option value="glitchCancel" data-i18n="trainingGlitchCancelOption">/);
     assert.doesNotMatch(html, /user-scalable\s*=\s*no/i);
     assert.doesNotMatch(html, /maximum-scale\s*=\s*1(?:\.0)?/i);
@@ -6071,4 +6083,126 @@ test('adaptive music: setMusicIntensity clamps to 1-3', () => {
     assert.equal(api.getState().musicIntensity, 3, 'intensity 5 should clamp to 3');
 });
 
+test('comic HUD draws both energy states and preserves recovery-based CPU readiness', () => {
+    const { api, canvas } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    const ctx = canvas.getContext('2d');
+    api.startTraining(); api.skipVsIntro();
+    const { player1, player2 } = api.getState();
+    player1.energy = 45; player2.energy = 100; player2.attackCooldown = 8;
+    const bars = [];
+    const original = api.drawEnergyBar;
+    // Capture the real HUD calls without replacing readiness or bar rendering.
+    const record = (x, y, energy, right, color, state) => {
+        bars.push({ x, energy, right, state }); original(x, y, energy, right, color, state);
+    };
+    api.setEnergyBarRendererForTest(record);
+    api.drawHealthBars();
+    assert.deepEqual(bars.map(({ energy, right, state }) => ({ energy, right, state })), [
+        { energy: 45, right: false, state: 'charging' },
+        { energy: 100, right: true, state: 'charging' }
+    ]);
+    player2.attackCooldown = 0; bars.length = 0;
+    api.drawHealthBars();
+    assert.equal(bars[1].state, 'special-ready');
+    assert(ctx.textCalls.includes('∞'));
+    api.setEnergyBarRendererForTest(original);
+});
+
+test('VS portrait intro is not obscured by the round status card and keeps both names', () => {
+    const { api, canvas } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.initGame(); api.setRival('mergeConflict');
+    const ctx = canvas.getContext('2d');
+    let statusDraws = 0;
+    api.setStatusRendererForTest(() => { statusDraws++; });
+    ctx.textCalls.length = 0; api.draw();
+    assert(ctx.textCalls.includes('P1  VS  MERGE CONFLICT'));
+    assert(ctx.textCalls.includes(api.getVsIntroTitle()));
+    assert.equal(statusDraws, 0);
+    api.skipVsIntro(); api.draw();
+    assert.equal(statusDraws, 1);
+});
+
+test('comic hero reflects all selection setters, language and Arcade restoration', () => {
+    const { api, elements } = loadGame();
+    api.setArena('rooftop'); api.setRival('mergeConflict'); api.setFighterStyle('technical');
+    const hero = elements.get('menu-duel-hero');
+    assert.equal(hero.getAttribute('data-arena'), 'rooftop');
+    assert.equal(hero.getAttribute('data-rival'), 'mergeConflict');
+    assert.equal(hero.getAttribute('data-style'), 'technical');
+    assert.equal(elements.get('hero-rival-label').textContent, 'MERGE CONFLICT');
+    api.setLanguage('en');
+    assert.equal(elements.get('hero-style-label').textContent, 'TECHNICAL');
+    api.startArcadeRun(); api.showMainMenu();
+    assert.equal(hero.getAttribute('data-arena'), 'rooftop');
+    assert.equal(hero.getAttribute('data-rival'), 'mergeConflict');
+});
+
+test('Training footer reserves measured height and a closed disclosure skips administrative focus', () => {
+    const { api, context, elements } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining(); api.skipVsIntro(); api.setupTrainingControls();
+    const panel = elements.get('training-panel');
+    const details = elements.get('training-options');
+    const toolbar = elements.get('game-toolbar');
+    context.window.innerWidth = 844; context.window.innerHeight = 390;
+    toolbar.getBoundingClientRect = () => ({ height: 40 });
+    panel.getBoundingClientRect = () => ({ height: details.open ? 160 : 100 });
+    api.resizeCanvas();
+    const collapsedWidth = parseFloat(api.getState().canvasStyle.width);
+    assert.equal(collapsedWidth, 436);
+    details.open = true; details.listeners.toggle();
+    assert.equal(parseFloat(api.getState().canvasStyle.width), 316);
+    api.pauseGame(); api.resizeCanvas();
+    assert(parseFloat(api.getState().canvasStyle.width) > collapsedWidth);
+});
+
+test('touch Training reserves controls below the footer rather than between footer and Canvas', () => {
+    const { api, elements } = loadGame({ touchPoints: 1, storage: { glitchDuelOnboardingSeen: '1' } });
+    api.setupMobileControls(); api.startTraining(); api.skipVsIntro();
+    assert.equal(api.getState().canvasStyle.marginBottom, '');
+    assert.equal(elements.get('arena-shell').style.marginBottom, '68px');
+    api.showMainMenu();
+    assert.equal(elements.get('arena-shell').style.marginBottom, '');
+});
+
+test('comic figure outlines and outfits are presentation-only across arenas and finish states', () => {
+    const { api, canvas } = loadGame();
+    const ctx = canvas.getContext('2d');
+    const fighter = new api.Fighter(480, false);
+    for (const rival of Object.keys(api.CPU_RIVALS)) {
+        fighter.applyRival(rival);
+        for (const state of ['idle', 'punch', 'kick', 'block', 'crouch', 'jump', 'hit', 'victory', 'defeat']) {
+            fighter.state = state;
+            const before = JSON.stringify(fighter);
+            api.setArena('notebook'); ctx.calls.length = 0; api.drawFighter(fighter);
+            const lightStrokes = ctx.calls.filter((call) => call === 'stroke').length;
+            api.setArena('serverDown'); ctx.calls.length = 0; api.drawFighter(fighter);
+            assert(ctx.calls.filter((call) => call === 'stroke').length > lightStrokes);
+            assert.equal(JSON.stringify(fighter), before);
+        }
+    }
+    const sequence = api.createSeededRandom(54);
+    api.setMatchRandomSeed(54);
+    for (const arena of Object.keys(api.ARENAS)) { api.setArena(arena); api.drawBackground(); api.drawArenaForeground(); }
+    assert.equal(api.nextSimulationRandomForTest(), sequence());
+});
+
+test('manual motion preference reaches CSS and illustrated result retains seed and identity', () => {
+    const { api, context, canvas, elements } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    const ctx = canvas.getContext('2d');
+    const attributes = {};
+    context.document.documentElement.setAttribute = (name, value) => { attributes[name] = value; };
+    api.setReducedMotion(true); assert.equal(attributes['data-reduced-motion'], 'true');
+    api.setReducedMotion(false); assert.equal(attributes['data-reduced-motion'], 'false');
+    startPlayingGame(api); api.setRival('boss500'); api.setFighterStyle('heavy');
+    const data = api.getResultCardData();
+    assert.equal(data.rivalDetail, 'boss'); assert.equal(data.styleKey, 'heavy');
+    ctx.textCalls.length = 0; api.drawResultCard(ctx, {}, data);
+    assert(ctx.textCalls.includes(`SEED ${data.seed}`));
+    assert(ctx.textCalls.includes(data.score)); assert(ctx.textCalls.includes(data.medal));
+    api.renderGameOverText();
+    const children = elements.get('winner-text').children;
+    assert(children.some((child) => child.className === 'result-score'));
+    const medal = children.find((child) => child.className === 'post-match-medal');
+    assert.equal(medal.getAttribute('data-medal'), 'machine');
+});
 

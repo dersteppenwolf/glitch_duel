@@ -5,12 +5,12 @@ function drawBackground() {
 
     ctx.fillStyle = arenaPalette.wall;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
+    drawArenaLighting(arenaKey, arenaPalette);
     drawArenaAmbient(arenaKey, arenaPalette);
 
     ctx.strokeStyle = arena.accent;
     ctx.lineWidth = 1;
-    for (let x = 0; x < WIDTH; x += 50) {
+    for (let x = 0; ['notebook', 'lab', 'terminal'].includes(arenaKey) && x < WIDTH; x += 50) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, HEIGHT);
@@ -19,6 +19,7 @@ function drawBackground() {
 
     drawArenaDetails(arenaKey, arena);
     drawArenaReaction(arena);
+    drawArenaFloor(arenaKey, arenaPalette);
 
     ctx.strokeStyle = arenaPalette.ground;
     ctx.lineWidth = 6;
@@ -87,6 +88,83 @@ function drawArenaAmbient(arenaKey, palette) {
         }
         ctx.restore();
     }
+}
+
+function drawArenaLighting(key, palette) {
+    ctx.save();
+    if (key === 'notebook') {
+        ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(108, 100, 784, 304);
+        ctx.fillStyle = 'rgba(189,174,151,0.14)'; ctx.fillRect(0, 0, 76, HEIGHT);
+        ctx.strokeStyle = 'rgba(80,72,65,0.22)'; ctx.lineWidth = 3;
+        for (let y = 135; y < 365; y += 52) {
+            ctx.beginPath(); ctx.arc(26, y, 10, 0, Math.PI * 2); ctx.stroke();
+        }
+    } else if (key === 'serverDown') {
+        ctx.fillStyle = '#151d2c'; ctx.fillRect(0, 0, WIDTH, 120);
+        ctx.fillStyle = 'rgba(239,68,68,0.07)';
+        ctx.beginPath(); ctx.moveTo(460, 108); ctx.lineTo(150, 405); ctx.lineTo(850, 405); ctx.lineTo(540, 108); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3;
+        for (const x of [58, 922]) { ctx.strokeRect(x, 130, 20, 110); ctx.fillRect(x + 5, 137, 10, 60); }
+    } else if (key === 'rooftop') {
+        ctx.fillStyle = '#ded4ef'; ctx.fillRect(0, 110, WIDTH, 104);
+        ctx.fillStyle = '#d1c4e5'; ctx.fillRect(0, 214, WIDTH, 80);
+        ctx.fillStyle = 'rgba(255,253,245,0.65)';
+        for (let i = 0; i < 18; i++) ctx.fillRect(38 + i * 53, 123 + (i * 37 % 76), 2, 2);
+    } else if (key === 'cafeteria') {
+        ctx.fillStyle = 'rgba(255,253,232,0.32)';
+        for (const x of [140, 720]) {
+            ctx.beginPath(); ctx.moveTo(x + 60, 118); ctx.lineTo(x - 50, 352); ctx.lineTo(x + 190, 352); ctx.closePath(); ctx.fill();
+        }
+        ctx.strokeStyle = '#7c4f2c'; ctx.lineWidth = 3;
+        for (const x of [200, 780]) { ctx.beginPath(); ctx.moveTo(x, 98); ctx.lineTo(x, 132); ctx.lineTo(x - 22, 149); ctx.lineTo(x + 22, 149); ctx.closePath(); ctx.stroke(); }
+    } else if (key === 'lab') {
+        ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(310, 125, 380, 160);
+        ctx.strokeStyle = 'rgba(36,83,122,0.16)'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(310, 125); ctx.lineTo(310, 285); ctx.moveTo(690, 125); ctx.lineTo(690, 285); ctx.stroke();
+    } else if (key === 'meeting') {
+        ctx.fillStyle = 'rgba(255,253,235,0.38)';
+        ctx.beginPath(); ctx.moveTo(480, 130); ctx.lineTo(285, 310); ctx.lineTo(720, 310); ctx.lineTo(520, 130); ctx.closePath(); ctx.fill();
+    } else if (key === 'remoteMeeting') {
+        ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(32, 114, 936, 224);
+        ctx.strokeStyle = 'rgba(29,78,216,0.16)'; ctx.lineWidth = 2; ctx.strokeRect(32, 114, 936, 224);
+    } else if (key === 'mathClass') {
+        ctx.fillStyle = '#dce9cf'; ctx.fillRect(0, 112, WIDTH, 206);
+        ctx.fillStyle = 'rgba(255,255,240,0.22)'; ctx.fillRect(115, 124, 770, 144);
+    } else if (key === 'terminal') {
+        ctx.fillStyle = 'rgba(36,87,70,0.06)'; ctx.fillRect(250, 125, 500, 220);
+        ctx.strokeStyle = 'rgba(36,87,70,0.16)'; ctx.lineWidth = 2;
+        for (let y = 145; y < 340; y += 22) { ctx.beginPath(); ctx.moveTo(280, y); ctx.lineTo(720, y); ctx.stroke(); }
+    } else if (key === 'geekConvention') {
+        ctx.strokeStyle = 'rgba(154,52,18,0.3)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, 130); ctx.quadraticCurveTo(500, 220, 1000, 130); ctx.stroke();
+        for (let i = 0; i < 9; i++) {
+            const x = 80 + i * 105; const y = 142 + Math.sin(i / 8 * Math.PI) * 40;
+            ctx.fillStyle = i % 2 ? '#e9437040' : '#00c7e640';
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 28, y + 3); ctx.lineTo(x + 12, y + 29); ctx.closePath(); ctx.fill();
+        }
+    }
+    ctx.restore();
+}
+
+function drawArenaFloor(key, palette) {
+    ctx.save();
+    const top = GROUND_Y + 43;
+    ctx.fillStyle = key === 'serverDown' ? '#171f2d' : palette.ground;
+    ctx.globalAlpha = key === 'serverDown' ? 0.65 : 0.055;
+    ctx.fillRect(0, top, WIDTH, HEIGHT - top);
+    ctx.globalAlpha = 0.18; ctx.strokeStyle = palette.ground; ctx.lineWidth = 1;
+    if (key === 'notebook') {
+        ctx.beginPath(); ctx.moveTo(100, top + 32); ctx.lineTo(WIDTH, top + 32); ctx.stroke();
+    } else if (key === 'serverDown' || key === 'terminal') {
+        for (const x of [80, 840]) { ctx.strokeRect(x, top + 15, 80, 15); ctx.strokeRect(x + 10, top + 19, 60, 7); }
+    } else {
+        const spacing = key === 'cafeteria' || key === 'meeting' ? 155 : 110;
+        for (let x = -100; x < WIDTH + 100; x += spacing) {
+            ctx.beginPath(); ctx.moveTo(x, top + 8); ctx.lineTo(x + (x - WIDTH / 2) * 0.18, HEIGHT); ctx.stroke();
+        }
+        ctx.beginPath(); ctx.moveTo(0, top + 32); ctx.lineTo(WIDTH, top + 32); ctx.stroke();
+    }
+    ctx.restore();
 }
 
 function getArenaMotionFrame() {
@@ -331,7 +409,7 @@ function drawTerminalDetails(arena) {
 
 function drawRooftopDetails(arena) {
     ctx.strokeStyle = arena.ground;
-    ctx.fillStyle = '#ddd4e9';
+    ctx.fillStyle = '#cfc1df';
     ctx.lineWidth = 2;
     for (let i = 0; i < 10; i++) {
         const x = i * 105;
@@ -342,7 +420,7 @@ function drawRooftopDetails(arena) {
         for (let row = 0; row < 3; row++) {
             for (let column = 0; column < 3; column++) ctx.fillRect(x + 12 + column * 22, top + 15 + row * 24, 10, 12);
         }
-        ctx.fillStyle = '#ddd4e9';
+        ctx.fillStyle = '#cfc1df';
     }
     ctx.fillStyle = '#fff7e2';
     ctx.beginPath(); ctx.arc(815, 160, 29, 0, Math.PI * 2); ctx.fill(); ctx.stroke();

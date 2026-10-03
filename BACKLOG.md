@@ -60,7 +60,6 @@ Only Ready, concrete Partial and dependency-Blocked work belongs here. `Depends 
 | 3 | Distribution | Ready | M | - | PWA offline install | Add install/offline support with cache-version tests and safe update behavior. |
 | 20 | Visual | Ready | M | - | HUD theme selector | Add arcade, console and notebook presentation without changing gameplay information. |
 | 27 | Visual | Partial | S | - | Remaining HUD animations | Add only missing low-health and round-win emphasis; health and energy already animate. |
-| 38 | Visual | Ready | M | - | Animated arena previews | Add lightweight loops that respect reduced motion and do not duplicate the full Canvas renderer. |
 | 40 | Audio | Ready | M | - | Spatial audio polish | Position combat sounds by fighter location while preserving mono-safe output. |
 | 43 | Visual | Ready | M | - | Cosmetic arena variants | Add day/night/alert/rain/neon variants without gameplay effects. |
 | 45 | Visual | Ready | S | - | Arena-specific intro transitions | Add small title-card differences without delaying control or changing round state. |
@@ -125,6 +124,7 @@ This is the canonical history. Implemented means code shipped; Merged means anot
 | 35 | Implemented | Layered arena depth | Eight arenas render peripheral foreground after fighters and before combat feedback. |
 | 36 | Implemented | Reactive arena effects | Bounded contact reactions on all arenas; fixed-step decay and stationary reduced-motion presentation in plan `0049`. |
 | 37 | Implemented | Arena readability pass | Eight arenas retain readable fighters, HUD, corners, foreground and reduced-motion behavior. |
+| 38 | Implemented | Animated arena previews | Lightweight themed CSS previews with bounded ambient opacity loops and manual/system reduced-motion support, delivered in plan `0054`. |
 | 39 | Implemented | Share match results | Local PNG card, native Web Share with file capability detection, manual copy fallback and versioned seed/configuration challenges in plan `0050`. Compatibility evidence and pending checks live in plan `0043`. |
 | 42 | Implemented | More visual arenas | Terminal and Rooftop add two cosmetic arenas with localized selection and previews in plan `0049`. |
 | 44 | Merged | Richer foreground silhouettes | The delivered `#35` foreground and completed `#37` review left no named residual; reopen only for a concrete arena opportunity. |

@@ -3,7 +3,6 @@ function drawFighter(fighter) {
     const baseX = fighter.x;
     const baseY = fighter.y;
     const isPlayer1 = fighter.isPlayer1;
-    const role = isPlayer1 ? 'player' : 'cpu';
     const palette = isPlayer1 ? VISUAL_PALETTE.player : VISUAL_PALETTE.cpu;
     const accentColor = fighter.accentColor || palette.accent;
 
@@ -28,8 +27,9 @@ function drawFighter(fighter) {
     const isCrouching = fighter.state === 'crouch';
     const hipY = isCrouching ? baseY + 4 + crouchIdle : baseY - 20 + idleBob + walkBob;
     const torsoTopY = isCrouching ? baseY - 34 : baseY - 55 + idleBob + walkBob;
-    const lean = fighter.state === 'hit' ? -12 : (fighter.state === 'block' ? -5 :
-        (!fighter.isPlayer1 && fighter.state === 'walk' && fighter.aiAction === 'retreat' ? -7 : 0));
+    const retreating = fighter.state === 'walk' && (fighter.isPlayer1 ? fighter.velX * (fighter.facingRight ? 1 : -1) < 0 : fighter.aiAction === 'retreat');
+    const attacking = ['punch', 'airPunch', 'special', 'kick', 'airKick'].includes(fighter.state);
+    const lean = fighter.state === 'hit' ? -12 : (fighter.state === 'block' ? -7 : (retreating ? -7 : (attacking ? 5 : 0)));
     const shoulderY = isCrouching ? baseY - 28 : baseY - 48 + idleBob;
     const headY = isCrouching ? baseY - 54 + crouchIdle : baseY - 75 + headBob + idleBob;
 
@@ -45,11 +45,11 @@ function drawFighter(fighter) {
         return;
     }
 
-    ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(baseX, baseY + 38, 30, 7, 0, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.fillStyle = selectedArena === 'serverDown' ? 'rgba(255,253,245,0.15)' : 'rgba(17,17,17,0.12)';
+    const shadowWidth = fighter.onGround ? 28 : Math.max(12, 28 - (GROUND_Y - baseY) / 12);
+    ctx.beginPath(); ctx.ellipse(baseX, GROUND_Y + 37, shadowWidth, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = accentColor; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(baseX, GROUND_Y + 38, shadowWidth + 2, 6, 0, 0, Math.PI * 2); ctx.stroke();
 
     ctx.strokeStyle = '#111';
     ctx.lineWidth = 5;
@@ -58,19 +58,19 @@ function drawFighter(fighter) {
     ctx.beginPath();
     ctx.moveTo(baseX, hipY);
     ctx.lineTo(baseX - 15 + Math.sin(legAngle * Math.PI / 180) * 12, baseY + 35);
-    ctx.stroke();
+    strokeFighterInk();
 
     if (fighter.state !== 'kick' && fighter.state !== 'airKick') {
         ctx.beginPath();
         ctx.moveTo(baseX, hipY);
         ctx.lineTo(baseX + 15 - Math.sin(legAngle * Math.PI / 180) * 12, baseY + 35);
-        ctx.stroke();
+        strokeFighterInk();
     }
 
     ctx.beginPath();
     ctx.moveTo(baseX + lean, torsoTopY);
     ctx.lineTo(baseX, hipY);
-    ctx.stroke();
+    strokeFighterInk();
 
     ctx.lineWidth = 4.5;
     ctx.beginPath();
@@ -78,8 +78,10 @@ function drawFighter(fighter) {
     if (fighter.state === 'block') {
         ctx.lineTo(baseX + 8, shoulderY - 16);
         ctx.lineTo(baseX + 26, shoulderY - 8);
+    } else if (fighter.state === 'hit') {
+        ctx.lineTo(baseX - 24, shoulderY - 10); ctx.lineTo(baseX - 34, shoulderY + 4);
     } else ctx.quadraticCurveTo(baseX - 18 + lean, shoulderY + 13, baseX - 12, hipY + 5);
-    ctx.stroke();
+    strokeFighterInk();
 
     ctx.beginPath();
     ctx.moveTo(baseX + lean, shoulderY);
@@ -94,10 +96,12 @@ function drawFighter(fighter) {
     } else if (isCrouching) {
         ctx.quadraticCurveTo(baseX + 18, shoulderY + 12, baseX + 28, hipY + 2);
     } else {
-        ctx.quadraticCurveTo(baseX + 18, baseY - 35, baseX + 12, baseY - 15);
+        ctx.lineTo(baseX + 22 + lean, shoulderY + 10);
+        ctx.lineTo(baseX + 28 + lean, shoulderY - 7);
     }
 
-    ctx.stroke();
+    strokeFighterInk();
+    drawFighterOutfit(fighter, baseX, hipY, shoulderY, lean, accentColor);
 
     if (fighter.state === 'punch' || fighter.state === 'special' || fighter.state === 'airPunch') {
         const fistX = baseX + 76;
@@ -118,7 +122,7 @@ function drawFighter(fighter) {
         ctx.beginPath();
         ctx.ellipse(fistX, fistY, 11, 9, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.stroke();
+        strokeFighterInk();
 
         ctx.strokeStyle = '#111';
         ctx.lineWidth = 2;
@@ -160,7 +164,7 @@ function drawFighter(fighter) {
         ctx.moveTo(baseX, baseY - 20);
         ctx.lineTo(baseX + 38, baseY - 25);
         ctx.lineTo(footX, footY);
-        ctx.stroke();
+        strokeFighterInk();
 
         ctx.fillStyle = accentColor;
         ctx.strokeStyle = '#111';
@@ -168,7 +172,7 @@ function drawFighter(fighter) {
         ctx.beginPath();
         ctx.ellipse(footX + 5, footY + 1, 13, 7, 0.18, 0, Math.PI * 2);
         ctx.fill();
-        ctx.stroke();
+        strokeFighterInk();
 
         if (fighter.comboFlashTimer > 0 && (fighter.lastAttackType === 'comboKick' || fighter.lastAttackType === 'backKick')) {
             ctx.strokeStyle = fighter.lastAttackType === 'backKick' ? 'rgba(0, 90, 255, 0.7)' : 'rgba(230, 130, 0, 0.7)';
@@ -195,7 +199,7 @@ function drawFighter(fighter) {
     ctx.beginPath();
     ctx.arc(baseX + lean, headY, 20, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
+    strokeFighterInk();
 
     drawFighterFaceAndDetail(fighter, baseX + lean, baseY, headY, accentColor);
 
@@ -209,6 +213,46 @@ function drawFighter(fighter) {
         ctx.stroke();
     }
 
+    ctx.restore();
+}
+
+// Underpaint the same path without changing body coordinates or combat boxes.
+function strokeFighterInk() {
+    const color = ctx.strokeStyle;
+    const width = ctx.lineWidth;
+    if (selectedArena === 'serverDown') {
+        ctx.strokeStyle = '#fffdf5'; ctx.lineWidth = width + 4; ctx.stroke();
+    }
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke();
+}
+
+function drawFighterOutfit(fighter, x, hipY, shoulderY, lean, color) {
+    ctx.save(); ctx.fillStyle = color; ctx.strokeStyle = '#111'; ctx.lineWidth = 2;
+    const detail = fighter.isPlayer1 ? fighter.styleKey : fighter.rivalDetail;
+    if (detail === 'heavy' || detail === 'boss') {
+        ctx.fillRect(x + lean - 12, shoulderY - 3, 24, 14);
+        ctx.strokeRect(x + lean - 12, shoulderY - 3, 24, 14);
+        ctx.fillRect(x - 10, hipY - 8, 20, 7);
+    } else if (detail === 'technical' || detail === 'pointer') {
+        ctx.beginPath(); ctx.moveTo(x + lean - 8, shoulderY + 1);
+        ctx.lineTo(x + lean + 9, shoulderY + 1); ctx.lineTo(x + 6, hipY - 9);
+        ctx.lineTo(x - 5, hipY - 9); ctx.closePath(); ctx.fill(); strokeFighterInk();
+        ctx.fillStyle = '#fffdf5'; ctx.fillRect(x + lean - 2, shoulderY + 6, 4, 5);
+    } else if (detail === 'merge') {
+        ctx.beginPath(); ctx.moveTo(x + lean - 10, shoulderY); ctx.lineTo(x + 9, hipY - 6);
+        ctx.moveTo(x + lean + 10, shoulderY); ctx.lineTo(x - 9, hipY - 6);
+        ctx.strokeStyle = color; ctx.lineWidth = 5; strokeFighterInk();
+    } else if (detail === 'lag') {
+        ctx.strokeStyle = color; ctx.lineWidth = 4;
+        for (let i = 0; i < 3; i++) {
+            ctx.beginPath(); ctx.moveTo(x - 7, shoulderY + 7 + i * 8); ctx.lineTo(x + 7, shoulderY + 7 + i * 8); strokeFighterInk();
+        }
+    } else {
+        ctx.fillRect(x - 9, hipY - 9, 18, 6);
+        if (detail === 'fast') {
+            ctx.beginPath(); ctx.moveTo(x - 8, hipY - 6); ctx.lineTo(x - 25, hipY + 3); ctx.lineTo(x - 16, hipY + 6); ctx.closePath(); ctx.fill();
+        }
+    }
     ctx.restore();
 }
 
@@ -307,7 +351,8 @@ function drawGlitchCancelFeedback(fighter, baseX, baseY) {
 }
 
 function drawVictoryPose(fighter, baseX, baseY, accentColor) {
-    const raisedX = fighter.rivalDetail === 'boss' ? 36 : (fighter.rivalDetail === 'merge' ? -24 : 22);
+    const poseDetail = fighter.isPlayer1 ? fighter.styleKey : fighter.rivalDetail;
+    const raisedX = ['heavy', 'boss'].includes(poseDetail) ? 36 : (['technical', 'merge'].includes(poseDetail) ? -24 : (poseDetail === 'fast' ? 30 : 22));
     ctx.strokeStyle = accentColor;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -327,7 +372,8 @@ function drawVictoryPose(fighter, baseX, baseY, accentColor) {
     ctx.lineTo(baseX - 32, baseY - 18);
     ctx.moveTo(baseX + 2, baseY - 48);
     ctx.lineTo(baseX + raisedX, baseY - 92);
-    ctx.stroke();
+    strokeFighterInk();
+    drawFighterOutfit(fighter, baseX, baseY - 18, baseY - 48, 0, accentColor);
 
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#111';
@@ -335,7 +381,7 @@ function drawVictoryPose(fighter, baseX, baseY, accentColor) {
     ctx.beginPath();
     ctx.arc(baseX, baseY - 78, 20, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
+    strokeFighterInk();
     drawFighterFaceAndDetail(fighter, baseX, baseY, baseY - 78, accentColor);
 
     ctx.fillStyle = accentColor;
@@ -376,7 +422,7 @@ function drawDefeatPose(fighter, baseX, baseY, accentColor) {
     ctx.lineTo(baseX - 48, baseY + 2);
     ctx.moveTo(baseX + 16, baseY + 9);
     ctx.lineTo(baseX + 50, baseY - 4);
-    ctx.stroke();
+    strokeFighterInk();
 
     ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#111';
@@ -384,7 +430,7 @@ function drawDefeatPose(fighter, baseX, baseY, accentColor) {
     ctx.beginPath();
     ctx.arc(baseX - 45, baseY + 5, 18, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
+    strokeFighterInk();
 
     ctx.strokeStyle = accentColor;
     ctx.lineWidth = 3;
