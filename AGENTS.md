@@ -90,6 +90,8 @@ Browser, hardware, assistive-technology, performance, and player-validation evid
 ### UI, AI, Audio, And Diagnostics
 
 - Web Audio is created lazily after user interaction through `initAudio()`. Tone graphs must disconnect idempotently after ending.
+- Music uses an independent audio-clock transport and session-only music seed; it never consumes simulation/cosmetic RNG or advances combat. Pump music from presentation (`gameLoop`), preserve its cursor on pause, and prime only after an explicit interaction.
+- Route music through layer/effect/user-volume buses; route music and SFX through the shared final output compressor, keeping ducking separate from the user-volume gain. Keep the 24-source music budget (`MUSIC_CONFIG.maxMusicVoices`) separate from the 32-graph combat/UI SFX budget (`AUDIO_CONFIG.maxVoices`); release musical voices idempotently on `ended`.
 - `?debug=1` or backtick enables developer diagnostics; `?seed=<uint32>` seeds simulation RNG. Diagnostics remain opt-in, bounded, in memory, and never persisted or transmitted.
 - Help and onboarding keep keyboard, touch, and standard gamepad guidance visible. `recentInputMethod`, `guidanceInputMethod`, and `pendingStartMode` are session-only; completing or skipping onboarding starts the requested mode.
 - The main menu uses native `#duel-settings` and `#menu-utilities` disclosures, closed by default. Derive `#match-configuration-summary` only from the four `selected*` values and refresh it after selection, language changes, and Arcade restoration. Help/Controls restore focus inside `#menu-utilities` without collapsing it.

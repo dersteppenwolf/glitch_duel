@@ -296,6 +296,14 @@ canvas:focus-visible,
     accent-color: #111;
 }
 
+#music-selection-summary {
+    min-height: 1.2em;
+    color: #4b4b4b;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
 .audio-settings {
     display: grid;
     grid-template-columns: minmax(90px, 1fr) minmax(100px, 2fr);
@@ -1267,6 +1275,18 @@ summary:active {
     line-height: 1.15;
     text-overflow: ellipsis;
     white-space: nowrap;
+    flex: 1 1 auto;
+}
+
+.music-now-playing {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: min(230px, 30vw);
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #pause-button {
@@ -1328,6 +1348,8 @@ summary:active {
 }
 
 @media (max-width: 760px), (max-height: 500px) {
+    .music-now-playing { max-width: 24vw; font-size: 9px; }
+
     #combat-status {
         max-width: 32vw;
     }

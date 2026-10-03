@@ -1,11 +1,13 @@
 let audioCtx;
+let audioOutputGain = null;
+let audioOutputLimiter = null;
 const AUDIO_STORAGE_KEY = 'glitchDuelAudioVolumes';
 const audioVolumes = loadAudioVolumes();
 
 // Music system state
 let musicState = null;
 let musicIntensity = 0;
-let musicStyle = 'default';
+let musicStyle = 'bitDuel';
 let nextMusicStyle = null;
 let musicPaused = false;
 let musicNextBar = 0;
@@ -30,6 +32,24 @@ let musicTransitionIntensity = 0;
 let musicTransitionFadeFrames = 0;
 let musicNoiseFloor = null;
 let musicDroneVoices = [];
+let musicLayerBuses = {};
+let musicUserGain = null;
+let musicEffectsGain = null;
+let musicBusReady = false;
+let musicTransport = {
+    running: false, scene: 'combat', style: 'bitDuel', barIndex: 0,
+    barStart: 0, events: [], cursor: 0, pausedBeat: 0,
+    intensity: 1, previewUntil: 0, returnScene: null
+};
+let musicSessionSeed = (Date.now() ^ 0x4D555349) >>> 0;
+let musicMatchSequence = 0;
+let musicTransitionGain = null;
+let musicThemeFilter = null;
+let musicLastAccent = -Infinity;
+let musicPulseWaves = null;
+let musicResumeRequested = false;
+let musicNoiseBuffers = new WeakMap();
+let musicDroppedVoices = 0;
 
 const WAVE_POOL = ['sine', 'triangle', 'sawtooth', 'square'];
 
@@ -95,9 +115,25 @@ function initAudio() {
         }
     }
     if (audioCtx && audioCtx.state === 'suspended' && typeof audioCtx.resume === 'function') {
-        const resumed = audioCtx.resume();
-        if (resumed && typeof resumed.catch === 'function') resumed.catch(() => {});
+        try {
+            const resumed = audioCtx.resume();
+            if (resumed && typeof resumed.catch === 'function') resumed.catch(() => {});
+        } catch (_) { /* Audio remains silent until the browser allows resume. */ }
     }
+    if (audioCtx) initAudioOutput();
+}
+
+function initAudioOutput() {
+    if (!audioCtx || audioOutputGain) return;
+    audioOutputGain = audioCtx.createGain();
+    audioOutputGain.gain.value = 1;
+    audioOutputLimiter = audioCtx.createDynamicsCompressor();
+    audioOutputLimiter.threshold.value = -3;
+    audioOutputLimiter.knee.value = 0;
+    audioOutputLimiter.ratio.value = 20;
+    audioOutputLimiter.attack.value = 0.003;
+    audioOutputLimiter.release.value = 0.12;
+    audioOutputGain.connect(audioOutputLimiter).connect(audioCtx.destination);
 }
 
 function initMusicBus() {
@@ -180,6 +216,16 @@ function getAudioVolumes() {
 function setAudioVolume(channel, value) {
     if (!['combat', 'ui', 'music'].includes(channel) || !Number.isFinite(value)) return false;
     audioVolumes[channel] = Math.max(0, Math.min(1, value));
+    if (channel === 'music' && musicUserGain && audioCtx) {
+        const now = audioCtx.currentTime;
+        try {
+            if (typeof musicUserGain.gain.cancelScheduledValues === 'function') musicUserGain.gain.cancelScheduledValues(now);
+            musicUserGain.gain.setValueAtTime(musicUserGain.gain.value, now);
+            musicUserGain.gain.linearRampToValueAtTime(audioVolumes.music, now + 0.02);
+        } catch (_) { musicUserGain.gain.value = audioVolumes.music; }
+        if (audioVolumes.music === 0) pauseMusic();
+        else if (musicTransport.running && musicPaused && audioCtx.state === 'running') resumeMusic();
+    }
     try {
         window.localStorage.setItem(AUDIO_STORAGE_KEY, JSON.stringify({ version: 1, ...audioVolumes }));
     } catch (_) { /* The session preference still works without storage. */ }
@@ -220,8 +266,8 @@ function createPulseWave(duty) {
     return audioCtx.createPeriodicWave(real, imag, { disableNormalization: true });
 }
 
-const NES_PULSE_WIDE = createPulseWave(0.25);
-const NES_PULSE_NARROW = createPulseWave(0.125);
+let NES_PULSE_WIDE = null;
+let NES_PULSE_NARROW = null;
 
 // Harmonic progressions: each value is [rootIdxOffset, chordQuality]
 // 0 = minor, 1 = major, 2 = sus4
@@ -1608,6 +1654,709 @@ function musicStutter(durationMs = 60) {
     }
 }
 
+// Compact, deterministic music engine. Music owns its clock and random stream;
+// combat simulation and SFX never depend on this transport.
+const MUSIC_ARRANGEMENTS = {
+    bitDuel: { wave: 'pulseWide', kick: [0, 2], snare: [1, 3], hats: 0.5, bass: [0, 2], swing: 0, trim: 0.72 },
+    baroqueBash: { wave: 'pulseNarrow', kick: [0], snare: [2], hats: 0.5, bass: [0, 2], swing: 0, trim: 0.68 },
+    neonFury: { wave: 'sawtooth', kick: [0, 2], snare: [1, 3], hats: 0.5, bass: [0, 1.5, 2, 3.5], swing: 0, trim: 0.56 },
+    glitchAssault: { wave: 'square', kick: [0, 1.5, 2.5], snare: [1, 3], hats: 0.25, bass: [0, 1.5, 2.5, 3.5], swing: 0, trim: 0.5 },
+    retroGroove: { wave: 'triangle', kick: [0, 2.5], snare: [1, 3], hats: 0.5, bass: [0, 1.5, 2, 3.5], swing: 0.06, trim: 0.66 },
+    voidReach: { wave: 'sine', kick: [0], snare: [2], hats: 1, bass: [0, 2], swing: 0, trim: 0.7 }
+};
+const MUSIC_SECTION_STARTS = [0, 2, 6, 10, 12];
+const MUSIC_CHORD_DEGREES = [0, 3, 4, 0];
+const MUSIC_CHORD_INTERVALS = [[0, 3, 7], [0, 3, 7], [0, 4, 7], [0, 3, 7]];
+let musicVoiceRecords = new Map();
+let musicPreviewSnapshot = null;
+
+function musicHash(value) {
+    let hash = 2166136261;
+    for (let i = 0; i < String(value).length; i++) hash = Math.imul(hash ^ String(value).charCodeAt(i), 16777619);
+    return hash >>> 0;
+}
+
+function musicRandomFor(seed, style, barIndex, eventIndex) {
+    let state = (seed ^ musicHash(style) ^ Math.imul(barIndex + 1, 0x9E3779B1) ^ Math.imul(eventIndex + 1, 0x85EBCA6B)) >>> 0;
+    state ^= state << 13; state ^= state >>> 17; state ^= state << 5;
+    return (state >>> 0) / 4294967296;
+}
+
+function degreeToMidi(degree, octave = 0, baseMidi = MUSIC_CONFIG.tonicMidi) {
+    if (!Number.isInteger(degree) || !Number.isInteger(octave) || !Number.isFinite(baseMidi)) return NaN;
+    const scale = MUSIC_CONFIG.scale;
+    const absoluteDegree = degree;
+    const scaleIndex = ((absoluteDegree % scale.length) + scale.length) % scale.length;
+    const scaleOctave = Math.floor(absoluteDegree / scale.length) + octave;
+    const note = baseMidi + scale[scaleIndex] + scaleOctave * 12;
+    return note >= 24 && note <= 96 ? note : NaN;
+}
+
+function getMusicStyleList() { return Object.keys(MUSIC_STYLES); }
+function getMusicStyleName() { return musicStyle; }
+
+function setMusicStyle(style) {
+    if (!Object.hasOwn(MUSIC_STYLES, style)) return false;
+    musicStyle = style;
+    musicTransport.style = style;
+    musicTransport.events = [];
+    musicTransport.cursor = 0;
+    melodyPhrases = { 1: null, 2: null, 3: null };
+    if (typeof renderMusicNowPlaying === 'function') renderMusicNowPlaying();
+    return true;
+}
+
+function setMusicSessionSeed(seed) {
+    if (!Number.isInteger(seed) || seed < 0 || seed > 0xFFFFFFFF) return false;
+    musicSessionSeed = seed >>> 0;
+    musicMatchSequence = 0;
+    return true;
+}
+
+function chooseRandomMusicStyle() {
+    const styles = getMusicStyleList();
+    const sample = musicRandomFor(musicSessionSeed, 'match-style', musicMatchSequence++, 0);
+    return styles[Math.floor(sample * styles.length)] || 'bitDuel';
+}
+
+function initMusicBus() {
+    if (!audioCtx || musicBusReady) return;
+    initAudioOutput();
+    musicLayerBuses = Object.fromEntries(['drums', 'bass', 'melody', 'glitch', 'pad'].map((layer) => [layer, audioCtx.createGain()]));
+    musicDrumsGain = musicLayerBuses.drums;
+    musicBassGain = musicLayerBuses.bass;
+    musicMelodyGain = musicLayerBuses.melody;
+    musicGlitchGain = musicLayerBuses.glitch;
+    musicEffectsGain = audioCtx.createGain();
+    musicEffectsGain.gain.value = 1;
+    musicThemeFilter = audioCtx.createBiquadFilter();
+    musicThemeFilter.type = 'lowpass';
+    musicThemeFilter.frequency.value = 20000;
+    musicTransitionGain = audioCtx.createGain();
+    musicTransitionGain.gain.value = 1;
+    musicUserGain = audioCtx.createGain();
+    musicUserGain.gain.value = musicVolume();
+    musicMasterGain = audioCtx.createGain();
+    musicMasterGain.gain.value = 0.82;
+    musicMasterCompressor = audioCtx.createDynamicsCompressor();
+    musicMasterCompressor.threshold.value = -16;
+    musicMasterCompressor.knee.value = 8;
+    musicMasterCompressor.ratio.value = 3;
+    musicMasterCompressor.attack.value = 0.004;
+    musicMasterCompressor.release.value = 0.16;
+    for (const bus of Object.values(musicLayerBuses)) bus.connect(musicEffectsGain);
+    musicEffectsGain.connect(musicThemeFilter).connect(musicTransitionGain).connect(musicUserGain)
+        .connect(musicMasterGain).connect(musicMasterCompressor).connect(audioOutputGain);
+    musicBusReady = true;
+    NES_PULSE_WIDE = getMusicPulseWave(0.25);
+    NES_PULSE_NARROW = getMusicPulseWave(0.125);
+    applyLayerGains(0);
+}
+
+function getLayerMultiplier(layer) {
+    const mix = INTENSITY_LAYER_MIX[musicIntensity] || INTENSITY_LAYER_MIX[1];
+    return mix[layer] === undefined ? 1 : mix[layer];
+}
+
+function applyLayerGains(rampSeconds = 0.2) {
+    if (!musicBusReady || !audioCtx) return;
+    const mix = INTENSITY_LAYER_MIX[musicIntensity] || INTENSITY_LAYER_MIX[1];
+    const now = audioCtx.currentTime;
+    for (const [layer, bus] of Object.entries(musicLayerBuses)) {
+        const target = mix[layer] === undefined ? 0.25 : mix[layer];
+        try {
+            if (typeof bus.gain.cancelScheduledValues === 'function') bus.gain.cancelScheduledValues(now);
+            bus.gain.setValueAtTime(bus.gain.value, now);
+            bus.gain.linearRampToValueAtTime(target, now + rampSeconds);
+        } catch (_) { bus.gain.value = target; }
+    }
+}
+
+function setMusicIntensity(level) {
+    const clamped = Math.max(1, Math.min(3, Math.round(Number(level) || 1)));
+    if (clamped === musicIntensity) return;
+    musicIntensity = clamped;
+    musicTransport.intensity = clamped;
+    applyLayerGains(0.2);
+}
+
+function musicVolume() { return Number.isFinite(audioVolumes.music) ? audioVolumes.music : AUDIO_CONFIG.music; }
+
+function canScheduleMusicAudio() {
+    return !!audioCtx && audioCtx.state === 'running';
+}
+
+function makeMusicEvent(beat, type, layer, note, durationBeats, velocity, extra = {}) {
+    return { beat, type, layer, note, durationBeats, velocity, ...extra };
+}
+
+function getMusicSection(barIndex) {
+    const position = ((barIndex % 16) + 16) % 16;
+    for (let i = MUSIC_SECTION_STARTS.length - 1; i >= 0; i--) {
+        if (position >= MUSIC_SECTION_STARTS[i]) return { name: ['intro', 'A', 'B', 'break', 'return'][i], start: MUSIC_SECTION_STARTS[i], index: position - MUSIC_SECTION_STARTS[i] };
+    }
+    return { name: 'intro', start: 0, index: 0 };
+}
+
+function generateMusicBarEvents(styleKey, barIndex, intensity = 1, seed = musicSessionSeed) {
+    const style = MUSIC_STYLES[styleKey] ? styleKey : 'bitDuel';
+    const arrangement = MUSIC_ARRANGEMENTS[style];
+    const level = Math.max(1, Math.min(3, Math.round(Number(intensity) || 1)));
+    const section = getMusicSection(barIndex);
+    const localBar = ((barIndex % 16) + 16) % 16;
+    const chordIndex = Math.floor(localBar / 4) % 4;
+    const rootDegree = MUSIC_CHORD_DEGREES[chordIndex];
+    const chordRoot = degreeToMidi(rootDegree, -1);
+    const events = [];
+    let serial = 0;
+    const add = (beat, type, layer, note, durationBeats, velocity, extra = {}) => {
+        const rand = musicRandomFor(seed, style, barIndex, serial++);
+        const swing = arrangement.swing && beat % 1 === 0.5 ? arrangement.swing : 0;
+        const jitterMax = style === 'glitchAssault' ? 0.002 : 0.006;
+        const jitter = (rand * 2 - 1) * jitterMax;
+        const humanizedBeat = Math.max(0, beat + swing);
+        events.push(makeMusicEvent(humanizedBeat, type, layer, note, durationBeats, velocity * (0.9 + rand * 0.2), { jitter, ...extra }));
+    };
+
+    // Root motion and low-end pulse stay present through the quiet section.
+    const walkingBass = buildWalkingBass(level, barIndex);
+    const bassOnsets = arrangement.bass.filter((beat, index) => level > 1 || index % 2 === 0);
+    bassOnsets.forEach((beat) => {
+        const slot = Math.min(walkingBass.notes.length - 1, Math.floor(beat / 4 * walkingBass.notes.length));
+        add(beat, 'tone', 'bass', walkingBass.notes[slot], beat % 1 ? 0.42 : 0.8, 0.42, { wave: 'triangle' });
+    });
+
+    if (section.name !== 'break') {
+        arrangement.kick.forEach((beat) => add(beat, 'kick', 'drums', 42, 0.18, style === 'glitchAssault' ? 0.48 : 0.34));
+        arrangement.snare.forEach((beat) => add(beat, 'snare', 'drums', style === 'baroqueBash' ? 74 : 58, 0.12, 0.23));
+        for (let beat = 0; beat < 4; beat += arrangement.hats) {
+            if (style === 'voidReach' && beat % 2 !== 0) continue;
+            const quietHat = beat % 1 === 0.5 ? 0.045 : 0.075;
+            add(beat, 'hat', 'drums', 76 + (beat % 1 ? 0 : 5), 0.06, quietHat);
+        }
+    } else {
+        add(0, 'kick', 'drums', 42, 0.18, 0.18);
+        if (level >= 3) add(2, 'hat', 'drums', 78, 0.05, 0.035);
+    }
+
+    const chord = MUSIC_CHORD_INTERVALS[chordIndex].map((interval) => chordRoot + interval).filter((note) => note >= 24 && note <= 96);
+    if (section.name !== 'intro' && section.name !== 'break') {
+        const voicing = style === 'voidReach' || style === 'neonFury' ? chord : chord.slice(0, 2);
+        const chordWave = style === 'voidReach' ? 'sine' : style === 'neonFury' ? 'sawtooth' : arrangement.wave;
+        add(0, 'chord', 'pad', voicing, 3.8, style === 'voidReach' ? 0.045 : 0.032, { wave: chordWave });
+    }
+
+    const motifSection = section.name === 'A' || section.name === 'return';
+    if (motifSection) {
+        let beat = 0;
+        MUSIC_CONFIG.motifDegrees.forEach((degree, index) => {
+            const motifBeat = beat;
+            const length = MUSIC_CONFIG.motifDurations[index];
+            const octave = style === 'voidReach' && index % 2 ? -1 : (style === 'neonFury' ? 1 : 0);
+            add(motifBeat, 'lead', 'melody', degreeToMidi(degree, octave), Math.max(0.12, length * 0.82), section.name === 'return' ? 0.23 : 0.2, { wave: arrangement.wave, accent: index === 0 });
+            beat += length;
+        });
+        if (style === 'baroqueBash' && section.name === 'A' && level >= 2) {
+            [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5].forEach((beat, index) => {
+                const degree = [0, 2, 4, 6][index % 4];
+                add(beat, 'pluck', 'melody', degreeToMidi(degree, 1), 0.22, 0.09, { wave: 'triangle' });
+            });
+        } else if (style === 'glitchAssault' && level >= 2 && localBar % 4 === 3) {
+            add(3.75, 'glitch', 'glitch', degreeToMidi(4, -1), 0.18, 0.14, { wave: 'sawtooth' });
+        }
+    } else if (section.name === 'B' || section.name === 'intro' && localBar === 1) {
+        const cells = {
+            bitDuel: [0, 4, 2, 4], baroqueBash: [4, 2, 1, 3], neonFury: [0, 2, 4, 2],
+            glitchAssault: [0, 0, 4, 4], retroGroove: [0, 2, 4, 2], voidReach: [0, 4]
+        }[style];
+        const interval = style === 'baroqueBash' ? 0.5 : style === 'voidReach' ? 2 : 1;
+        cells.forEach((degree, index) => {
+            const beat = index * interval;
+            if (beat < 4) add(beat, 'lead', 'melody', degreeToMidi(degree + rootDegree), style === 'voidReach' ? 1.6 : 0.52, section.name === 'intro' ? 0.12 : 0.18, { wave: arrangement.wave });
+        });
+    }
+
+    const layerPriority = { bass: 0, drums: 1, melody: 2, pad: 3, glitch: 4 };
+    return events.filter((event) => Number.isFinite(event.beat) && Number.isFinite(event.durationBeats) && event.durationBeats > 0 &&
+        (Array.isArray(event.note) ? event.note.every((note) => Number.isFinite(note) && note >= 24 && note <= 96) : Number.isFinite(event.note) && event.note >= 24 && event.note <= 96))
+        .sort((a, b) => a.beat - b.beat || (layerPriority[a.layer] ?? 5) - (layerPriority[b.layer] ?? 5));
+}
+
+function buildWalkingBass(intensity, barIndex) {
+    const rootDegree = MUSIC_CHORD_DEGREES[Math.floor((((barIndex % 16) + 16) % 16) / 4) % 4];
+    const notes = [degreeToMidi(rootDegree, -1), degreeToMidi((rootDegree + 4) % 7, -1)];
+    return intensity >= 2 ? { notes: [notes[0], notes[1], notes[0], notes[1]], durations: [1, 1, 1, 1] }
+        : { notes, durations: [2, 2] };
+}
+
+function buildMusicPattern(intensity, barIndex) {
+    return { events: generateMusicBarEvents(musicStyle, barIndex, intensity) };
+}
+
+function musicBeatSeconds() {
+    const style = MUSIC_STYLES[musicStyle] || MUSIC_STYLES.bitDuel;
+    return 60 / style.bpm;
+}
+
+function getEffectiveBpm() { return (MUSIC_STYLES[musicStyle] || MUSIC_STYLES.bitDuel).bpm; }
+
+function getMusicTiming() {
+    const beatSec = musicBeatSeconds();
+    return { bpm: getEffectiveBpm(), beatSec, barSec: beatSec * MUSIC_CONFIG.barBeats };
+}
+
+function cleanupMusicVoice(source) {
+    const record = musicVoiceRecords.get(source);
+    if (!record || record.cleaned) return;
+    record.cleaned = true;
+    scheduledMusicVoices.delete(source);
+    musicVoiceRecords.delete(source);
+    source.onended = null;
+    for (const node of record.nodes) {
+        try { if (node && typeof node.disconnect === 'function') node.disconnect(); } catch (_) {}
+    }
+}
+
+function registerMusicVoice(source, nodes) {
+    if (scheduledMusicVoices.size >= MUSIC_CONFIG.maxMusicVoices) {
+        musicDroppedVoices++;
+        for (const node of nodes) { try { if (node.disconnect) node.disconnect(); } catch (_) {} }
+        return false;
+    }
+    const record = { nodes, cleaned: false };
+    musicVoiceRecords.set(source, record);
+    scheduledMusicVoices.add(source);
+    source.onended = () => cleanupMusicVoice(source);
+    return true;
+}
+
+function getMusicPulseWave(duty) {
+    if (!audioCtx || typeof audioCtx.createPeriodicWave !== 'function') return null;
+    if (!musicPulseWaves) musicPulseWaves = new Map();
+    const key = String(duty);
+    if (musicPulseWaves.has(key)) return musicPulseWaves.get(key);
+    const real = new Float32Array(33);
+    const imag = new Float32Array(33);
+    for (let harmonic = 1; harmonic < real.length; harmonic++) {
+        const angle = Math.PI * 2 * harmonic * duty;
+        real[harmonic] = 2 * Math.sin(angle) / (Math.PI * harmonic);
+        imag[harmonic] = 2 * (1 - Math.cos(angle)) / (Math.PI * harmonic);
+    }
+    try {
+        const wave = audioCtx.createPeriodicWave(real, imag);
+        musicPulseWaves.set(key, wave);
+        return wave;
+    } catch (_) { return null; }
+}
+
+function stopMusicVoices(fade = true) {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    for (const [source, record] of [...musicVoiceRecords]) {
+        try {
+            const envelope = record.nodes.find((node) => node && node.gain);
+            if (fade && envelope && envelope.gain) {
+                if (typeof envelope.gain.cancelScheduledValues === 'function') envelope.gain.cancelScheduledValues(now);
+                envelope.gain.setValueAtTime(Math.max(0.0001, envelope.gain.value || 0.0001), now);
+                envelope.gain.linearRampToValueAtTime(0.0001, now + 0.012);
+            }
+            source.stop(now + (fade ? 0.015 : 0.001));
+        } catch (_) { cleanupMusicVoice(source); }
+    }
+}
+
+function scheduleMusicTone(note, startTime, durationSeconds, layer, velocity, wave = 'triangle', accent = false, frequencySweep = null) {
+    if (!canScheduleMusicAudio() || !musicBusReady || !(musicVolume() > 0) || !Number.isFinite(note) || note < 24 || note > 96) return false;
+    if (scheduledMusicVoices.size >= MUSIC_CONFIG.maxMusicVoices) {
+        musicDroppedVoices++;
+        return false;
+    }
+    const now = audioCtx.currentTime;
+    const start = Math.max(now + MUSIC_CONFIG.scheduleLeadSeconds, startTime);
+    const duration = Math.max(0.025, durationSeconds);
+    const source = audioCtx.createOscillator();
+    const envelope = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    if (wave === 'pulseWide' || wave === 'pulseNarrow') {
+        const pulse = getMusicPulseWave(wave === 'pulseWide' ? 0.25 : 0.125);
+        if (pulse && typeof source.setPeriodicWave === 'function') source.setPeriodicWave(pulse);
+        else source.type = 'square';
+    } else source.type = wave;
+    source.frequency.setValueAtTime(frequencySweep ? frequencySweep[0] : midiToFreq(note), start);
+    if (frequencySweep) source.frequency.exponentialRampToValueAtTime(Math.max(20, frequencySweep[1]), start + Math.min(0.09, duration * 0.55));
+    filter.type = wave === 'sawtooth' ? 'lowpass' : 'lowpass';
+    filter.frequency.value = wave === 'sawtooth' ? 4200 : 12000;
+    const layerBus = musicLayerBuses[layer] || musicLayerBuses.melody;
+    const peak = Math.min(0.14, Math.max(0.002, velocity * (accent ? 0.85 : 0.68) * (MUSIC_ARRANGEMENTS[musicStyle] || MUSIC_ARRANGEMENTS.bitDuel).trim));
+    envelope.gain.setValueAtTime(0.0001, start);
+    envelope.gain.linearRampToValueAtTime(peak, start + Math.min(0.018, duration * 0.18));
+    envelope.gain.setValueAtTime(peak, Math.max(start + 0.02, start + duration * 0.72));
+    envelope.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    source.connect(envelope).connect(filter).connect(layerBus);
+    if (!registerMusicVoice(source, [envelope, filter])) return false;
+    try {
+        source.start(start);
+        source.stop(start + duration + 0.02);
+    } catch (_) { cleanupMusicVoice(source); return false; }
+    return true;
+}
+
+function getMusicNoiseBuffer() {
+    if (!audioCtx || typeof audioCtx.createBuffer !== 'function') return null;
+    if (musicNoiseBuffers.has(audioCtx)) return musicNoiseBuffers.get(audioCtx);
+    const sampleRate = audioCtx.sampleRate || 44100;
+    const buffer = audioCtx.createBuffer(1, Math.ceil(sampleRate * 0.16), sampleRate);
+    const samples = buffer.getChannelData(0);
+    let state = (musicSessionSeed ^ 0x4E4F4953) >>> 0;
+    for (let index = 0; index < samples.length; index++) {
+        state ^= state << 13; state ^= state >>> 17; state ^= state << 5;
+        samples[index] = ((state >>> 0) / 2147483648) - 1;
+    }
+    musicNoiseBuffers.set(audioCtx, buffer);
+    return buffer;
+}
+
+function scheduleMusicNoise(startTime, duration, velocity, type = 'hat') {
+    if (!canScheduleMusicAudio() || !musicBusReady || musicVolume() <= 0) return false;
+    if (scheduledMusicVoices.size >= MUSIC_CONFIG.maxMusicVoices) { musicDroppedVoices++; return false; }
+    const now = audioCtx.currentTime;
+    const start = Math.max(now + 0.02, startTime);
+    const source = audioCtx.createBufferSource();
+    const envelope = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+    source.buffer = getMusicNoiseBuffer();
+    filter.type = type === 'hat' ? 'highpass' : 'bandpass';
+    filter.frequency.value = type === 'hat' ? 6800 : 2400;
+    filter.Q.value = type === 'hat' ? 0.45 : 0.7;
+    const peak = Math.min(0.09, Math.max(0.001, velocity * 0.09 * (MUSIC_ARRANGEMENTS[musicStyle] || MUSIC_ARRANGEMENTS.bitDuel).trim));
+    envelope.gain.setValueAtTime(0.0001, start);
+    envelope.gain.linearRampToValueAtTime(peak, start + 0.002);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    source.connect(envelope).connect(filter).connect(musicLayerBuses.drums);
+    if (!registerMusicVoice(source, [envelope, filter])) return false;
+    try { source.start(start); source.stop(start + duration + 0.005); }
+    catch (_) { cleanupMusicVoice(source); return false; }
+    return true;
+}
+
+function scheduleMusicEvent(event, barStart, beatSec) {
+    const at = barStart + event.beat * beatSec + event.jitter;
+    const duration = Math.max(0.025, event.durationBeats * beatSec);
+    if (event.type === 'chord') {
+        const notes = event.note;
+        notes.forEach((note, index) => scheduleMusicTone(note, at + index * 0.004, duration, event.layer, event.velocity / Math.max(1, notes.length), event.wave, event.accent));
+        return;
+    }
+    if (event.type === 'hat') { scheduleMusicNoise(at, 0.045, event.velocity, 'hat'); return; }
+    if (event.type === 'snare') {
+        scheduleMusicNoise(at, 0.11, event.velocity, 'snare');
+        scheduleMusicTone(45, at, 0.12, 'drums', event.velocity * 0.18, 'triangle', false, [210, 85]);
+        return;
+    }
+    if (event.type === 'kick') {
+        scheduleMusicTone(33, at, 0.18, 'drums', event.velocity, 'sine', false, [150, 48]);
+        return;
+    }
+    const wave = event.wave || (MUSIC_ARRANGEMENTS[musicStyle] || MUSIC_ARRANGEMENTS.bitDuel).wave;
+    scheduleMusicTone(event.note, at, duration, event.layer, event.velocity, wave, event.accent);
+}
+
+function scheduleMusicBar(pattern, barStart, beatSec) {
+    const events = pattern && pattern.events ? pattern.events : [];
+    musicTransport.barStart = barStart;
+    musicTransport.events = events;
+    musicTransport.cursor = 0;
+    musicTransport.barBeatSec = beatSec;
+}
+
+function generateTransportBarEvents(barIndex = musicTransport.barIndex) {
+    let events = generateMusicBarEvents(musicStyle, barIndex, musicIntensity || 1, musicSessionSeed);
+    if (musicTransport.scene === 'menu' || musicTransport.scene === 'onboarding') {
+        const scale = musicTransport.scene === 'onboarding' ? 0.28 : 0.4;
+        events = events
+            .filter((event) => ['tone', 'lead', 'chord'].includes(event.type))
+            .map((event) => ({ ...event, velocity: event.velocity * scale }));
+    }
+    return events;
+}
+
+function beginTransportBar(startTime) {
+    musicTransport.barStart = startTime;
+    musicTransport.events = generateTransportBarEvents();
+    musicTransport.cursor = 0;
+    musicTransport.barBeatSec = musicBeatSeconds();
+}
+
+function startMusic(scene = 'combat', resumePosition = null) {
+    if (!audioCtx) initAudio();
+    if (!audioCtx) return false;
+    initMusicBus();
+    musicTransport.scene = scene;
+    if (musicTransport.running) {
+        if (musicPaused && musicVolume() > 0) resumeMusic();
+        return true;
+    }
+    musicTransport.running = true;
+    musicTransport.style = musicStyle;
+    musicTransport.barIndex = resumePosition && Number.isInteger(resumePosition.barIndex) ? Math.max(0, resumePosition.barIndex) : 0;
+    musicBarIndex = musicTransport.barIndex;
+    musicPaused = musicVolume() <= 0;
+    const beatSec = musicBeatSeconds();
+    const beat = resumePosition && Number.isFinite(resumePosition.beat) ? Math.max(0, Math.min(3.99, resumePosition.beat)) : 0;
+    musicTransport.barStart = audioCtx.currentTime + MUSIC_CONFIG.scheduleLeadSeconds - beat * beatSec;
+    musicTransport.pausedBeat = beat;
+    beginTransportBar(musicTransport.barStart);
+    if (beat > 0) {
+        musicTransport.cursor = musicTransport.events.findIndex((event) => event.beat >= beat - 0.01);
+        if (musicTransport.cursor < 0) musicTransport.cursor = musicTransport.events.length;
+    }
+    musicNextBar = musicTransport.barStart + musicTransport.barBeatSec * MUSIC_CONFIG.barBeats;
+    applyLayerGains(0.08);
+    tickMusic();
+    if (typeof renderMusicNowPlaying === 'function') renderMusicNowPlaying();
+    return true;
+}
+
+function pauseMusic() {
+    musicResumeRequested = false;
+    if (!musicTransport.running || musicPaused) return;
+    const beatSec = musicTransport.barBeatSec || musicBeatSeconds();
+    const now = audioCtx ? audioCtx.currentTime : musicTransport.barStart;
+    musicTransport.pausedBeat = Math.max(0, Math.min(MUSIC_CONFIG.barBeats, (now - musicTransport.barStart) / beatSec));
+    musicTransport.cursor = musicTransport.events.findIndex((event) => event.beat >= musicTransport.pausedBeat - 0.01);
+    if (musicTransport.cursor < 0) musicTransport.cursor = musicTransport.events.length;
+    musicPaused = true;
+    stopMusicVoices(true);
+}
+
+function resumeMusic() {
+    if (!musicTransport.running || !audioCtx || musicVolume() <= 0) return false;
+    if (audioCtx.state !== 'running') { musicResumeRequested = true; return false; }
+    const now = audioCtx.currentTime;
+    const beatSec = musicBeatSeconds();
+    if (musicTransport.pausedBeat >= MUSIC_CONFIG.barBeats - 0.02) {
+        musicTransport.barIndex++;
+        musicBarIndex = musicTransport.barIndex;
+        musicTransport.pausedBeat = 0;
+        beginTransportBar(now + MUSIC_CONFIG.scheduleLeadSeconds);
+    } else {
+        musicTransport.events = generateTransportBarEvents(musicTransport.barIndex);
+        musicTransport.barBeatSec = beatSec;
+        musicTransport.barStart = now + 0.04 - musicTransport.pausedBeat * beatSec;
+        musicTransport.cursor = musicTransport.events.findIndex((event) => event.beat >= musicTransport.pausedBeat - 0.01);
+        if (musicTransport.cursor < 0) musicTransport.cursor = musicTransport.events.length;
+    }
+    musicNextBar = musicTransport.barStart + beatSec * MUSIC_CONFIG.barBeats;
+    musicPaused = false;
+    musicResumeRequested = false;
+    return true;
+}
+
+function stopMusic(reset = true) {
+    const stoppedPreview = musicTransport.scene === 'preview';
+    musicPaused = true;
+    musicResumeRequested = false;
+    stopMusicVoices(true);
+    stopNoiseFloor();
+    stopDroneVoices();
+    stopPadNotes();
+    musicEffects = { lowpass: null, bitcrush: null, stutterTimer: null };
+    if (reset) {
+        musicTransport.running = false;
+        musicTransport.barIndex = 0;
+        musicTransport.events = [];
+        musicTransport.cursor = 0;
+        musicTransport.pausedBeat = 0;
+        musicTransport.previewUntil = 0;
+        musicTransport.scene = 'stopped';
+        if (stoppedPreview) musicPreviewSnapshot = null;
+        musicNextBar = 0;
+        musicBarIndex = 0;
+    }
+}
+
+function tickMusic() {
+    if (musicResumeRequested && audioCtx && audioCtx.state === 'running') resumeMusic();
+    if (!musicTransport.running || musicPaused || !audioCtx || audioCtx.state !== 'running' || musicVolume() <= 0 || !musicBusReady) return;
+    const now = audioCtx.currentTime;
+    if (musicTransport.previewUntil && now >= musicTransport.previewUntil) {
+        stopMusicPreview();
+        return;
+    }
+    const horizon = now + MUSIC_CONFIG.lookaheadSeconds;
+    let scheduled = 0;
+    while (musicTransport.barStart < now - musicTransport.barBeatSec * MUSIC_CONFIG.barBeats) {
+        musicTransport.barIndex++;
+        musicBarIndex = musicTransport.barIndex;
+        beginTransportBar(musicTransport.barStart + musicTransport.barBeatSec * MUSIC_CONFIG.barBeats);
+        musicNextBar = musicTransport.barStart + musicTransport.barBeatSec * MUSIC_CONFIG.barBeats;
+    }
+    while (musicTransport.cursor < musicTransport.events.length && scheduled < MUSIC_CONFIG.maxMusicVoices) {
+        const event = musicTransport.events[musicTransport.cursor];
+        const eventTime = musicTransport.barStart + event.beat * musicTransport.barBeatSec + event.jitter;
+        if (eventTime > horizon) break;
+        musicTransport.cursor++;
+        if (eventTime < now - 0.01) continue;
+        scheduleMusicEvent(event, musicTransport.barStart, musicTransport.barBeatSec);
+        scheduled++;
+    }
+    const barEnd = musicTransport.barStart + musicTransport.barBeatSec * MUSIC_CONFIG.barBeats;
+    if (now >= barEnd - MUSIC_CONFIG.lookaheadSeconds && musicTransport.cursor >= musicTransport.events.length) {
+        musicTransport.barIndex++;
+        musicBarIndex = musicTransport.barIndex;
+        beginTransportBar(barEnd);
+        musicNextBar = barEnd + musicTransport.barBeatSec * MUSIC_CONFIG.barBeats;
+    }
+}
+
+function getMusicTransportDiagnostics() {
+    return {
+        running: musicTransport.running, paused: musicPaused, scene: musicTransport.scene,
+        style: musicTransport.style, barIndex: musicTransport.barIndex, cursor: musicTransport.cursor,
+        eventCount: musicTransport.events.length, activeVoices: scheduledMusicVoices.size,
+        droppedVoices: musicDroppedVoices, musicVoiceLimit: MUSIC_CONFIG.maxMusicVoices,
+        contextState: audioCtx ? audioCtx.state : 'uninitialized'
+    };
+}
+
+function getMusicRoutingDiagnostics() {
+    return {
+        layers: Object.fromEntries(Object.entries(musicLayerBuses).map(([name, bus]) => [name, bus.connections ? bus.connections.map((node) => node.id) : []])),
+        effects: musicEffectsGain && musicEffectsGain.connections ? musicEffectsGain.connections.map((node) => node.id) : [],
+        filter: musicThemeFilter && musicThemeFilter.connections ? musicThemeFilter.connections.map((node) => node.id) : [],
+        transition: musicTransitionGain && musicTransitionGain.connections ? musicTransitionGain.connections.map((node) => node.id) : [],
+        user: musicUserGain && musicUserGain.connections ? musicUserGain.connections.map((node) => node.id) : [],
+        master: musicMasterGain && musicMasterGain.connections ? musicMasterGain.connections.map((node) => node.id) : []
+    };
+}
+
+function musicDuck(durationMs = 200, reductionDb = 4) {
+    if (!audioCtx || !musicTransitionGain || musicVolume() <= 0) return;
+    const now = audioCtx.currentTime;
+    const target = Math.pow(10, -reductionDb / 20);
+    try {
+        musicTransitionGain.gain.cancelScheduledValues(now);
+        musicTransitionGain.gain.setValueAtTime(musicTransitionGain.gain.value, now);
+        musicTransitionGain.gain.linearRampToValueAtTime(target, now + 0.015);
+        musicTransitionGain.gain.linearRampToValueAtTime(1, now + Math.max(0.03, durationMs / 1000));
+    } catch (_) { musicTransitionGain.gain.value = 1; }
+}
+
+function musicComboAccent() {
+    if (!audioCtx || !musicBusReady || musicVolume() <= 0 || audioCtx.currentTime - musicLastAccent < 0.75) return;
+    musicLastAccent = audioCtx.currentTime;
+    musicCriticalHitLP();
+    scheduleMusicTone(degreeToMidi(4), audioCtx.currentTime + MUSIC_CONFIG.scheduleLeadSeconds, 0.14, 'melody', 0.16, 'triangle', true);
+}
+
+function musicSpecialAccent() {
+    if (!audioCtx || !musicBusReady || musicVolume() <= 0 || audioCtx.state !== 'running') return;
+    const beatSec = musicBeatSeconds();
+    const now = audioCtx.currentTime;
+    const position = Math.max(0, (now - musicTransport.barStart) / beatSec);
+    let delay = (Math.ceil(position * 4) / 4 - position) * beatSec;
+    if (delay <= 0.001 || delay > 0.12) delay = MUSIC_CONFIG.scheduleLeadSeconds;
+    scheduleMusicTone(degreeToMidi(4), now + delay, 0.22, 'melody', 0.2, (MUSIC_ARRANGEMENTS[musicStyle] || MUSIC_ARRANGEMENTS.bitDuel).wave, true);
+}
+
+function musicCriticalHitLP() {
+    if (!audioCtx || !musicThemeFilter || musicVolume() <= 0) return;
+    const now = audioCtx.currentTime;
+    musicDuck(180, 3);
+    try {
+        musicThemeFilter.frequency.cancelScheduledValues(now);
+        musicThemeFilter.frequency.setValueAtTime(musicThemeFilter.frequency.value, now);
+        musicThemeFilter.frequency.linearRampToValueAtTime(1800, now + 0.05);
+        musicThemeFilter.frequency.linearRampToValueAtTime(18000, now + (MUSIC_CONFIG.criticalLpSeconds || 0.9));
+    } catch (_) { musicThemeFilter.frequency.value = 18000; }
+}
+
+function musicStutter(durationMs = 60) {
+    if (!audioCtx || !musicTransitionGain || musicVolume() <= 0) return;
+    const chopMs = Math.max(MUSIC_CONFIG.stutterMs.min, Math.min(MUSIC_CONFIG.stutterMs.max, durationMs));
+    const now = audioCtx.currentTime;
+    const total = Math.min(0.165, Math.max(0.12, (chopMs * 2) / 1000));
+    const cut = total / 2;
+    const gate = musicTransitionGain.gain;
+    const duck = Math.pow(10, -6 / 20);
+    try {
+        gate.cancelScheduledValues(now);
+        gate.setValueAtTime(gate.value, now);
+        gate.linearRampToValueAtTime(duck, now + 0.015);
+        for (let i = 0; i < 2; i++) {
+            const start = now + 0.015 + i * cut;
+            gate.linearRampToValueAtTime(duck * 0.12, start + cut * 0.18);
+            gate.linearRampToValueAtTime(duck, start + cut * 0.62);
+        }
+        gate.linearRampToValueAtTime(1, now + 0.015 + total);
+    } catch (_) { gate.value = 1; }
+}
+
+function playMusicCue(degrees, durations, direction = 0) {
+    if (!audioCtx || !musicBusReady || musicVolume() <= 0 || audioCtx.state !== 'running') return;
+    const now = audioCtx.currentTime + MUSIC_CONFIG.scheduleLeadSeconds;
+    const beat = 60 / ((MUSIC_STYLES[musicStyle] || MUSIC_STYLES.bitDuel).bpm);
+    const notes = degrees.map((degree) => degreeToMidi(degree));
+    notes.forEach((note, index) => scheduleMusicTone(note, now + durations.slice(0, index).reduce((a, b) => a + b, 0) * beat,
+        durations[index] * beat * 0.84, 'melody', 0.24, 'triangle', index === 0));
+    if (direction < 0) musicDuck(320, 2);
+}
+
+function playMusicRoundCue(outcome = null) {
+    stopMusic(true);
+    const degrees = outcome === true ? [0, 2, 4] : outcome === false ? [4, 2, 0] : [0, 3, 0];
+    playMusicCue(degrees, [0.35, 0.35, 0.6], outcome === false ? -1 : 0);
+}
+
+function musicPitchDrop(playerWon = true) {
+    stopMusic(true);
+    playMusicCue(playerWon ? [0, 2, 4, 0] : [4, 2, 1, 0], [0.45, 0.45, 0.45, 1], playerWon ? 0 : -1);
+}
+
+function startMusicPreview(style = 'bitDuel') {
+    if (!MUSIC_STYLES[style]) style = 'bitDuel';
+    if (!audioCtx) initAudio();
+    if (!audioCtx) return false;
+    initMusicBus();
+    if (musicTransport.running && musicTransport.scene !== 'preview') {
+        const beat = Math.max(0, Math.min(3.99, (audioCtx.currentTime - musicTransport.barStart) / (musicTransport.barBeatSec || musicBeatSeconds())));
+        musicPreviewSnapshot = { style: musicStyle, scene: musicTransport.scene, wasRunning: true,
+            barIndex: musicTransport.barIndex, beat, intensity: musicIntensity };
+    } else if (!musicPreviewSnapshot) musicPreviewSnapshot = { style: musicStyle, wasRunning: false, barIndex: 0, pausedBeat: 0 };
+    stopMusic(true);
+    setMusicStyle(style);
+    musicIntensity = 2;
+    musicTransport.intensity = 2;
+    startMusic('preview');
+    musicTransport.previewUntil = audioCtx.currentTime + 8;
+    return true;
+}
+
+function stopMusicPreview() {
+    if (musicTransport.scene !== 'preview') return false;
+    const snapshot = musicPreviewSnapshot;
+    stopMusic(true);
+    musicPreviewSnapshot = null;
+    if (snapshot && snapshot.wasRunning) {
+        setMusicStyle(snapshot.style);
+        musicIntensity = snapshot.intensity || 1;
+        musicTransport.intensity = musicIntensity;
+        applyLayerGains(0.2);
+        startMusic(snapshot.scene || 'menu', snapshot);
+    } else if (snapshot) setMusicStyle(snapshot.style);
+    if (typeof renderMusicPreviewButton === 'function') renderMusicPreviewButton();
+    return true;
+}
+
+function startMenuMusic(scene = 'menu') {
+    if (musicTransport.running && musicTransport.scene === scene && !musicPaused) return true;
+    setMusicStyle(musicStyle || 'bitDuel');
+    musicIntensity = 1;
+    musicTransport.intensity = 1;
+    applyLayerGains(0.2);
+    return startMusic(scene);
+}
+
 function playTone(profile, channel = 'combat', delaySeconds = 0) {
     const volume = audioVolumes[channel];
     if (!(volume > 0)) return;
@@ -1632,7 +2381,7 @@ function playTone(profile, channel = 'combat', delaySeconds = 0) {
     o.frequency.setValueAtTime(profile.start, start);
     o.frequency.exponentialRampToValueAtTime(Math.max(1, profile.end), end);
 
-    o.connect(g).connect(audioCtx.destination);
+    o.connect(g).connect(audioOutputGain || audioCtx.destination);
     audioDiagnostics.createdGraphs++;
     audioDiagnostics.activeGraphs++;
     audioDiagnostics.oscillatorsCreated++;

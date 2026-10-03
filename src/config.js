@@ -82,7 +82,15 @@ const MUSIC_CONFIG = {
     stutterMs: { min: 16, max: 80 },
     criticalLpSeconds: 0.9,
     pitchDropSeconds: 0.6,
-    notePool: [55, 57, 59, 60, 62, 64, 65, 67] // A2/A#2/B2/C3/D3/E3/F3/G3 midi
+    tonicMidi: 57,
+    scale: [0, 2, 3, 5, 7, 8, 10],
+    motifDegrees: [0, 2, 4, 1, 0],
+    motifDurations: [0.5, 0.5, 1, 0.5, 1.5],
+    barBeats: 4,
+    lookaheadSeconds: 0.12,
+    scheduleLeadSeconds: 0.02,
+    maxMusicVoices: 24,
+    notePool: [45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81]
 };
 const TRAINING_POSITIONS = {
     mid: [350, 650],

@@ -286,8 +286,10 @@ Arenas are visual only. They do not modify damage, speed, AI, hitboxes, or victo
 - Themed arena backgrounds with light animations and layered background, midground, and peripheral foreground props that respect `Reducir movimiento`.
 - Ten arenas share HUD safe margins and peripheral foreground. Browser and device review scope is recorded in `plans/plan_0043_validacion_humana_consolidada.md`.
 - Rival badges, special-ready labels, and floating combat text stay inside safe canvas margins near either corner.
-- Audio generated with the Web Audio API layers attack sweeps, impact body and digital chirps. Envelopes use the audio clock, with mix headroom and a 24-voice cap.
-- Settings/Help/Controls contains separate Combat and Menus volume sliders and preview buttons. Defaults are 65% / 55%; 0% mutes that channel. Values persist under `glitchDuelAudioVolumes`; invalid or unavailable storage falls back safely. Loading or adjusting settings does not create audio until a sound is requested.
+- Audio is synthesized locally with Web Audio. Six selectable styles (Bit Duel, Baroque Bash, Neon Fury, Glitch Assault, Retro Groove and Void Reach) share a short GLITCH DUEL motif and a 4/4 phrase structure. Music adapts to normalized health, recent hits/blocks and round time; Special, combo and round/match results add bounded musical cues.
+- Music has its own audio-clock transport and resumes its phrase after pause. Random style is chosen once per match. The menu remains silent until interaction; Settings/Help/Controls offers an 8-second music preview and a current-track label.
+- Audio settings separate Combat, Menus and Music. Defaults are 65% / 55% / 50%; 0% mutes that channel. Values persist under `glitchDuelAudioVolumes`; the selected style uses `glitchDuelMusicStyle`. Invalid or unavailable storage falls back safely. Loading or adjusting settings does not create audio until a sound or preview is requested.
+- Synthesized combat/UI effects retain their 32-voice cap; musical sources have a separate 24-voice cap. Their buses meet at a shared output compressor/limiter; both use bounded cleanup and do not advance the combat simulation.
 
 ### Technical
 
@@ -539,7 +541,7 @@ Test limitations:
 
 - They do not replace real visual validation in a browser.
 - They do not verify Canvas pixels.
-- They do not test real browser audio.
+- Node audio mocks do not test audibility or perceived mix. The separate, bounded browser/OfflineAudioContext checks and outstanding listening/device review are recorded in `plans/plan_0043_validacion_humana_consolidada.md`.
 - The single authoritative record for browser, hardware, assistive technology, performance and player studies is `plans/plan_0043_validacion_humana_consolidada.md`.
 
 ## Troubleshooting

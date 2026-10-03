@@ -8,6 +8,13 @@ const MATCH_HISTORY_LIMIT = 25;
 const ONBOARDING_STORAGE_KEY = 'glitchDuelOnboardingSeen';
 const MAX_STAT_VALUE = 1000000;
 
+function loadSelectedMusicStyle() {
+    try {
+        const saved = window.localStorage.getItem('glitchDuelMusicStyle');
+        return saved === '' || getMusicStyleList().includes(saved) ? (saved || '') : '';
+    } catch (_) { return ''; }
+}
+
 let player1;
 let player2;
 let floatingTexts = [];
@@ -30,7 +37,12 @@ let roundTimerFrames = ROUND_TIMER_FRAMES;
 let roundTimeMs = ROUND_TIME_MS;
 let selectedArena = 'notebook';
 let selectedFighterStyle = 'balanced';
-let selectedMusicStyle = '';
+let selectedMusicStyle = loadSelectedMusicStyle();
+let matchMusicStyle = null;
+let recentMusicActivity = [];
+let musicIntensityCandidate = null;
+let musicIntensityCandidateSince = 0;
+let musicComboLastFrame = -Infinity;
 let selectedRival = 'nullPointer';
 let stats = loadStats();
 let matchHistory = loadMatchHistory();
@@ -993,6 +1005,16 @@ function recordCombatEvent(event) {
     lastCombatEvent = { ...event };
     combatStatusCacheKey = null;
     reduceTrainingTrialEvent(event);
+    if (event.type === 'attackResolved' && (event.outcome === 'hit' || event.outcome === 'blocked')) {
+        const frame = Number.isFinite(event.frame) ? event.frame : matchElapsedFrames;
+        recentMusicActivity.push({ frame, value: event.outcome === 'hit' ? 1 : 0.5 });
+        recentMusicActivity = recentMusicActivity.filter((entry) => entry.frame >= frame - 180).slice(-12);
+        if (event.outcome === 'hit' && ['comboPunch', 'comboKick', 'backKick'].includes(event.attackType) && frame - musicComboLastFrame >= 45) {
+            musicComboLastFrame = frame;
+            musicComboAccent();
+        }
+    }
+    if (event.type === 'attackResolved' && event.attackType === 'special') musicSpecialAccent();
 }
 
 function recordGlitchCancelAttempt(fighter) {
@@ -1008,6 +1030,8 @@ function recordGlitchCancelAttempt(fighter) {
 function resetTrainingFighters() {
     combatCaptionFrames = 0;
     arenaReaction = null;
+    recentMusicActivity = [];
+    musicIntensityCandidate = null;
     if (!player1 || !player2) return;
     const [playerPosition, cpuPosition] = getTrialPosition();
     [player1.x, player2.x] = [playerPosition, cpuPosition];
@@ -1724,12 +1748,31 @@ function getSpecialActionStateText(fighter = player1) {
 
 function getMusicIntensityFromHealth() {
     if (!player1 || !player2) return 1;
-    const p1 = player1.health / player1.displayHealth || 1;
+    recentMusicActivity = recentMusicActivity.filter((entry) => entry.frame >= matchElapsedFrames - 180).slice(-12);
+    const playerMaximum = Math.round(100 * (FIGHTER_STYLES[player1.styleKey] || FIGHTER_STYLES.balanced).health);
+    const p1 = playerMaximum > 0 ? player1.health / playerMaximum : 1;
     const p2 = player2.health / 100;
     const low = Math.min(p1, p2);
-    if (low <= 0.30) return 3;
-    if (low <= 0.70) return 2;
-    return 1;
+    let target = low <= 0.30 ? 3 : low <= 0.70 ? 2 : 1;
+    if (playerRounds === 1 && cpuRounds === 1) target = Math.max(target, 2);
+    const remainingSeconds = getCombatStatusTime();
+    if (remainingSeconds !== null && remainingSeconds <= 10) target = 3;
+    const heat = recentMusicActivity.reduce((sum, event) => sum + event.value, 0);
+    if (heat >= 5) target = 3;
+    else if (heat >= 3) target = Math.max(target, 2);
+
+    if (target >= musicIntensity) {
+        musicIntensityCandidate = null;
+        return target;
+    }
+    if (musicIntensityCandidate !== target) {
+        musicIntensityCandidate = target;
+        musicIntensityCandidateSince = matchElapsedFrames;
+        return musicIntensity;
+    }
+    if (matchElapsedFrames - musicIntensityCandidateSince < 120) return musicIntensity;
+    musicIntensityCandidate = null;
+    return target;
 }
 
 function updateCombatStatusThresholds() {
@@ -1825,6 +1868,9 @@ function renderLanguage() {
     renderInputBindings();
     renderInputGuidance('onboarding');
     renderInputGuidance('help');
+    renderMusicPreference();
+    renderMusicNowPlaying();
+    renderMusicPreviewButton();
     modeContextCacheKey = null;
     touchSpecialStateCacheKey = null;
     pauseSummaryCacheKey = null;
@@ -2096,6 +2142,7 @@ function updateOrientationWarning() {
 }
 
 function startRound() {
+    if (getMusicTransportDiagnostics().scene === 'preview') stopMusicPreview();
     clearResultPresentation();
     arenaReaction = null;
     closeAllModalDialogs();
@@ -2118,6 +2165,9 @@ floatingTexts = [];
     timerTenAnnounced = false;
     timerFiveAnnounced = false;
     lastCombatEvent = '';
+    recentMusicActivity = [];
+    musicIntensityCandidate = null;
+    musicComboLastFrame = -Infinity;
     combatStatusCacheKey = null;
     announcementFrame = null;
     announcementPriority = 0;
@@ -2126,14 +2176,14 @@ floatingTexts = [];
 playRoundStartSound();
     setMusicIntensity(1);
     if (gameMode !== 'arcade') {
-        if (selectedMusicStyle && getMusicStyleList().includes(selectedMusicStyle)) {
-            setMusicStyle(selectedMusicStyle);
-        } else {
-            const styles = getMusicStyleList();
-            setMusicStyle(styles[Math.floor(Math.random() * styles.length)]);
+        if (!matchMusicStyle || !getMusicStyleList().includes(matchMusicStyle)) {
+            matchMusicStyle = selectedMusicStyle || chooseRandomMusicStyle();
         }
+        setMusicStyle(matchMusicStyle);
     }
-    startMusic();
+    if (getMusicTransportDiagnostics().scene !== 'combat') stopMusic();
+    startMusic('combat');
+    renderMusicNowPlaying();
     resetCombatMetrics();
     if (gameMode === 'training') resetTraining();
     vsIntroTimer = VS_INTRO_FRAMES;
@@ -2164,6 +2214,7 @@ selectedRival = fight.rival;
 
 function startArcadeRun() {
     gameMode = 'arcade';
+    matchMusicStyle = null;
     arcadeRun = {
         fightIndex: 0,
         results: [],
@@ -2214,6 +2265,7 @@ function retryArcadeRun() {
 
 function initGame() {
     gameMode = 'versus';
+    matchMusicStyle = null;
     activeTrialId = 'free';
     trialState = null;
     trialTick = 0;
@@ -2226,6 +2278,7 @@ function initGame() {
 
 function startTraining() {
     gameMode = 'training';
+    matchMusicStyle = null;
     activeTrialId = 'free';
     trialState = null;
     trialTick = 0;
@@ -2249,6 +2302,7 @@ function startRequestedMode(mode) {
 function requestStartMode(mode) {
     const requestedMode = ['versus', 'training', 'arcade'].includes(mode) ? mode : null;
     if (!requestedMode) return;
+    stopMusicPreview();
 
     if (loadOnboardingSeen() || !document.getElementById('onboarding-screen')) {
         pendingStartMode = null;
@@ -2354,6 +2408,7 @@ function showMainMenu() {
 }
 
 function showHelpScreen() {
+    stopMusicPreview();
     closeAllModalDialogs();
     gameState = 'menu';
     document.getElementById('help-screen').style.display = 'flex';
@@ -2372,6 +2427,7 @@ function hideHelpScreen() {
 }
 
 function showControlsScreen() {
+    stopMusicPreview();
     closeAllModalDialogs();
     gameState = 'menu';
     document.getElementById('controls-screen').style.display = 'flex';
@@ -2393,7 +2449,7 @@ function pauseGame(silent = false) {
     if (gameState !== 'playing') return;
 
     if (!silent) playUISound('pause');
-    stopMusic();
+    pauseMusic();
     clearActiveInput();
     if (player1) player1.clearComboSequence();
     if (player2) player2.clearComboSequence();
@@ -2410,7 +2466,7 @@ function resumeGame() {
 
     playUISound('resume');
     setMusicIntensity(getMusicIntensityFromHealth());
-    startMusic();
+    resumeMusic();
     clearActiveInput();
     resetSimulationClock();
     gameState = 'playing';
@@ -2531,6 +2587,7 @@ function finishRound(playerWon) {
         return;
     }
 
+    playMusicRoundCue(playerWon);
     gameState = 'roundOver';
     const roundMessage = playerWon === null ? t('tie') : (playerWon ? t('roundHuman') : t('roundCpu'));
     showStatusMessage(roundMessage, 90);
@@ -2697,7 +2754,6 @@ function triggerImpactFeedback(x, y, direction, blocked = false, accentColor = n
     const role = attacker && attacker.isPlayer1 ? 'player' : 'cpu';
     const visualColor = getVisualColorForKind(visualKind, role);
 
-    if (!blocked && (kind === 'special' || kind === 'combo')) musicCriticalHitLP();
     const signature = getCombatSignature(attacker);
     screenShake = reducedMotionEnabled ? 0 : Math.max(screenShake, feedback.shake);
     hitStopFrames = reducedMotionEnabled ? 0 : Math.max(hitStopFrames, feedback.stop);
@@ -2829,7 +2885,7 @@ function finishMatch(playerWon) {
     if (player2) player2.clearComboSequence();
 const record = createMatchHistoryRecord(playerWon);
     gameState = 'gameOver';
-    musicPitchDrop();
+    musicPitchDrop(playerWon);
     playRoundEndSound(playerWon);
     showStatusMessage(t('ko'), 180);
     recordMatchResult(playerWon);
@@ -2951,7 +3007,6 @@ function advanceSimulation(deltaMs) {
         simulationAccumulator = 0;
     }
 
-tickMusic();
     if (debugMetrics.active) {
         debugMetrics.stepsPerFrame += steps;
         if (steps > 1) debugMetrics.multiStepFrames++;
@@ -2975,6 +3030,7 @@ function gameLoop(timestamp = 0) {
     advanceSimulation(deltaMs);
     const simulationEnd = collecting ? getDebugNow() : null;
     if (simulationStart !== null && simulationEnd !== null) pushDebugSample(debugMetrics.simulationFrameMs, Math.max(0, simulationEnd - simulationStart));
+    if (gameState !== 'paused') tickMusic();
     renderTouchSpecialState();
     renderCombatStatus();
     const drawStart = collecting ? getDebugNow() : null;
@@ -3538,6 +3594,37 @@ function renderAudioSettings() {
     }
 }
 
+function getMusicLabel(style = getMusicStyleName()) {
+    if (!style || !getMusicStyleList().includes(style)) return t('musicRandom');
+    return t(`music${style.charAt(0).toUpperCase()}${style.slice(1)}`);
+}
+
+function renderMusicPreference() {
+    const selector = document.getElementById('music-select');
+    const summary = document.getElementById('music-selection-summary');
+    if (selector) selector.value = selectedMusicStyle;
+    const planned = selectedMusicStyle ? getMusicLabel(selectedMusicStyle)
+        : t('musicRandomPreview', { style: getMusicLabel('bitDuel') });
+    if (summary) summary.textContent = t('musicSelectionSummary', { style: planned });
+}
+
+function renderMusicNowPlaying() {
+    const label = document.getElementById('music-now-playing');
+    if (!label) return;
+    const transport = getMusicTransportDiagnostics();
+    const styleLabel = getMusicLabel(transport.style);
+    label.textContent = transport.running ? t('musicNowPlaying', { style: styleLabel }) : '';
+    label.setAttribute('aria-label', label.textContent || t('musicNotPlaying'));
+}
+
+function renderMusicPreviewButton() {
+    const button = document.getElementById('test-music-audio');
+    if (!button) return;
+    const active = getMusicTransportDiagnostics().scene === 'preview';
+    button.textContent = t(active ? 'stopMusicPreview' : 'testMusicAudio');
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+}
+
 function setupAudioSettings() {
     renderAudioSettings();
     for (const channel of ['combat', 'ui', 'music']) {
@@ -3551,11 +3638,35 @@ function setupAudioSettings() {
     if (combatTest) combatTest.addEventListener('click', () => { playAttackSound('kick'); playImpactSound('kick'); });
     const uiTest = document.getElementById('test-ui-audio');
     if (uiTest) uiTest.addEventListener('click', () => playUISound('select'));
+    const musicTest = document.getElementById('test-music-audio');
+    if (musicTest) musicTest.addEventListener('click', () => {
+        if (getMusicTransportDiagnostics().scene === 'preview') stopMusicPreview();
+        else startMusicPreview(selectedMusicStyle || 'bitDuel');
+        renderMusicPreviewButton();
+    });
+    const utilities = document.getElementById('menu-utilities');
+    if (utilities) utilities.addEventListener('toggle', () => {
+        if (!utilities.open) {
+            stopMusicPreview();
+            renderMusicPreviewButton();
+        }
+    });
 }
 
 function setupMainMenu() {
     setupAudioSettings();
     setupTouchInputTracking();
+    const mainMenu = document.getElementById('main-menu');
+    const startMenuThemeFromGesture = () => {
+        if (gameState === 'menu' && getMusicTransportDiagnostics().scene !== 'preview') {
+            const onboardingVisible = document.getElementById('onboarding-screen').style.display === 'flex';
+            startMenuMusic(onboardingVisible ? 'onboarding' : 'menu');
+        }
+    };
+    if (mainMenu) {
+        mainMenu.addEventListener('pointerdown', startMenuThemeFromGesture);
+        mainMenu.addEventListener('click', startMenuThemeFromGesture);
+    }
     document.getElementById('start-button').addEventListener('click', () => {
         playUISound('start');
         requestStartMode(loadedChallenge ? loadedChallenge.mode : 'versus');
@@ -3614,6 +3725,7 @@ function setupMainMenu() {
         playUISound('select');
         selectedMusicStyle = e.target.value;
         try { window.localStorage.setItem('glitchDuelMusicStyle', e.target.value); } catch (_) {}
+        renderMusicPreference();
     });
     document.getElementById('reduce-motion-toggle').addEventListener('change', (e) => {
         playUISound('select');
@@ -3689,5 +3801,9 @@ window.addEventListener('blur', clearActiveInput);
 
 document.addEventListener('visibilitychange', () => {
     clearActiveInput();
-    if (document.hidden && gameState === 'playing') pauseGame(true);
+    if (document.hidden) {
+        stopMusicPreview();
+        if (gameState === 'playing') pauseGame(true);
+        else pauseMusic();
+    }
 });

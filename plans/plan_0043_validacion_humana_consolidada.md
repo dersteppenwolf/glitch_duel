@@ -279,3 +279,30 @@ Windows, navegador integrado OpenChamber, producción local en puerto 8765, seed
 Pendientes: escucha/AT, teclado y touch/gamepad físicos, comodidad, zoom real, desktop amplio, rendimiento y playtest prolongado. No se probó descarga física ni envío por Web Share. La revisión valida estados concretos de presentación, no el cierre de estas matrices humanas.
 
 Validación técnica final: Node.js 24.19.0, 231 pruebas aprobadas (siete nuevas), sintaxis `src/*.js` y `tests/game.test.js` correcta y `git diff --check` aprobado. Sin fixtures de revisión en producción.
+
+## Smoke acotado de selector musical — plan 0055, 2026-10-03
+
+Checkout local basado en `8c0d1d9` con cambios sin commit, Windows, servidor estático del checkout en `http://localhost:8000/src/?seed=55`, panel de navegador OpenChamber (engine/build no expuesto), idioma ES. Evidencia de interacción/DOM con página, Web Audio, Canvas y CSS de producción; no una sesión de escucha ni dispositivo físico.
+
+- [x] En 1440×900 reportado por el panel: menú, disclosure de utilidades, selector musical y botón de prueba operativos. `#music-selection-summary` inspeccionado con texto para aleatoria y preview fijo Bit Duel.
+- [x] Pulsar `PROBAR MÚSICA` cambió el texto/estado del botón a `DETENER PRUEBA`. En una inspección posterior el texto había vuelto a `PROBAR MÚSICA`; no se midió el tiempo transcurrido. El panel no reportó errores visibles. Esto comprueba el estado de la interfaz, no que la señal fuera audible ni que su timbre/mezcla resulte agradable.
+- [x] A 390×844, selector, controles de sonido y prueba de música permanecieron en el flujo del menú y fueron alcanzables mediante el scroll interno. El resumen de selección envolvía varias líneas; se acortó luego a `PRÓXIMO` / `NEXT` y muestra aleatoria. No se probó touch físico, teclado, lector de pantalla ni orientación real.
+- [x] Inicio de duelo en ese viewport: toolbar mostró `MÚSICA · BAROQUE BASH` junto con PAUSA y el resumen de tiempo. PAUSA detuvo el duelo y `MENU` regresó al menú. El browser no permite inferir si el audio se escuchó.
+
+## Render offline musical — plan 0055, 2026-10-03
+
+Fixture temporal same-origin en la rama local, Chromium integrado, OfflineAudioContext estéreo a 44.1 kHz. Se llamó al compositor de producción para 16 compases por cada estilo e intensidad; las señales pasaron por los buses/instrumentos/compresores reales. Para preprogramar el score completo en una sola OfflineAudioContext, el fixture aumentó temporalmente el presupuesto durante el render; el cap live de 24 se verifica por separado en `tests/game.test.js`. El fixture se borró tras medir.
+
+| Estilo | Intensidad 1 peak/RMS | Intensidad 2 peak/RMS | Intensidad 3 peak/RMS |
+| --- | --- | --- | --- |
+| Bit Duel | 0.37764 / 0.05246 | 0.49963 / 0.08289 | 0.61103 / 0.10791 |
+| Baroque Bash | 0.36768 / 0.04319 | 0.50017 / 0.07207 | 0.61335 / 0.09275 |
+| Neon Fury | 0.34941 / 0.05710 | 0.45581 / 0.08802 | 0.56851 / 0.11293 |
+| Glitch Assault | 0.35085 / 0.06594 | 0.47569 / 0.09795 | 0.58409 / 0.12957 |
+| Retro Groove | 0.36894 / 0.06086 | 0.49255 / 0.09301 | 0.60454 / 0.12146 |
+| Void Reach | 0.38455 / 0.05595 | 0.49103 / 0.08692 | 0.60104 / 0.11536 |
+
+- [x] Todos los samples finitos. Mayor peak musical: `0.61335` (umbral técnico plan `≤0.8`). La diferencia RMS entre extremos de densidad comparable es menor de 4 dB en los tres niveles; RMS no predice nivel percibido.
+- [x] Caso simultáneo con 32 grafos SFX a volumen Combat/UI/Music 100%: antes del bus final compartido, peak `1.57541`; se añadió el compresor/limitador final compartido tras esa medición. Después: peak `0.57877`, RMS `0.07690`, SFX activos al terminar `0`, no descartados en la muestra. Queda bajo `0.98`; no prueba todo ataque posible, loudness percibida ni comodidad.
+
+Pendiente: navegador/engine versionado, escucha de los seis arreglos/mezcla/SFX en altavoces y auriculares, comparación mono/estéreo, continuación de pause/hidden en equipo real, rendimiento y pruebas físicas/AT. Esta revisión no cierra esos gates ni sustituye la matriz histórica cerrada por supuesto explícito.

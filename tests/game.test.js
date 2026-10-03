@@ -44,22 +44,30 @@ function createMockAudioContext(audioEvents = [], options = {}) {
             value: 0,
             setValueAtTime(value, time) { this.value = value; audioEvents.push({ event: 'automation', name, curve: 'set', value, time }); },
             linearRampToValueAtTime(value, time) { audioEvents.push({ event: 'automation', name, curve: 'linear', value, time }); },
-            exponentialRampToValueAtTime(value, time) { audioEvents.push({ event: 'automation', name, curve: 'exponential', value, time }); }
+            exponentialRampToValueAtTime(value, time) { audioEvents.push({ event: 'automation', name, curve: 'exponential', value, time }); },
+            cancelScheduledValues(time) { audioEvents.push({ event: 'automation', name, curve: 'cancel', time }); },
+            cancelAndHoldAtTime(time) { audioEvents.push({ event: 'automation', name, curve: 'hold', time }); },
+            setTargetAtTime(value, time, constant) { this.value = value; audioEvents.push({ event: 'automation', name, curve: 'target', value, time, constant }); }
         };
     }
     return class MockAudioContext {
         constructor() {
-            this.destination = {};
+            this.destination = { id: 'destination' };
             this.currentTime = 10;
+            this.sampleRate = 44100;
             this.state = 'running';
+            this.nextNodeId = 0;
         }
 
         createOscillator() {
             return {
+                id: ++this.nextNodeId,
+                connections: [],
                 type: '',
                 frequency: parameter('frequency'),
-                connect() { return this; },
-                disconnect() { audioEvents.push({ event: 'disconnect', type: 'oscillator' }); },
+                connect(target) { this.connections.push(target); audioEvents.push({ event: 'connect', from: this.id, to: target.id || 'destination' }); return target; },
+                setPeriodicWave(wave) { this.periodicWave = wave; },
+                disconnect() { this.connections = []; audioEvents.push({ event: 'disconnect', type: 'oscillator' }); },
                 start(time) { audioEvents.push({ event: 'start', type: this.type, frequency: this.frequency.value, time }); },
                 stop(time) {
                     audioEvents.push({ event: 'stop', type: this.type, frequency: this.frequency.value, time });
@@ -74,19 +82,21 @@ function createMockAudioContext(audioEvents = [], options = {}) {
 
         createGain() {
             return {
+                id: ++this.nextNodeId,
+                connections: [],
                 gain: parameter('gain'),
-                connect() { return this; },
-                disconnect() { audioEvents.push({ event: 'disconnect', type: 'gain' }); }
+                connect(target) { this.connections.push(target); audioEvents.push({ event: 'connect', from: this.id, to: target.id || 'destination' }); return target; },
+                disconnect() { this.connections = []; audioEvents.push({ event: 'disconnect', type: 'gain' }); }
             };
         }
 
         createBiquadFilter() {
-            const filter = { type: '', frequency: parameter('filterFreq'), Q: parameter('filterQ'), gain: parameter('filterGain'), connect() { return this; }, disconnect() {} };
+            const filter = { id: ++this.nextNodeId, connections: [], type: '', frequency: parameter('filterFreq'), Q: parameter('filterQ'), gain: parameter('filterGain'), connect(target) { this.connections.push(target); audioEvents.push({ event: 'connect', from: this.id, to: target.id || 'destination' }); return target; }, disconnect() { this.connections = []; } };
             return filter;
         }
 
         createWaveShaper() {
-            return { curve: null, connect() { return this; }, disconnect() {} };
+            return { id: ++this.nextNodeId, curve: null, connect(target) { audioEvents.push({ event: 'connect', from: this.id, to: target.id || 'destination' }); return target; }, disconnect() {} };
         }
 
         createDynamicsCompressor() {
@@ -96,23 +106,36 @@ function createMockAudioContext(audioEvents = [], options = {}) {
                 ratio: { value: 0 },
                 attack: { value: 0 },
                 release: { value: 0 },
-                connect() { return this; },
+                connect(target) { return target; },
                 disconnect() {}
             };
         }
 
         createDelay(maxTime) {
-            return { delayTime: parameter('delayTime'), connect() { return this; }, disconnect() {} };
+            return { id: ++this.nextNodeId, delayTime: parameter('delayTime'), connect(target) { audioEvents.push({ event: 'connect', from: this.id, to: target.id || 'destination' }); return target; }, disconnect() {} };
         }
 
         createBuffer(channels, length, sampleRate) {
-            const buf = { getChannelData(ch) { const arr = new Float64Array(length); return arr; }, sampleRate, length, numberOfChannels: channels };
+            const channelData = Array.from({ length: channels }, () => new Float64Array(length));
+            const buf = { getChannelData(ch) { return channelData[ch]; }, sampleRate, length, numberOfChannels: channels };
             return buf;
         }
 
         createBufferSource() {
-            return { buffer: null, connect() { return this; }, disconnect() {}, start(t) { audioEvents.push({ event: 'noiseStart', time: t }); }, stop(t) { audioEvents.push({ event: 'noiseStop', time: t }); } };
+            return {
+                id: ++this.nextNodeId, buffer: null, connections: [],
+                connect(target) { this.connections.push(target); audioEvents.push({ event: 'connect', from: this.id, to: target.id || 'destination' }); return target; },
+                disconnect() { this.connections = []; },
+                start(t) { audioEvents.push({ event: 'noiseStart', time: t }); },
+                stop(t) {
+                    audioEvents.push({ event: 'noiseStop', time: t });
+                    if (options.audioDeferredEnd) audioEvents.push({ event: 'pendingEnd', end: this.onended });
+                    else if (typeof this.onended === 'function') this.onended();
+                }
+            };
         }
+
+        createPeriodicWave(real, imag, options) { audioEvents.push({ event: 'periodicWave', harmonics: real.length, options }); return { real, imag }; }
     };
 }
 
@@ -139,6 +162,9 @@ function loadGame(options = {}) {
         'ui-volume': 'input',
         'test-combat-audio': 'button',
         'test-ui-audio': 'button',
+        'test-music-audio': 'button',
+        'music-now-playing': 'span',
+        'music-selection-summary': 'small',
         'back-button': 'button',
         'controls-back-button': 'button',
         'reset-controls-button': 'button',
@@ -192,6 +218,7 @@ function loadGame(options = {}) {
     };
     const staticParents = {
         'pause-button': 'game-toolbar',
+        'music-now-playing': 'game-toolbar',
         game: 'arena-shell',
         'bindings-list': 'controls-screen',
         'binding-status': 'controls-screen',
@@ -422,9 +449,10 @@ function loadGame(options = {}) {
             playGlitchCancelSound,
             getAudioDiagnostics,
             getAudioVolumes,
-            setAudioVolume,
-            setupAudioSettings,
-            renderAudioSettings,
+             setAudioVolume,
+             setupAudioSettings,
+             setupMainMenu,
+             renderAudioSettings,
             AUDIO_CONFIG,
             getCombatSignature,
             getCombatFeedbackKind,
@@ -572,11 +600,29 @@ function loadGame(options = {}) {
             checkCollision,
             triggerImpactFeedback,
             triggerSpecialFeedback,
-            setMusicIntensity,
-            setMusicStyle,
-            getMusicStyleName,
-            getMusicStyleList,
-            musicStutter,
+             setMusicIntensity,
+             setMusicStyle,
+             setMusicSessionSeed,
+             getMusicStyleName,
+             getMusicStyleList,
+             generateMusicBarEvents,
+             degreeToMidi,
+             getMusicTransportDiagnostics,
+             getMusicRoutingDiagnostics,
+             startMusic,
+             pauseMusic,
+             resumeMusic,
+             stopMusic,
+             tickMusic,
+             startMusicPreview,
+             stopMusicPreview,
+             getMusicTiming,
+             advanceMusicClockForTest: (seconds) => {
+                 if (audioCtx) audioCtx.currentTime += seconds;
+                 tickMusic();
+             },
+             getMusicIntensityFromHealth,
+             musicStutter,
             musicPitchDrop,
             drawHealthBar,
             drawEnergyBar,
@@ -611,6 +657,7 @@ function loadGame(options = {}) {
                 debugOverlayEnabled,
 musicIntensity,
                 musicStyle,
+                selectedMusicStyle,
                 selectedDifficulty,
                 selectedFighterStyle,
                 selectedRival,
@@ -2265,7 +2312,7 @@ test('touch controls are native buttons with stable accessible IDs', () => {
 
 test('static HTML contract preserves local assets, script order, controls, and arena inventory', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'src', 'index.html'), 'utf8');
-    const requiredIds = ['game', 'main-menu', 'help-screen', 'controls-screen', 'pause-screen', 'onboarding-screen', 'training-panel', 'training-trial-select', 'training-trial-brief', 'training-trial-progress', 'training-trial-next', 'training-free-options', 'start-button', 'training-button', 'arcade-run-button', 'controls-button', 'arena-select', 'rival-select', 'match-configuration-summary', 'duel-settings', 'menu-utilities'];
+    const requiredIds = ['game', 'main-menu', 'help-screen', 'controls-screen', 'pause-screen', 'onboarding-screen', 'training-panel', 'training-trial-select', 'training-trial-brief', 'training-trial-progress', 'training-trial-next', 'training-free-options', 'start-button', 'training-button', 'arcade-run-button', 'controls-button', 'arena-select', 'rival-select', 'music-select', 'music-selection-summary', 'music-now-playing', 'test-music-audio', 'match-configuration-summary', 'duel-settings', 'menu-utilities'];
     const scripts = ['i18n.js', 'config.js', 'input.js', 'audio.js', 'effects.js', 'ai.js', 'fighter_render.js', 'fighter.js', 'arena_render.js', 'hud_render.js', 'game.js'];
     const { api } = loadGame();
     const openingTagForId = (id) => html.match(new RegExp(`<[^>]+\\bid="${id}"[^>]*>`))[0];
@@ -2299,6 +2346,9 @@ test('static HTML contract preserves local assets, script order, controls, and a
     ['difficulty-select', 'arena-select', 'style-select', 'rival-select', 'arena-preview', 'selection-summary'].forEach((id) => {
         assert.match(duelBlock, new RegExp(`id="${id}"`));
     });
+    assert.match(duelBlock, /id="music-select"/);
+    assert.match(utilitiesBlock, /id="test-music-audio"[^>]*aria-pressed="false"/);
+    assert.doesNotMatch(openingTagForId('music-now-playing'), /aria-live=/);
     assert.doesNotMatch(duelBlock, /id="reduce-motion-toggle"/);
     const utilityOrder = ['language-select', 'reduce-motion-toggle', 'help-button', 'controls-button', 'stats-summary', 'controls-summary'];
     utilityOrder.forEach((id) => assert.match(utilitiesBlock, new RegExp(`id="${id}"`)));
@@ -2318,6 +2368,10 @@ test('static HTML contract preserves local assets, script order, controls, and a
     assert.equal(api.I18N.en.duelSettings, 'CUSTOMIZE MATCH');
     assert.equal(api.I18N.es.menuUtilities, 'AJUSTES, AYUDA Y CONTROLES · ES/EN');
     assert.equal(api.I18N.en.menuUtilities, 'SETTINGS, HELP & CONTROLS · ES/EN');
+    ['musicRandomPreview', 'musicSelectionSummary', 'musicNowPlaying', 'testMusicAudio', 'stopMusicPreview'].forEach((key) => {
+        assert.ok(api.I18N.es[key], `Spanish ${key} is translated`);
+        assert.ok(api.I18N.en[key], `English ${key} is translated`);
+    });
     assert.match(html, /id="arena-select" aria-describedby="arena-preview-text"/);
     assert.match(html, /id="style-select" aria-describedby="style-preview-text"/);
     assert.match(html, /id="rival-select" aria-describedby="rival-preview-text"/);
@@ -6081,6 +6135,220 @@ test('adaptive music: setMusicIntensity clamps to 1-3', () => {
     assert.equal(api.getState().musicIntensity, 1, 'intensity 0 should clamp to 1');
     api.setMusicIntensity(5);
     assert.equal(api.getState().musicIntensity, 3, 'intensity 5 should clamp to 3');
+});
+
+test('music composition keeps every style in range and shares its recurring motif', () => {
+    const { api } = loadGame();
+    const styles = api.getMusicStyleList();
+    assert.equal(styles.length, 6);
+    assert.deepEqual([api.degreeToMidi(0), api.degreeToMidi(2), api.degreeToMidi(4), api.degreeToMidi(1), api.degreeToMidi(0)], [57, 60, 64, 59, 57]);
+    const signatures = new Set();
+    for (const style of styles) {
+        for (let intensity = 1; intensity <= 3; intensity++) {
+            for (let bar = 0; bar < 16; bar++) {
+                const events = JSON.parse(JSON.stringify(api.generateMusicBarEvents(style, bar, intensity, 55)));
+                assert(events.length > 0, `${style} bar ${bar} has musical events`);
+                for (const event of events) {
+                    assert(Number.isFinite(event.beat) && event.beat >= 0 && event.beat < 4, `${style} beat is within one 4/4 bar`);
+                    assert(Number.isFinite(event.durationBeats) && event.durationBeats > 0);
+                    for (const note of Array.isArray(event.note) ? event.note : [event.note]) assert(note >= 24 && note <= 96 && Number.isFinite(note));
+                }
+            }
+        }
+        const motif = JSON.parse(JSON.stringify(api.generateMusicBarEvents(style, 2, 2, 55).filter((event) => event.type === 'lead').slice(0, 5).map((event) => event.note % 12)));
+        assert.deepEqual(motif, [9, 0, 4, 11, 9], `${style} presents A-C-E-B-A by pitch class`);
+        signatures.add(JSON.stringify(api.generateMusicBarEvents(style, 7, 2, 55).map(({ beat, type, note, wave }) => [beat, type, note, wave])));
+    }
+    assert.equal(signatures.size, 6, 'each style has a distinct rhythmic/tonal signature');
+    assert.deepEqual(JSON.parse(JSON.stringify(api.getMusicTiming())), { bpm: 145, beatSec: 60 / 145, barSec: 240 / 145 });
+});
+
+test('music scheduler is stable across render polling rates and preserves pause position', () => {
+    const traces = [];
+    for (const callsPerSecond of [30, 60, 120]) {
+        const { api, audioEvents } = loadGame();
+        api.setMusicSessionSeed(777);
+        api.startMusic('combat');
+        for (let i = 0; i < callsPerSecond * 2; i++) api.advanceMusicClockForTest(1 / callsPerSecond);
+        traces.push(audioEvents.filter((event) => event.event === 'start' || event.event === 'noiseStart')
+            .map(({ event, type, frequency, time }) => [event, type || '', frequency || 0, Number(time.toFixed(6))]));
+        assert(api.getMusicRoutingDiagnostics().layers.bass.length > 0);
+        assert(api.getMusicRoutingDiagnostics().layers.melody.length > 0);
+        assert(api.getMusicRoutingDiagnostics().effects.length > 0);
+    }
+    assert.deepEqual(traces[1], traces[0]);
+    assert.deepEqual(traces[2], traces[0]);
+
+    const { api, audioEvents } = loadGame();
+    api.setMusicSessionSeed(777);
+    api.startMusic('combat');
+    api.advanceMusicClockForTest(0.4);
+    const startsBeforePause = audioEvents.filter((event) => event.event === 'start' || event.event === 'noiseStart').length;
+    const barBeforePause = api.getMusicTransportDiagnostics().barIndex;
+    api.pauseMusic();
+    assert.equal(api.getMusicTransportDiagnostics().paused, true);
+    api.advanceMusicClockForTest(3);
+    assert.equal(audioEvents.filter((event) => event.event === 'start' || event.event === 'noiseStart').length, startsBeforePause);
+    api.resumeMusic();
+    api.tickMusic();
+    const resumed = api.getMusicTransportDiagnostics();
+    assert.equal(resumed.barIndex, barBeforePause);
+    assert.equal(resumed.paused, false);
+    assert(audioEvents.filter((event) => event.event === 'start' || event.event === 'noiseStart').slice(startsBeforePause).every((event) => event.time >= 13.4));
+});
+
+test('music mute releases voices, resumes only an existing scene, and preview remains lazy', () => {
+    const { api, elements, audioEvents } = loadGame();
+    assert.equal(api.getAudioDiagnostics().contextState, 'uninitialized');
+    assert.equal(api.startMusicPreview('baroqueBash'), true);
+    assert.equal(api.getMusicTransportDiagnostics().scene, 'preview');
+    api.advanceMusicClockForTest(0.3);
+    const starts = audioEvents.filter((event) => event.event === 'start' || event.event === 'noiseStart').length;
+    api.setAudioVolume('music', 0);
+    assert.equal(api.getMusicTransportDiagnostics().paused, true);
+    api.advanceMusicClockForTest(1);
+    assert.equal(audioEvents.filter((event) => event.event === 'start' || event.event === 'noiseStart').length, starts);
+    api.setAudioVolume('music', 0.5);
+    assert.equal(api.getMusicTransportDiagnostics().paused, false);
+    api.stopMusicPreview();
+    assert.notEqual(api.getMusicTransportDiagnostics().scene, 'preview');
+    api.setupAudioSettings();
+    const previewButton = elements.get('test-music-audio');
+    assert.equal(previewButton.textContent, 'PROBAR MÚSICA');
+    assert.equal(previewButton.getAttribute('aria-pressed'), 'false');
+});
+
+test('music preview ends at eight audio-clock seconds and does not replay missed bars', () => {
+    const { api } = loadGame();
+    api.setMusicSessionSeed(8);
+    api.startMusicPreview('voidReach');
+    api.advanceMusicClockForTest(7.99);
+    assert.equal(api.getMusicTransportDiagnostics().scene, 'preview');
+    api.advanceMusicClockForTest(0.02);
+    assert.notEqual(api.getMusicTransportDiagnostics().scene, 'preview');
+    assert.equal(api.getMusicTransportDiagnostics().running, false);
+});
+
+test('music voice pool is capped and oscillator/noise nodes clean up idempotently', () => {
+    const { api, audioEvents } = loadGame({ audioDeferredEnd: true });
+    api.setMusicSessionSeed(44);
+    api.startMusic('combat');
+    for (let tick = 0; tick < 100; tick++) api.advanceMusicClockForTest(0.04);
+    assert(api.getMusicTransportDiagnostics().activeVoices <= 24);
+    assert.equal(api.getMusicTransportDiagnostics().activeVoices, 24);
+    assert(api.getMusicTransportDiagnostics().droppedVoices > 0);
+    assert(audioEvents.some((event) => event.event === 'periodicWave' && event.harmonics === 33));
+    assert(audioEvents.some((event) => event.event === 'noiseStart'));
+    api.stopMusic();
+    audioEvents.filter((event) => event.event === 'pendingEnd' && typeof event.end === 'function').forEach((event) => { event.end(); event.end(); });
+    assert.equal(api.getMusicTransportDiagnostics().activeVoices, 0);
+});
+
+test('music settings restore only valid saved styles and invalid values fall back to random', () => {
+    const saved = loadGame({ storage: { glitchDuelMusicStyle: 'voidReach' } });
+    assert.equal(saved.api.getState().selectedMusicStyle, 'voidReach');
+    const unknown = loadGame({ storage: { glitchDuelMusicStyle: 'voidReach<script>' } });
+    assert.equal(unknown.api.getState().selectedMusicStyle, '');
+    const unavailable = loadGame({ storageGetThrows: true });
+    assert.equal(unavailable.api.getState().selectedMusicStyle, '');
+});
+
+test('music selection persistence, localization, and preview toggle update the native UI', () => {
+    const { api, elements, context } = loadGame();
+    api.setupMainMenu();
+    const selector = elements.get('music-select');
+    selector.listeners.change({ target: { value: 'retroGroove' } });
+    assert.equal(api.getState().selectedMusicStyle, 'retroGroove');
+    assert.equal(context.window.localStorage.getItem('glitchDuelMusicStyle'), 'retroGroove');
+    assert.match(elements.get('music-selection-summary').textContent, /PRÓXIMO: RETRO GROOVE/);
+    api.setLanguage('en');
+    assert.match(elements.get('music-selection-summary').textContent, /NEXT: RETRO GROOVE/);
+
+    const previewButton = elements.get('test-music-audio');
+    const click = previewButton.listeners.click;
+    click();
+    assert.equal(previewButton.textContent, 'STOP PREVIEW');
+    assert.equal(previewButton.getAttribute('aria-pressed'), 'true');
+    click();
+    assert.equal(previewButton.textContent, 'TEST MUSIC');
+    assert.equal(previewButton.getAttribute('aria-pressed'), 'false');
+});
+
+test('random music style is chosen once for a match and persists across its rounds', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1', glitchDuelMusicStyle: '' } });
+    api.initGame(); api.skipVsIntro();
+    const firstRoundStyle = api.getState().musicStyle;
+    assert(api.getMusicStyleList().includes(firstRoundStyle));
+    api.finishRound(true);
+    assert.equal(api.getState().currentRound, 2);
+    assert.equal(api.getState().musicStyle, firstRoundStyle);
+});
+
+test('music generation and polling never consume simulation random values', () => {
+    const { api } = loadGame();
+    api.setMatchRandomSeed(90210);
+    const expected = api.nextSimulationRandomForTest();
+    api.setMatchRandomSeed(90210);
+    api.generateMusicBarEvents('glitchAssault', 12, 3, 91);
+    api.startMusic('combat');
+    for (let i = 0; i < 120; i++) api.advanceMusicClockForTest(1 / 60);
+    assert.equal(api.nextSimulationRandomForTest(), expected);
+});
+
+test('adaptive music uses real normalized health and combat contacts, not animated health', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining(); api.skipVsIntro();
+    const { player1, player2 } = api.getState();
+    player1.health = 5; player1.displayHealth = 100;
+    player2.health = 100;
+    assert.equal(api.getMusicIntensityFromHealth(), 3);
+    player1.health = player1.displayHealth = 92;
+    assert.equal(api.getMusicIntensityFromHealth(), 1);
+    for (let index = 0; index < 3; index++) api.recordCombatEvent({ type: 'attackResolved', frame: index, outcome: 'hit', actor: 'player', attackType: 'punch' });
+    assert.equal(api.getMusicIntensityFromHealth(), 2);
+    for (let index = 3; index < 6; index++) api.recordCombatEvent({ type: 'attackResolved', frame: index, outcome: 'hit', actor: 'cpu', attackType: 'kick' });
+    assert.equal(api.getMusicIntensityFromHealth(), 3);
+});
+
+test('adaptive music honors exact health boundaries and requires 120 fixed ticks to cool down', () => {
+    const { api } = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } });
+    api.startTraining(); api.skipVsIntro();
+    const { player1, player2 } = api.getState();
+    player2.health = 100;
+    player1.health = player1.displayHealth = 70;
+    assert.equal(api.getMusicIntensityFromHealth(), 2);
+    player1.health = player1.displayHealth = 30;
+    assert.equal(api.getMusicIntensityFromHealth(), 3);
+    player1.applyStyle('technical');
+    player1.health = 64; player1.displayHealth = 92;
+    assert.equal(api.getMusicIntensityFromHealth(), 2);
+
+    player1.applyStyle('balanced');
+    player1.health = player1.displayHealth = 100;
+    api.setMusicIntensity(3);
+    assert.equal(api.getMusicIntensityFromHealth(), 3);
+    for (let tick = 0; tick < 119; tick++) api.advanceSimulation(1000 / 60);
+    assert.equal(api.getMusicIntensityFromHealth(), 3);
+    api.advanceSimulation(1000 / 60);
+    assert.equal(api.getMusicIntensityFromHealth(), 1);
+});
+
+test('adaptive music respects timed Training and the deciding one-to-one round', () => {
+    const training = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } }).api;
+    training.startTraining(); training.skipVsIntro();
+    training.setRoundTimeMs(10000);
+    assert.equal(training.getMusicIntensityFromHealth(), 1, 'untimed Training does not trigger the last-ten-seconds cue');
+    training.setTrainingTimer('on');
+    training.setRoundTimeMs(10000);
+    assert.equal(training.getMusicIntensityFromHealth(), 3, 'timed Training uses the effective timer');
+
+    const versus = loadGame({ storage: { glitchDuelOnboardingSeen: '1' } }).api;
+    versus.initGame(); versus.skipVsIntro();
+    versus.finishRound(true);
+    versus.finishRound(false);
+    assert.equal(versus.getState().playerRounds, 1);
+    assert.equal(versus.getState().cpuRounds, 1);
+    assert.equal(versus.getMusicIntensityFromHealth(), 2, 'the deciding 1-1 round raises the music floor');
 });
 
 test('comic HUD draws both energy states and preserves recovery-based CPU readiness', () => {
